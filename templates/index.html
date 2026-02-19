@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expande Tu Futuro | Trading Minimalista</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .btn-period.active { background-color: #ff007f; color: white; }
+        .fuchsia-text { color: #ff007f; }
+        .fuchsia-bg { background-color: #ff007f; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 fuchsia-bg rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,0,127,0.4)]">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">EXPANDE <span class="fuchsia-text">TU FUTURO</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <input type="text" id="symbolInput" placeholder="Buscar símbolo (BTC-USD, AAPL...)" class="bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-[#ff007f]/50 transition-all">
+                <button onclick="updateChart()" class="fuchsia-bg hover:bg-[#d4006b] text-white px-4 py-2 rounded-lg font-semibold transition-all">Ver</button>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Left Panel: Info & Favorites -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass rounded-2xl p-6">
+                    <h2 id="displaySymbol" class="text-3xl font-bold mb-1">---</h2>
+                    <p id="displayPrice" class="text-4xl font-mono font-semibold mb-2">0.00</p>
+                    <div id="displayChange" class="text-sm font-medium">--%</div>
+                </div>
+
+                <div class="glass rounded-2xl p-6">
+                    <h3 class="text-sm uppercase tracking-wider text-white/40 font-semibold mb-4">Favoritos</h3>
+                    <div class="space-y-2">
+                        <button onclick="loadSymbol('BTC-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
+                            <span>Bitcoin</span><span class="text-white/40 text-xs">BTC-USD</span>
+                        </button>
+                        <button onclick="loadSymbol('^GSPC')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
+                            <span>S&P 500</span><span class="text-white/40 text-xs">^GSPC</span>
+                        </button>
+                        <button onclick="loadSymbol('AAPL')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
+                            <span>Apple</span><span class="text-white/40 text-xs">AAPL</span>
+                        </button>
+                        <button onclick="loadSymbol('ETH-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
+                            <span>Ethereum</span><span class="text-white/40 text-xs">ETH-USD</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Charts -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="glass rounded-2xl p-4 md:p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
+                            <button onclick="setPeriod('1d')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1d">1D</button>
+                            <button onclick="setPeriod('5d')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="5d">5D</button>
+                            <button onclick="setPeriod('1mo')" class="btn-period active px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1mo">1M</button>
+                            <button onclick="setPeriod('6mo')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="6mo">6M</button>
+                            <button onclick="setPeriod('1y')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1y">1Y</button>
+                        </div>
+                        <div class="text-xs text-white/40 font-medium">LIVE MARKET DATA</div>
+                    </div>
+                    
+                    <div id="mainChart" class="w-full h-[450px]"></div>
+                </div>
+
+                <!-- RSI Chart -->
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold">Relative Strength Index (14)</h3>
+                        <span id="rsiValue" class="text-sm font-mono font-bold fuchsia-text">--</span>
+                    </div>
+                    <div id="rsiChart" class="w-full h-[120px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-white/20 text-xs">
+            &copy; 2026 Expande Tu Futuro. Datos vía yfinance API.
+        </footer>
+    </div>
+
+    <script>
+        let currentSymbol = 'BTC-USD';
+        let currentPeriod = '1mo';
+
+        async function fetchChartData(symbol, period) {
+            try {
+                const response = await fetch(`/api/chart/${symbol}?period=${period}`);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                return data;
+            } catch (e) {
+                console.error("Error fetching data:", e);
+                alert("Error al cargar datos del símbolo: " + symbol);
+                return null;
+            }
+        }
+
+        function renderCharts(data) {
+            // Render Main Chart
+            Plotly.newPlot('mainChart', data.chart.data, data.chart.layout, {responsive: true, displayModeBar: false});
+
+            // Render RSI Chart
+            const rsiTrace = {
+                x: data.rsi.x,
+                y: data.rsi.y,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ff007f', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(255, 0, 127, 0.1)'
+            };
+
+            const rsiLayout = {
+                template: 'plotly_dark',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 0, r: 0, t: 0, b: 0 },
+                xaxis: { visible: false },
+                yaxis: { range: [0, 100], showgrid: true, gridcolor: 'rgba(255,255,255,0.05)', tickvals: [30, 70] },
+                shapes: [
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 70, y1: 70, line: { color: 'rgba(255,255,255,0.1)', width: 1, dash: 'dot' } },
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 30, y1: 30, line: { color: 'rgba(255,255,255,0.1)', width: 1, dash: 'dot' } }
+                ]
+            };
+
+            Plotly.newPlot('rsiChart', [rsiTrace], rsiLayout, {responsive: true, displayModeBar: false});
+
+            // Update Info
+            document.getElementById('displaySymbol').innerText = currentSymbol;
+            document.getElementById('displayPrice').innerText = data.last_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            const changeEl = document.getElementById('displayChange');
+            const prefix = data.change >= 0 ? '+' : '';
+            changeEl.innerText = `${prefix}${data.change.toFixed(2)} (${prefix}${data.change_pct.toFixed(2)}%)`;
+            changeEl.className = data.change >= 0 ? 'text-sm font-medium text-green-500' : 'text-sm font-medium text-red-500';
+            
+            document.getElementById('rsiValue').innerText = data.rsi.y[data.rsi.y.length - 1].toFixed(2);
+        }
+
+        async function loadSymbol(symbol) {
+            currentSymbol = symbol;
+            document.getElementById('symbolInput').value = symbol;
+            const data = await fetchChartData(currentSymbol, currentPeriod);
+            if (data) renderCharts(data);
+        }
+
+        async function updateChart() {
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (symbol) loadSymbol(symbol);
+        }
+
+        async function setPeriod(period) {
+            currentPeriod = period;
+            document.querySelectorAll('.btn-period').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-period') === period) btn.classList.add('active');
+            });
+            const data = await fetchChartData(currentSymbol, currentPeriod);
+            if (data) renderCharts(data);
+        }
+
+        // Initial Load
+        window.onload = () => loadSymbol('BTC-USD');
+    </script>
+</body>
+</html>
