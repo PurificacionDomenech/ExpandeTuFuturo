@@ -145,13 +145,26 @@ async def get_chart(ticker: str, period: str = "1mo"):
             name="Supertrend Sell"
         ))
         
+        # Calcular rango dinamico del eje Y
+        all_y_values = []
+        all_y_values.extend(df["Close"].dropna().values.tolist())
+        all_y_values.extend(df["SMA20"].dropna().values.tolist())
+        all_y_values.extend(df["SMA50"].dropna().values.tolist())
+        all_y_values.extend(df["Supertrend"].dropna().values.tolist())
+        
+        y_min = min(all_y_values)
+        y_max = max(all_y_values)
+        y_range = y_max - y_min
+        y_padding = y_range * 0.1
+        
         fig.update_layout(
             template="plotly_dark",
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=0, r=0, t=30, b=0),
             xaxis=dict(showgrid=False),
-            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)', rangemode='normal'),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)', range=[y_min - y_padding, y_max + y_padding]),
+            hovermode='x unified',
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
