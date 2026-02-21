@@ -1,240 +1,234 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 app = FastAPI(title="Expande Tu Futuro Web")
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# --- Indicadores ---
 
-def calcular_indicadores(data):
-    data["SMA20"]  = data["Close"].rolling(window=20).mean()
-    data["SMA50"]  = data["Close"].rolling(window=50).mean()
-    data["SMA100"] = data["Close"].rolling(window=100).mean()
-    data["SMA200"] = data["Close"].rolling(window=200).mean()
+# ─────────────────────────────────────────────
+# INDICADORES
+# ─────────────────────────────────────────────
 
-    delta = data["Close"].diff()
-    gain  = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss  = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs    = gain / loss
-    data["RSI"] = 100 - (100 / (1 + rs))
+def calcular_indicadores(df):
+    df["SMA20"]  = df["Close"].rolling(20).mean()
+    df["SMA50"]  = df["Close"].rolling(50).mean()
+    df["SMA100"] = df["Close"].rolling(100).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
+
+    delta = df["Close"].diff()
+    gain  = delta.where(delta > 0, 0).rolling(14).mean()
+    loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df["RSI"] = 100 - (100 / (1 + gain / loss))
 
     atr_period, factor = 7, 3.0
-    data["H-L"]  = data["High"] - data["Low"]
-    data["H-PC"] = abs(data["High"] - data["Close"].shift(1))
-    data["L-PC"] = abs(data["Low"]  - data["Close"].shift(1))
-    data["TR"]   = data[["H-L", "H-PC", "L-PC"]].max(axis=1)
-    data["ATR"]  = data["TR"].rolling(window=atr_period).mean()
+    df["TR"] = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - df["Close"].shift()).abs(),
+        (df["Low"]  - df["Close"].shift()).abs()
+    ], axis=1).max(axis=1)
+    df["ATR"] = df["TR"].rolling(atr_period).mean()
 
-    hl2 = (data["High"] + data["Low"]) / 2
-    data["UpperBand"] = hl2 + factor * data["ATR"]
-    data["LowerBand"] = hl2 - factor * data["ATR"]
-    data["Supertrend"] = np.nan
-    data["Direction"]  = 0
+    hl2 = (df["High"] + df["Low"]) / 2
+    df["UpperBand"] = hl2 + factor * df["ATR"]
+    df["LowerBand"] = hl2 - factor * df["ATR"]
+    df["Supertrend"] = np.nan
+    df["Direction"]  = 0
 
-    for i in range(1, len(data)):
-        prev_st  = data.iloc[i-1]["Supertrend"]
-        prev_dir = data.iloc[i-1]["Direction"]
-        curr_lower = float(data.iloc[i]["LowerBand"])
-        curr_upper = float(data.iloc[i]["UpperBand"])
-        curr_close = float(data.iloc[i]["Close"])
-
-        if np.isnan(prev_st):
-            data.iloc[i, data.columns.get_loc("Supertrend")] = curr_lower
-            data.iloc[i, data.columns.get_loc("Direction")]  = 1
+    for i in range(1, len(df)):
+        ps  = df.iloc[i-1]["Supertrend"]
+        pd_ = df.iloc[i-1]["Direction"]
+        cl  = float(df.iloc[i]["LowerBand"])
+        cu  = float(df.iloc[i]["UpperBand"])
+        cc  = float(df.iloc[i]["Close"])
+        if np.isnan(ps):
+            df.iloc[i, df.columns.get_loc("Supertrend")] = cl
+            df.iloc[i, df.columns.get_loc("Direction")]  = 1
             continue
+        st  = max(cl, ps) if pd_ == 1 else min(cu, ps)
+        d   = 1 if cc > st else -1
+        df.iloc[i, df.columns.get_loc("Supertrend")] = st
+        df.iloc[i, df.columns.get_loc("Direction")]  = d
 
-        if prev_dir == 1:
-            curr_st  = max(curr_lower, prev_st)
-            curr_dir = 1 if curr_close > curr_st else -1
-        else:
-            curr_st  = min(curr_upper, prev_st)
-            curr_dir = 1 if curr_close > curr_st else -1
+    return df
 
-        data.iloc[i, data.columns.get_loc("Supertrend")] = curr_st
-        data.iloc[i, data.columns.get_loc("Direction")]  = curr_dir
 
-    return data
+# ─────────────────────────────────────────────
+# ALERTAS
+# ─────────────────────────────────────────────
 
-# --- Rutas ---
+def detectar_alertas(df, gemas: list[float]):
+    alertas = []
+    n = len(df) - 1
+    if n < 1:
+        return alertas
+
+    s100_n = df["SMA100"].iloc[n];   s100_p = df["SMA100"].iloc[n-1]
+    s200_n = df["SMA200"].iloc[n];   s200_p = df["SMA200"].iloc[n-1]
+    s20_n  = df["SMA20"].iloc[n];    s20_p  = df["SMA20"].iloc[n-1]
+    s50_n  = df["SMA50"].iloc[n];    s50_p  = df["SMA50"].iloc[n-1]
+
+    if pd.notna(s100_n) and pd.notna(s200_n):
+        if s100_p < s200_p and s100_n >= s200_n:
+            alertas.append({"nivel": "bullish", "msg": "🟢 Golden Cross — SMA100 cruza sobre SMA200"})
+        elif s100_p > s200_p and s100_n <= s200_n:
+            alertas.append({"nivel": "bearish", "msg": "🔴 Death Cross — SMA100 cruza bajo SMA200"})
+
+    if pd.notna(s20_n) and pd.notna(s50_n):
+        if s20_p < s50_p and s20_n >= s50_n:
+            alertas.append({"nivel": "bullish", "msg": "🟡 Cruce alcista — SMA20 sobre SMA50"})
+        elif s20_p > s50_p and s20_n <= s50_n:
+            alertas.append({"nivel": "bearish", "msg": "🟠 Cruce bajista — SMA20 bajo SMA50"})
+
+    precio = float(df["Close"].iloc[n])
+    for g in gemas:
+        pct = abs(precio - g) / g * 100
+        if pct <= 1.5:
+            alertas.append({"nivel": "info",
+                             "msg": f"💎 Precio cerca de gema ${g:,.2f} · actual ${precio:,.2f} ({pct:.2f}%)"})
+
+    return alertas
+
+
+# ─────────────────────────────────────────────
+# RUTAS
+# ─────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @app.get("/api/chart/{ticker}")
-async def get_chart(ticker: str, period: str = "1mo"):
+async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
     interval = "1d"
-    if period == "1d":  interval = "5m"
+    if period == "1d":   interval = "5m"
     elif period == "5d": interval = "30m"
 
     try:
-        df = yf.download(ticker, period=period, interval=interval)
+        df = yf.download(ticker.upper(), period=period, interval=interval, progress=False)
         if df.empty:
-            return {"error": "No se encontraron datos"}
+            return {"error": f"Símbolo no encontrado: {ticker}"}
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
         df = calcular_indicadores(df)
 
+        def safe(v):
+            return float(v) if pd.notna(v) else None
+
         labels     = df.index.strftime('%Y-%m-%d %H:%M').tolist()
         close_vals = df["Close"].values
         rsi_vals   = df["RSI"].values
 
-        # Supertrend: puntos muy pequeños
-        st_buy_y  = [float(v) if pd.notna(v) and df["Direction"].iloc[i] == 1  else None
-                     for i, v in enumerate(df["Supertrend"].values)]
-        st_sell_y = [float(v) if pd.notna(v) and df["Direction"].iloc[i] == -1 else None
-                     for i, v in enumerate(df["Supertrend"].values)]
-
-        # RSI señales sobre el precio
-        rsi_oversold_y   = [float(close_vals[i]) if rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
-        rsi_overbought_y = [float(close_vals[i]) if rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
+        st_buy  = [safe(v) if df["Direction"].iloc[i] == 1  else None for i, v in enumerate(df["Supertrend"])]
+        st_sell = [safe(v) if df["Direction"].iloc[i] == -1 else None for i, v in enumerate(df["Supertrend"])]
+        rsi_os  = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
+        rsi_ob  = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
 
         chart_data = {
             "labels": labels,
             "datasets": [
-                # Precio con sombra degradada
-                {
-                    "label": "Precio",
-                    "data": [float(v) for v in close_vals],
-                    "borderColor": "#ff007f",
-                    "backgroundColor": "rgba(255, 0, 127, 0.15)",
-                    "borderWidth": 2,
-                    "fill": "origin",
-                    "tension": 0.3,
-                    "pointRadius": 0,
-                    "yAxisID": "y"
-                },
-                # SMA 20 — más fina
-                {
-                    "label": "SMA 20",
-                    "data": [float(v) if pd.notna(v) else None for v in df["SMA20"].values],
-                    "borderColor": "#00ffff",
-                    "backgroundColor": "transparent",
-                    "borderWidth": 1,
-                    "fill": False,
-                    "tension": 0.1,
-                    "pointRadius": 0,
-                    "yAxisID": "y"
-                },
-                # SMA 50
-                {
-                    "label": "SMA 50",
-                    "data": [float(v) if pd.notna(v) else None for v in df["SMA50"].values],
-                    "borderColor": "#ffff00",
-                    "backgroundColor": "transparent",
-                    "borderWidth": 1.5,
-                    "fill": False,
-                    "tension": 0.1,
-                    "pointRadius": 0,
-                    "yAxisID": "y"
-                },
-                # SMA 100
-                {
-                    "label": "SMA 100",
-                    "data": [float(v) if pd.notna(v) else None for v in df["SMA100"].values],
-                    "borderColor": "#fff176",
-                    "backgroundColor": "transparent",
-                    "borderWidth": 2,
-                    "fill": False,
-                    "tension": 0.1,
-                    "pointRadius": 0,
-                    "yAxisID": "y"
-                },
-                # SMA 200 — más gruesa
-                {
-                    "label": "SMA 200",
-                    "data": [float(v) if pd.notna(v) else None for v in df["SMA200"].values],
-                    "borderColor": "#ce93d8",
-                    "backgroundColor": "transparent",
-                    "borderWidth": 3,
-                    "fill": False,
-                    "tension": 0.1,
-                    "pointRadius": 0,
-                    "yAxisID": "y"
-                },
-                # Supertrend Buy — puntos muy pequeños
-                {
-                    "label": "ST Buy",
-                    "data": st_buy_y,
-                    "borderColor": "transparent",
-                    "backgroundColor": "#00ff00",
-                    "borderWidth": 0,
-                    "fill": False,
-                    "tension": 0,
-                    "pointRadius": 2.5,
-                    "pointHoverRadius": 5,
-                    "showLine": False,
-                    "yAxisID": "y"
-                },
-                # Supertrend Sell — puntos muy pequeños
-                {
-                    "label": "ST Sell",
-                    "data": st_sell_y,
-                    "borderColor": "transparent",
-                    "backgroundColor": "#ff0000",
-                    "borderWidth": 0,
-                    "fill": False,
-                    "tension": 0,
-                    "pointRadius": 2.5,
-                    "pointHoverRadius": 5,
-                    "showLine": False,
-                    "yAxisID": "y"
-                },
-                # RSI Sobreventa
-                {
-                    "label": "RSI <30",
-                    "data": rsi_oversold_y,
-                    "borderColor": "transparent",
-                    "backgroundColor": "#00e676",
-                    "borderWidth": 0,
-                    "fill": False,
-                    "tension": 0,
-                    "pointRadius": 6,
-                    "pointHoverRadius": 9,
-                    "showLine": False,
-                    "yAxisID": "y"
-                },
-                # RSI Sobrecompra
-                {
-                    "label": "RSI >70",
-                    "data": rsi_overbought_y,
-                    "borderColor": "transparent",
-                    "backgroundColor": "#ff1744",
-                    "borderWidth": 0,
-                    "fill": False,
-                    "tension": 0,
-                    "pointRadius": 6,
-                    "pointHoverRadius": 9,
-                    "showLine": False,
-                    "yAxisID": "y"
-                }
+                # Precio — blanco con sombra gris clara
+                {"label": "Precio", "data": [safe(v) for v in close_vals],
+                 "borderColor": "#ffffff", "backgroundColor": "rgba(255,255,255,0.08)",
+                 "borderWidth": 2, "fill": "origin", "tension": 0.3,
+                 "pointRadius": 0, "yAxisID": "y"},
+
+                # SMAs — grosores escalonados
+                {"label": "SMA 20", "data": [safe(v) for v in df["SMA20"]],
+                 "borderColor": "#00ffff", "backgroundColor": "transparent",
+                 "borderWidth": 1, "fill": False, "tension": 0.1,
+                 "pointRadius": 0, "yAxisID": "y"},
+
+                {"label": "SMA 50", "data": [safe(v) for v in df["SMA50"]],
+                 "borderColor": "#ffff00", "backgroundColor": "transparent",
+                 "borderWidth": 1.5, "fill": False, "tension": 0.1,
+                 "pointRadius": 0, "yAxisID": "y"},
+
+                {"label": "SMA 100", "data": [safe(v) for v in df["SMA100"]],
+                 "borderColor": "#fff176", "backgroundColor": "transparent",
+                 "borderWidth": 2, "fill": False, "tension": 0.1,
+                 "pointRadius": 0, "yAxisID": "y"},
+
+                {"label": "SMA 200", "data": [safe(v) for v in df["SMA200"]],
+                 "borderColor": "#ce93d8", "backgroundColor": "transparent",
+                 "borderWidth": 3, "fill": False, "tension": 0.1,
+                 "pointRadius": 0, "yAxisID": "y"},
+
+                # Supertrend — puntos diminutos
+                {"label": "ST ▲", "data": st_buy,
+                 "borderColor": "transparent", "backgroundColor": "#00ff00",
+                 "borderWidth": 0, "fill": False, "showLine": False,
+                 "pointRadius": 2, "pointHoverRadius": 4, "yAxisID": "y"},
+
+                {"label": "ST ▼", "data": st_sell,
+                 "borderColor": "transparent", "backgroundColor": "#ff3333",
+                 "borderWidth": 0, "fill": False, "showLine": False,
+                 "pointRadius": 2, "pointHoverRadius": 4, "yAxisID": "y"},
+
+                # RSI señales — círculos sobre precio
+                {"label": "RSI <30", "data": rsi_os,
+                 "borderColor": "rgba(0,230,118,0.6)", "backgroundColor": "#00e676",
+                 "borderWidth": 1.5, "fill": False, "showLine": False,
+                 "pointRadius": 6, "pointHoverRadius": 9, "yAxisID": "y"},
+
+                {"label": "RSI >70", "data": rsi_ob,
+                 "borderColor": "rgba(255,23,68,0.6)", "backgroundColor": "#ff1744",
+                 "borderWidth": 1.5, "fill": False, "showLine": False,
+                 "pointRadius": 6, "pointHoverRadius": 9, "yAxisID": "y"},
             ]
         }
 
-        last_close  = float(df["Close"].iloc[-1])
-        first_close = float(df["Close"].iloc[0])
-        rsi_current = float(df["RSI"].dropna().iloc[-1])
+        # Gemas
+        gemas = []
+        if niveles:
+            for n in niveles.split(","):
+                try:
+                    gemas.append(float(n.strip()))
+                except Exception:
+                    pass
+
+        alertas = detectar_alertas(df, gemas)
+
+        last  = float(df["Close"].iloc[-1])
+        first = float(df["Close"].iloc[0])
+        rsi_c = float(df["RSI"].dropna().iloc[-1]) if not df["RSI"].dropna().empty else 50
 
         return {
-            "chart": chart_data,
-            "last_price": last_close,
-            "change": last_close - first_close,
-            "change_pct": ((last_close - first_close) / first_close) * 100,
-            "rsi_current": rsi_current
+            "chart":      chart_data,
+            "last_price": last,
+            "change":     last - first,
+            "change_pct": (last - first) / first * 100,
+            "rsi_current": rsi_c,
+            "alertas":    alertas,
+            "gemas":      gemas,
         }
 
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.get("/api/sparkline/{ticker}")
+async def sparkline(ticker: str):
+    try:
+        df = yf.download(ticker.upper(), period="5d", interval="1h", progress=False)
+        if df.empty:
+            return {"closes": [], "pct": 0}
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        closes = df["Close"].dropna().tolist()
+        pct = (closes[-1] - closes[0]) / closes[0] * 100 if len(closes) > 1 else 0
+        return {"closes": [float(c) for c in closes], "pct": round(pct, 2)}
+    except Exception as e:
+        return {"closes": [], "pct": 0, "error": str(e)}
+
 
 if __name__ == "__main__":
     import uvicorn, os
