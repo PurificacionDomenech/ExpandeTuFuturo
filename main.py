@@ -1,7 +1,6 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import timedelta
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,34 +12,37 @@ templates = Jinja2Templates(directory="templates")
 
 
 # ─────────────────────────────────────────────
-# INDICADORES
+# INDICADORES (sobre datos diarios 2y)
 # ─────────────────────────────────────────────
 
-def calcular_indicadores(df):
+def calcular_smas(df):
     df["SMA20"]  = df["Close"].rolling(20).mean()
     df["SMA50"]  = df["Close"].rolling(50).mean()
     df["SMA100"] = df["Close"].rolling(100).mean()
     df["SMA200"] = df["Close"].rolling(200).mean()
+    return df
 
+
+def calcular_rsi(df):
     delta = df["Close"].diff()
     gain  = delta.where(delta > 0, 0).rolling(14).mean()
     loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
     df["RSI"] = 100 - (100 / (1 + gain / loss))
+    return df
 
-    atr_period, factor = 7, 3.0
+
+def calcular_supertrend(df, atr_period=7, factor=3.0):
     df["TR"] = pd.concat([
         df["High"] - df["Low"],
         (df["High"] - df["Close"].shift()).abs(),
         (df["Low"]  - df["Close"].shift()).abs()
     ], axis=1).max(axis=1)
     df["ATR"] = df["TR"].rolling(atr_period).mean()
-
     hl2 = (df["High"] + df["Low"]) / 2
     df["UpperBand"] = hl2 + factor * df["ATR"]
     df["LowerBand"] = hl2 - factor * df["ATR"]
     df["Supertrend"] = np.nan
     df["Direction"]  = 0
-
     for i in range(1, len(df)):
         ps  = df.iloc[i-1]["Supertrend"]
         pd_ = df.iloc[i-1]["Direction"]
@@ -55,80 +57,82 @@ def calcular_indicadores(df):
         d  = 1 if cc > st else -1
         df.iloc[i, df.columns.get_loc("Supertrend")] = st
         df.iloc[i, df.columns.get_loc("Direction")]  = d
-
     return df
 
 
 # ─────────────────────────────────────────────
-# ALERTAS AUTOMÁTICAS
+# ALERTAS: precio vs SMAs (cruce y contacto)
 # ─────────────────────────────────────────────
 
-def detectar_alertas(df, gemas: list):
+def detectar_alertas_smas(df_daily, ticker=""):
+    """Detecta cruces precio/SMA y cruces entre SMAs en los últimos 2 días."""
     alertas = []
-    n = len(df) - 1
+    n = len(df_daily) - 1
     if n < 2:
         return alertas
 
-    precio_actual = float(df["Close"].iloc[n])
-    precio_prev   = float(df["Close"].iloc[n - 1])
+    precio_now  = float(df_daily["Close"].iloc[n])
+    precio_prev = float(df_daily["Close"].iloc[n - 1])
+    prefix = f"[{ticker}] " if ticker else ""
 
     smas = {
-        "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
-        "SMA50":  (df["SMA50"].iloc[n],  df["SMA50"].iloc[n-1]),
-        "SMA100": (df["SMA100"].iloc[n], df["SMA100"].iloc[n-1]),
-        "SMA200": (df["SMA200"].iloc[n], df["SMA200"].iloc[n-1]),
+        "SMA20":  (df_daily["SMA20"].iloc[n],  df_daily["SMA20"].iloc[n-1]),
+        "SMA50":  (df_daily["SMA50"].iloc[n],  df_daily["SMA50"].iloc[n-1]),
+        "SMA100": (df_daily["SMA100"].iloc[n], df_daily["SMA100"].iloc[n-1]),
+        "SMA200": (df_daily["SMA200"].iloc[n], df_daily["SMA200"].iloc[n-1]),
     }
 
-    # ── Cruce precio / media móvil ──────────────────────────
     for nombre, (sma_now, sma_prev) in smas.items():
         if not (pd.notna(sma_now) and pd.notna(sma_prev)):
             continue
-        # precio cruza hacia arriba
-        if precio_prev < sma_prev and precio_actual >= sma_now:
-            alertas.append({
-                "nivel": "bullish",
-                "msg":   f"📈 Precio cruza {nombre} hacia arriba — ${precio_actual:,.2f}"
-            })
-        # precio cruza hacia abajo
-        elif precio_prev > sma_prev and precio_actual <= sma_now:
-            alertas.append({
-                "nivel": "bearish",
-                "msg":   f"📉 Precio cruza {nombre} hacia abajo — ${precio_actual:,.2f}"
-            })
-        # precio muy cerca (≤0.5%)
-        elif abs(precio_actual - sma_now) / sma_now * 100 <= 0.5:
-            alertas.append({
-                "nivel": "info",
-                "msg":   f"⚠️ Precio tocando {nombre} — ${precio_actual:,.2f} / MA ${sma_now:,.2f}"
-            })
+        if precio_prev < sma_prev and precio_now >= sma_now:
+            alertas.append({"nivel": "bullish",
+                "msg": f"📈 {prefix}Precio cruza {nombre} al alza — ${precio_now:,.2f}"})
+        elif precio_prev > sma_prev and precio_now <= sma_now:
+            alertas.append({"nivel": "bearish",
+                "msg": f"📉 {prefix}Precio cruza {nombre} a la baja — ${precio_now:,.2f}"})
+        elif abs(precio_now - sma_now) / sma_now * 100 <= 0.4:
+            alertas.append({"nivel": "info",
+                "msg": f"⚠️ {prefix}Precio tocando {nombre} — ${precio_now:,.2f} / MA ${sma_now:,.2f}"})
 
-    # ── Cruces entre medias (100/200 y 20/50) ─────────────
+    # Cruces entre medias
     s100_n, s100_p = smas["SMA100"]
     s200_n, s200_p = smas["SMA200"]
     if pd.notna(s100_n) and pd.notna(s200_n):
         if s100_p < s200_p and s100_n >= s200_n:
-            alertas.append({"nivel": "bullish", "msg": "🟢 Golden Cross — SMA100 cruza sobre SMA200"})
+            alertas.append({"nivel": "bullish",
+                "msg": f"🟢 {prefix}Golden Cross — SMA100 cruza sobre SMA200"})
         elif s100_p > s200_p and s100_n <= s200_n:
-            alertas.append({"nivel": "bearish", "msg": "🔴 Death Cross — SMA100 cruza bajo SMA200"})
+            alertas.append({"nivel": "bearish",
+                "msg": f"🔴 {prefix}Death Cross — SMA100 cruza bajo SMA200"})
 
     s20_n, s20_p = smas["SMA20"]
     s50_n, s50_p = smas["SMA50"]
     if pd.notna(s20_n) and pd.notna(s50_n):
         if s20_p < s50_p and s20_n >= s50_n:
-            alertas.append({"nivel": "bullish", "msg": "🟡 Cruce alcista — SMA20 sobre SMA50"})
+            alertas.append({"nivel": "bullish",
+                "msg": f"🟡 {prefix}Cruce alcista SMA20 sobre SMA50"})
         elif s20_p > s50_p and s20_n <= s50_n:
-            alertas.append({"nivel": "bearish", "msg": "🟠 Cruce bajista — SMA20 bajo SMA50"})
-
-    # ── Niveles de precio personalizados (gemas) ──────────
-    for g in gemas:
-        pct = abs(precio_actual - g) / g * 100
-        if pct <= 1.0:
-            alertas.append({
-                "nivel": "info",
-                "msg":   f"💎 Precio cerca de nivel ${g:,.2f} — {pct:.2f}% de distancia"
-            })
+            alertas.append({"nivel": "bearish",
+                "msg": f"🟠 {prefix}Cruce bajista SMA20 bajo SMA50"})
 
     return alertas
+
+
+# ─────────────────────────────────────────────
+# DESCARGA DIARIA BASE (con caché simple)
+# ─────────────────────────────────────────────
+
+def get_daily(ticker):
+    df = yf.download(ticker.upper(), period="2y", interval="1d", progress=False)
+    if df.empty:
+        return None
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    df = calcular_smas(df)
+    df = calcular_rsi(df)
+    df = calcular_supertrend(df)
+    return df
 
 
 # ─────────────────────────────────────────────
@@ -141,75 +145,103 @@ async def index(request: Request):
 
 
 @app.get("/api/chart/{ticker}")
-async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
+async def get_chart(ticker: str, period: str = "1mo"):
     try:
-        # ── Siempre descargar 2 años diarios para que SMA100/200 estén disponibles ──
-        df_full = yf.download(ticker.upper(), period="2y", interval="1d", progress=False)
-        if df_full.empty:
+        # ── 1. Siempre descargamos 2 años diarios para SMAs correctas ──
+        df_daily = get_daily(ticker)
+        if df_daily is None:
             return {"error": f"Símbolo no encontrado: {ticker}"}
 
-        if isinstance(df_full.columns, pd.MultiIndex):
-            df_full.columns = df_full.columns.get_level_values(0)
-
-        # Calcular indicadores sobre el histórico completo
-        df_full = calcular_indicadores(df_full)
-
-        # ── Filtrar al periodo de visualización ──────────────────────────────────
-        periodo_dias = {
-            "1d": 1, "5d": 5, "1mo": 30, "6mo": 180, "1y": 365, "2y": 730
+        # SMAs actuales (último valor conocido) — para usar como horizontales en intraday
+        last_smas = {
+            "SMA20":  float(df_daily["SMA20"].dropna().iloc[-1])  if not df_daily["SMA20"].dropna().empty  else None,
+            "SMA50":  float(df_daily["SMA50"].dropna().iloc[-1])  if not df_daily["SMA50"].dropna().empty  else None,
+            "SMA100": float(df_daily["SMA100"].dropna().iloc[-1]) if not df_daily["SMA100"].dropna().empty else None,
+            "SMA200": float(df_daily["SMA200"].dropna().iloc[-1]) if not df_daily["SMA200"].dropna().empty else None,
         }
-        dias = periodo_dias.get(period, 30)
-        cutoff = df_full.index[-1] - timedelta(days=dias)
-        df = df_full[df_full.index >= cutoff].copy()
 
-        if df.empty:
-            df = df_full.tail(30).copy()
+        # ── 2. Elegir fuente de datos según periodo ──
+        intraday_mode = period in ("1d", "5d")
 
+        if intraday_mode:
+            interval = "5m" if period == "1d" else "15m"
+            df_display = yf.download(ticker.upper(), period=period, interval=interval, progress=False)
+            if df_display.empty:
+                return {"error": f"Sin datos intraday para {ticker}"}
+            if isinstance(df_display.columns, pd.MultiIndex):
+                df_display.columns = df_display.columns.get_level_values(0)
+            # RSI sobre intraday (limitado pero útil)
+            delta = df_display["Close"].diff()
+            gain  = delta.where(delta > 0, 0).rolling(14).mean()
+            loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            df_display["RSI"] = 100 - (100 / (1 + gain / loss))
+        else:
+            # Filtrar del daily según periodo
+            from datetime import timedelta
+            dias = {"1mo": 30, "6mo": 180, "1y": 365, "2y": 730}.get(period, 30)
+            cutoff = df_daily.index[-1] - timedelta(days=dias)
+            df_display = df_daily[df_daily.index >= cutoff].copy()
+
+        # ── 3. Construir datasets ──
         def safe(v):
             return float(v) if pd.notna(v) else None
 
-        labels     = df.index.strftime('%Y-%m-%d').tolist()
-        close_vals = df["Close"].values
-        rsi_vals   = df["RSI"].values
+        labels     = df_display.index.strftime('%Y-%m-%d %H:%M').tolist()
+        close_vals = df_display["Close"].values
+        n_pts      = len(close_vals)
+        rsi_vals   = df_display["RSI"].values if "RSI" in df_display.columns else [50]*n_pts
 
-        st_buy  = [safe(v) if df["Direction"].iloc[i] == 1  else None for i, v in enumerate(df["Supertrend"])]
-        st_sell = [safe(v) if df["Direction"].iloc[i] == -1 else None for i, v in enumerate(df["Supertrend"])]
+        # Supertrend solo en modo diario
+        if not intraday_mode and "Supertrend" in df_display.columns:
+            st_buy  = [safe(v) if df_display["Direction"].iloc[i] == 1  else None for i, v in enumerate(df_display["Supertrend"])]
+            st_sell = [safe(v) if df_display["Direction"].iloc[i] == -1 else None for i, v in enumerate(df_display["Supertrend"])]
+        else:
+            st_buy  = [None] * n_pts
+            st_sell = [None] * n_pts
 
-        # RSI señales en precio — color fucsia
-        rsi_os = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
-        rsi_ob = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
+        rsi_os = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] < 30 else None for i in range(n_pts)]
+        rsi_ob = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] > 70 else None for i in range(n_pts)]
+
+        # En intraday las SMAs son líneas horizontales al último valor diario conocido
+        if intraday_mode:
+            sma20_data  = [last_smas["SMA20"]]  * n_pts if last_smas["SMA20"]  else [None] * n_pts
+            sma50_data  = [last_smas["SMA50"]]  * n_pts if last_smas["SMA50"]  else [None] * n_pts
+            sma100_data = [last_smas["SMA100"]] * n_pts if last_smas["SMA100"] else [None] * n_pts
+            sma200_data = [last_smas["SMA200"]] * n_pts if last_smas["SMA200"] else [None] * n_pts
+        else:
+            sma20_data  = [safe(v) for v in df_display["SMA20"]]
+            sma50_data  = [safe(v) for v in df_display["SMA50"]]
+            sma100_data = [safe(v) for v in df_display["SMA100"]]
+            sma200_data = [safe(v) for v in df_display["SMA200"]]
 
         chart_data = {
             "labels": labels,
             "datasets": [
-                # Precio — blanco con sombra
                 {"label": "Precio", "data": [safe(v) for v in close_vals],
                  "borderColor": "#ffffff", "backgroundColor": "rgba(255,255,255,0.07)",
                  "borderWidth": 2, "fill": "origin", "tension": 0.3,
                  "pointRadius": 0, "yAxisID": "y"},
 
-                # SMAs escalonadas en grosor
-                {"label": "SMA 20", "data": [safe(v) for v in df["SMA20"]],
+                {"label": "SMA 20", "data": sma20_data,
                  "borderColor": "#00ffff", "backgroundColor": "transparent",
-                 "borderWidth": 1, "fill": False, "tension": 0.1,
-                 "pointRadius": 0, "yAxisID": "y"},
+                 "borderWidth": 1, "borderDash": [4,3] if intraday_mode else [],
+                 "fill": False, "tension": 0.1, "pointRadius": 0, "yAxisID": "y"},
 
-                {"label": "SMA 50", "data": [safe(v) for v in df["SMA50"]],
+                {"label": "SMA 50", "data": sma50_data,
                  "borderColor": "#ffff00", "backgroundColor": "transparent",
-                 "borderWidth": 1.5, "fill": False, "tension": 0.1,
-                 "pointRadius": 0, "yAxisID": "y"},
+                 "borderWidth": 1.5, "borderDash": [4,3] if intraday_mode else [],
+                 "fill": False, "tension": 0.1, "pointRadius": 0, "yAxisID": "y"},
 
-                {"label": "SMA 100", "data": [safe(v) for v in df["SMA100"]],
+                {"label": "SMA 100", "data": sma100_data,
                  "borderColor": "#fff176", "backgroundColor": "transparent",
-                 "borderWidth": 2, "fill": False, "tension": 0.1,
-                 "pointRadius": 0, "yAxisID": "y"},
+                 "borderWidth": 2, "borderDash": [4,3] if intraday_mode else [],
+                 "fill": False, "tension": 0.1, "pointRadius": 0, "yAxisID": "y"},
 
-                {"label": "SMA 200", "data": [safe(v) for v in df["SMA200"]],
+                {"label": "SMA 200", "data": sma200_data,
                  "borderColor": "#ce93d8", "backgroundColor": "transparent",
-                 "borderWidth": 3, "fill": False, "tension": 0.1,
-                 "pointRadius": 0, "yAxisID": "y"},
+                 "borderWidth": 3, "borderDash": [4,3] if intraday_mode else [],
+                 "fill": False, "tension": 0.1, "pointRadius": 0, "yAxisID": "y"},
 
-                # Supertrend — puntos muy pequeños
                 {"label": "ST ▲", "data": st_buy,
                  "borderColor": "transparent", "backgroundColor": "#00ff00",
                  "borderWidth": 0, "fill": False, "showLine": False,
@@ -220,7 +252,6 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
                  "borderWidth": 0, "fill": False, "showLine": False,
                  "pointRadius": 2, "pointHoverRadius": 5, "yAxisID": "y"},
 
-                # RSI señales — fucsia
                 {"label": "RSI <30", "data": rsi_os,
                  "borderColor": "transparent", "backgroundColor": "#ff007f",
                  "borderWidth": 0, "fill": False, "showLine": False,
@@ -233,21 +264,12 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
             ]
         }
 
-        # Gemas (niveles manuales)
-        gemas = []
-        if niveles:
-            for n in niveles.split(","):
-                try:
-                    gemas.append(float(n.strip()))
-                except Exception:
-                    pass
+        # Alertas sobre datos diarios completos
+        alertas = detectar_alertas_smas(df_daily)
 
-        # Alertas sobre el dataset completo (último día disponible)
-        alertas = detectar_alertas(df_full, gemas)
-
-        last  = float(df["Close"].iloc[-1])
-        first = float(df["Close"].iloc[0])
-        rsi_c = float(df["RSI"].dropna().iloc[-1]) if not df["RSI"].dropna().empty else 50
+        last  = float(df_display["Close"].iloc[-1])
+        first = float(df_display["Close"].iloc[0])
+        rsi_c = float(df_display["RSI"].dropna().iloc[-1]) if "RSI" in df_display.columns and not df_display["RSI"].dropna().empty else 50
 
         return {
             "chart":       chart_data,
@@ -256,11 +278,36 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
             "change_pct":  (last - first) / first * 100,
             "rsi_current": rsi_c,
             "alertas":     alertas,
-            "gemas":       gemas,
+            "intraday":    intraday_mode,
+            "last_smas":   last_smas,
         }
 
     except Exception as e:
         return {"error": str(e)}
+
+
+# ─────────────────────────────────────────────
+# ENDPOINT DE VIGILANCIA DE FAVORITOS
+# ─────────────────────────────────────────────
+
+@app.get("/api/watch")
+async def watch_favorites(tickers: str = ""):
+    """Comprueba alertas SMA para una lista de tickers separados por coma."""
+    all_alertas = []
+    if not tickers:
+        return {"alertas": []}
+    for t in tickers.split(","):
+        t = t.strip()
+        if not t:
+            continue
+        try:
+            df = get_daily(t)
+            if df is not None:
+                alertas = detectar_alertas_smas(df, ticker=t)
+                all_alertas.extend(alertas)
+        except Exception:
+            pass
+    return {"alertas": all_alertas}
 
 
 @app.get("/api/sparkline/{ticker}")
