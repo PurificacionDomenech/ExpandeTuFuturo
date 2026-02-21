@@ -22,6 +22,8 @@ def calcular_indicadores(data):
     # Medias Móviles
     data["SMA20"] = data["Close"].rolling(window=20).mean()
     data["SMA50"] = data["Close"].rolling(window=50).mean()
+    data["SMA100"] = data["Close"].rolling(window=100).mean()
+    data["SMA200"] = data["Close"].rolling(window=200).mean()
     
     # RSI
     delta = data["Close"].diff()
