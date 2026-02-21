@@ -9,223 +9,246 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
         .btn-period.active { background-color: #ff007f; color: white; }
         .fuchsia-text { color: #ff007f; }
-        .fuchsia-bg { background-color: #ff007f; }
-        #mainChartContainer { height: 560px; }
+        .fuchsia-bg   { background-color: #ff007f; }
+        #mainChartContainer { height: 640px; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 fuchsia-bg rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,0,127,0.4)]">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                </div>
-                <h1 class="text-2xl font-bold tracking-tight">EXPANDE <span class="fuchsia-text">TU FUTURO</span></h1>
+<div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 fuchsia-bg rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,0,127,0.4)]">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
             </div>
-            <div class="flex items-center gap-2 w-full md:w-auto">
-                <input type="text" id="symbolInput" placeholder="Buscar símbolo (BTC-USD, AAPL...)" class="bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-[#ff007f]/50 transition-all">
-                <button onclick="updateChart()" class="fuchsia-bg hover:bg-[#d4006b] text-white px-4 py-2 rounded-lg font-semibold transition-all">Ver</button>
-            </div>
-        </header>
+            <h1 class="text-2xl font-bold tracking-tight">EXPANDE <span class="fuchsia-text">TU FUTURO</span></h1>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+            <input type="text" id="symbolInput" placeholder="Buscar símbolo (BTC-USD, AAPL...)"
+                   class="bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-[#ff007f]/50 transition-all">
+            <button onclick="updateChart()" class="fuchsia-bg hover:bg-[#d4006b] text-white px-4 py-2 rounded-lg font-semibold transition-all">Ver</button>
+        </div>
+    </header>
 
-        <!-- Main Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-            <!-- Left Panel -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Precio -->
-                <div class="glass rounded-2xl p-6">
-                    <h2 id="displaySymbol" class="text-3xl font-bold mb-1">---</h2>
-                    <p id="displayPrice" class="text-4xl font-mono font-semibold mb-2">0.00</p>
-                    <div id="displayChange" class="text-sm font-medium mb-4">--%</div>
-                </div>
+        <!-- Left Panel -->
+        <div class="lg:col-span-1 space-y-4">
 
-                <!-- RSI -->
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">RSI (14)</h3>
-                    <div class="flex items-center justify-between mb-2">
-                        <span id="rsiValue" class="text-3xl font-mono font-bold">--</span>
-                        <span id="rsiLabel" class="text-xs font-semibold px-2 py-1 rounded-lg">--</span>
-                    </div>
-                    <!-- Barra RSI -->
-                    <div class="relative h-3 rounded-full overflow-hidden mt-3" style="background: linear-gradient(to right, #00e676 0%, #00e676 30%, #555 30%, #555 70%, #ff1744 70%, #ff1744 100%);">
-                        <div id="rsiCursor" class="absolute top-0 w-2 h-3 rounded-full bg-white shadow-lg transition-all duration-500" style="left: 50%;"></div>
-                    </div>
-                    <div class="flex justify-between text-xs text-white/30 mt-1">
-                        <span>0</span><span>30</span><span>70</span><span>100</span>
-                    </div>
-                    <div class="mt-3 space-y-1 text-xs text-white/40">
-                        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#00e676] inline-block"></span> Punto verde = sobreventa (&lt;30)</div>
-                        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#ff1744] inline-block"></span> Punto rojo = sobrecompra (&gt;70)</div>
-                    </div>
-                </div>
-
-                <!-- Favoritos -->
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="text-sm uppercase tracking-wider text-white/40 font-semibold mb-4">Favoritos</h3>
-                    <div class="space-y-2">
-                        <button onclick="loadSymbol('BTC-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
-                            <span>Bitcoin</span><span class="text-white/40 text-xs">BTC-USD</span>
-                        </button>
-                        <button onclick="loadSymbol('^GSPC')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
-                            <span>S&P 500</span><span class="text-white/40 text-xs">^GSPC</span>
-                        </button>
-                        <button onclick="loadSymbol('AAPL')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
-                            <span>Apple</span><span class="text-white/40 text-xs">AAPL</span>
-                        </button>
-                        <button onclick="loadSymbol('ETH-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center">
-                            <span>Ethereum</span><span class="text-white/40 text-xs">ETH-USD</span>
-                        </button>
-                    </div>
-                </div>
+            <!-- Precio + cambio -->
+            <div class="glass rounded-2xl p-6">
+                <h2 id="displaySymbol" class="text-2xl font-bold mb-1 fuchsia-text">---</h2>
+                <p id="displayPrice" class="text-4xl font-mono font-semibold mb-2">0.00</p>
+                <div id="displayChange" class="text-sm font-medium">--%</div>
             </div>
 
-            <!-- Right Panel: Chart -->
-            <div class="lg:col-span-3">
-                <div class="glass rounded-2xl p-4 md:p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
-                            <button onclick="setPeriod('1d')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1d">1D</button>
-                            <button onclick="setPeriod('5d')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="5d">5D</button>
-                            <button onclick="setPeriod('1mo')" class="btn-period active px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1mo">1M</button>
-                            <button onclick="setPeriod('6mo')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="6mo">6M</button>
-                            <button onclick="setPeriod('1y')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1y">1Y</button>
-                        </div>
-                        <div class="text-xs text-white/40 font-medium">LIVE MARKET DATA</div>
+            <!-- RSI widget -->
+            <div class="glass rounded-2xl p-5">
+                <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">RSI (14)</h3>
+                <div class="flex items-center justify-between mb-3">
+                    <span id="rsiValue" class="text-3xl font-mono font-bold">--</span>
+                    <span id="rsiLabel" class="text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/60">--</span>
+                </div>
+                <!-- Barra -->
+                <div class="relative h-2 rounded-full overflow-hidden"
+                     style="background: linear-gradient(to right, #00e676 0%, #00e676 30%, #444 30%, #444 70%, #ff1744 70%, #ff1744 100%);">
+                    <div id="rsiCursor" class="absolute top-0 w-2 h-2 rounded-full bg-white shadow transition-all duration-500" style="left:50%;transform:translateX(-50%)"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-white/25 mt-1 px-0.5">
+                    <span>0</span><span>30</span><span>70</span><span>100</span>
+                </div>
+                <!-- Leyenda señales -->
+                <div class="mt-4 space-y-1.5 text-xs text-white/40">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#00e676] shrink-0"></span>
+                        Punto verde → sobreventa (&lt;30)
                     </div>
-                    <div id="mainChartContainer">
-                        <canvas id="mainChart"></canvas>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#ff1744] shrink-0"></span>
+                        Punto rojo → sobrecompra (&gt;70)
                     </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#00ff00] shrink-0"></span>
+                        ST · tendencia alcista
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#ff0000] shrink-0"></span>
+                        ST · tendencia bajista
+                    </div>
+                </div>
+            </div>
+
+            <!-- Favoritos -->
+            <div class="glass rounded-2xl p-5">
+                <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">Favoritos</h3>
+                <div class="space-y-1">
+                    <button onclick="loadSymbol('BTC-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
+                        <span>Bitcoin</span><span class="text-white/30 text-xs">BTC-USD</span>
+                    </button>
+                    <button onclick="loadSymbol('^GSPC')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
+                        <span>S&amp;P 500</span><span class="text-white/30 text-xs">^GSPC</span>
+                    </button>
+                    <button onclick="loadSymbol('AAPL')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
+                        <span>Apple</span><span class="text-white/30 text-xs">AAPL</span>
+                    </button>
+                    <button onclick="loadSymbol('ETH-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
+                        <span>Ethereum</span><span class="text-white/30 text-xs">ETH-USD</span>
+                    </button>
+                    <button onclick="loadSymbol('GLD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
+                        <span>Oro</span><span class="text-white/30 text-xs">GLD</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <footer class="mt-12 text-center text-white/20 text-xs">
-            &copy; 2026 Expande Tu Futuro. Datos vía yfinance API.
-        </footer>
+        <!-- Chart Panel -->
+        <div class="lg:col-span-3">
+            <div class="glass rounded-2xl p-4 md:p-6">
+                <div class="flex justify-between items-center mb-5">
+                    <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
+                        <button onclick="setPeriod('1d')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1d">1D</button>
+                        <button onclick="setPeriod('5d')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="5d">5D</button>
+                        <button onclick="setPeriod('1mo')" class="btn-period active px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1mo">1M</button>
+                        <button onclick="setPeriod('6mo')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="6mo">6M</button>
+                        <button onclick="setPeriod('1y')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1y">1Y</button>
+                    </div>
+                    <span class="text-xs text-white/30 font-medium tracking-wider">LIVE MARKET DATA</span>
+                </div>
+                <div id="mainChartContainer">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script>
-        let currentSymbol = 'BTC-USD';
-        let currentPeriod = '1mo';
-        let mainChart = null;
+    <footer class="mt-10 text-center text-white/20 text-xs">
+        &copy; 2026 Expande Tu Futuro · Datos vía yfinance API
+    </footer>
+</div>
 
-        async function fetchChartData(symbol, period) {
-            try {
-                const response = await fetch(`/api/chart/${symbol}?period=${period}`);
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
-                return data;
-            } catch (e) {
-                console.error("Error fetching data:", e);
-                alert("Error al cargar datos del símbolo: " + symbol);
-                return null;
-            }
-        }
+<script>
+let currentSymbol = 'BTC-USD';
+let currentPeriod = '1mo';
+let mainChart = null;
 
-        function updateRSIWidget(rsi) {
-            const val = parseFloat(rsi);
-            document.getElementById('rsiValue').innerText = val.toFixed(1);
+async function fetchChartData(symbol, period) {
+    try {
+        const res = await fetch(`/api/chart/${symbol}?period=${period}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        return data;
+    } catch(e) {
+        console.error(e);
+        alert("Error al cargar: " + symbol);
+        return null;
+    }
+}
 
-            const labelEl = document.getElementById('rsiLabel');
-            const cursor = document.getElementById('rsiCursor');
+function updateRSIWidget(rsi) {
+    const val = parseFloat(rsi);
+    document.getElementById('rsiValue').innerText = val.toFixed(1);
 
-            // Posición cursor (0-100 -> 0%-100%)
-            cursor.style.left = `calc(${Math.min(Math.max(val, 0), 100)}% - 4px)`;
+    const cursor = document.getElementById('rsiCursor');
+    cursor.style.left = `calc(${Math.min(Math.max(val,0),100)}% - 4px)`;
 
-            if (val < 30) {
-                labelEl.innerText = 'SOBREVENTA';
-                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#00e676]/20 text-[#00e676]';
-                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-[#00e676]';
-            } else if (val > 70) {
-                labelEl.innerText = 'SOBRECOMPRA';
-                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#ff1744]/20 text-[#ff1744]';
-                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-[#ff1744]';
-            } else {
-                labelEl.innerText = 'NEUTRO';
-                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/60';
-                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-white';
-            }
-        }
+    const labelEl  = document.getElementById('rsiLabel');
+    const valueEl  = document.getElementById('rsiValue');
 
-        function renderCharts(data) {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            if (mainChart) mainChart.destroy();
+    if (val < 30) {
+        labelEl.innerText   = 'SOBREVENTA';
+        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#00e676]/20 text-[#00e676]';
+        valueEl.className   = 'text-3xl font-mono font-bold text-[#00e676]';
+    } else if (val > 70) {
+        labelEl.innerText   = 'SOBRECOMPRA';
+        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#ff1744]/20 text-[#ff1744]';
+        valueEl.className   = 'text-3xl font-mono font-bold text-[#ff1744]';
+    } else {
+        labelEl.innerText   = 'NEUTRO';
+        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/50';
+        valueEl.className   = 'text-3xl font-mono font-bold text-white';
+    }
+}
 
-            mainChart = new Chart(ctx, {
-                type: 'line',
-                data: data.chart,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: {
-                                color: 'rgba(255,255,255,0.7)',
-                                font: { size: 11 },
-                                usePointStyle: true,
-                                pointStyleWidth: 10
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            grid: { color: 'rgba(255,255,255,0.06)', drawBorder: false },
-                            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 }, maxTicksLimit: 10 }
-                        }
+function renderCharts(data) {
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    if (mainChart) mainChart.destroy();
+
+    mainChart = new Chart(ctx, {
+        type: 'line',
+        data: data.chart,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        color: 'rgba(255,255,255,0.6)',
+                        font: { size: 11 },
+                        usePointStyle: true,
+                        pointStyleWidth: 8,
+                        padding: 16
                     }
                 }
-            });
-
-            // Info panel
-            document.getElementById('displaySymbol').innerText = currentSymbol;
-            document.getElementById('displayPrice').innerText = data.last_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            const changeEl = document.getElementById('displayChange');
-            const prefix = data.change >= 0 ? '+' : '';
-            changeEl.innerText = `${prefix}${data.change.toFixed(2)} (${prefix}${data.change_pct.toFixed(2)}%)`;
-            changeEl.className = data.change >= 0 ? 'text-sm font-medium text-green-500 mb-4' : 'text-sm font-medium text-red-500 mb-4';
-
-            // RSI widget
-            updateRSIWidget(data.rsi_current);
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 }, maxTicksLimit: 10 }
+                }
+            }
         }
+    });
 
-        async function loadSymbol(symbol) {
-            currentSymbol = symbol;
-            document.getElementById('symbolInput').value = symbol;
-            const data = await fetchChartData(currentSymbol, currentPeriod);
-            if (data) renderCharts(data);
-        }
+    // Panel lateral
+    document.getElementById('displaySymbol').innerText = currentSymbol;
+    document.getElementById('displayPrice').innerText  = data.last_price.toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
 
-        async function updateChart() {
-            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
-            if (symbol) loadSymbol(symbol);
-        }
+    const changeEl = document.getElementById('displayChange');
+    const prefix   = data.change >= 0 ? '+' : '';
+    changeEl.innerText   = `${prefix}${data.change.toFixed(2)} (${prefix}${data.change_pct.toFixed(2)}%)`;
+    changeEl.className   = data.change >= 0 ? 'text-sm font-medium text-green-400' : 'text-sm font-medium text-red-400';
 
-        async function setPeriod(period) {
-            currentPeriod = period;
-            document.querySelectorAll('.btn-period').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-period') === period) btn.classList.add('active');
-            });
-            const data = await fetchChartData(currentSymbol, currentPeriod);
-            if (data) renderCharts(data);
-        }
+    updateRSIWidget(data.rsi_current);
+}
 
-        window.onload = () => loadSymbol('BTC-USD');
-    </script>
+async function loadSymbol(symbol) {
+    currentSymbol = symbol;
+    document.getElementById('symbolInput').value = symbol;
+    const data = await fetchChartData(currentSymbol, currentPeriod);
+    if (data) renderCharts(data);
+}
+
+async function updateChart() {
+    const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+    if (symbol) loadSymbol(symbol);
+}
+
+async function setPeriod(period) {
+    currentPeriod = period;
+    document.querySelectorAll('.btn-period').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+    });
+    const data = await fetchChartData(currentSymbol, currentPeriod);
+    if (data) renderCharts(data);
+}
+
+window.onload = () => loadSymbol('BTC-USD');
+</script>
 </body>
 </html>
