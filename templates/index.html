@@ -13,8 +13,7 @@
         .btn-period.active { background-color: #ff007f; color: white; }
         .fuchsia-text { color: #ff007f; }
         .fuchsia-bg { background-color: #ff007f; }
-        #mainChartContainer { height: 500px; }
-        #rsiChartContainer { height: 150px; }
+        #mainChartContainer { height: 560px; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -27,7 +26,6 @@
                 </div>
                 <h1 class="text-2xl font-bold tracking-tight">EXPANDE <span class="fuchsia-text">TU FUTURO</span></h1>
             </div>
-            
             <div class="flex items-center gap-2 w-full md:w-auto">
                 <input type="text" id="symbolInput" placeholder="Buscar símbolo (BTC-USD, AAPL...)" class="bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-[#ff007f]/50 transition-all">
                 <button onclick="updateChart()" class="fuchsia-bg hover:bg-[#d4006b] text-white px-4 py-2 rounded-lg font-semibold transition-all">Ver</button>
@@ -36,15 +34,37 @@
 
         <!-- Main Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            
-            <!-- Left Panel: Info & Favorites -->
+
+            <!-- Left Panel -->
             <div class="lg:col-span-1 space-y-6">
+                <!-- Precio -->
                 <div class="glass rounded-2xl p-6">
                     <h2 id="displaySymbol" class="text-3xl font-bold mb-1">---</h2>
                     <p id="displayPrice" class="text-4xl font-mono font-semibold mb-2">0.00</p>
-                    <div id="displayChange" class="text-sm font-medium">--%</div>
+                    <div id="displayChange" class="text-sm font-medium mb-4">--%</div>
                 </div>
 
+                <!-- RSI -->
+                <div class="glass rounded-2xl p-6">
+                    <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">RSI (14)</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <span id="rsiValue" class="text-3xl font-mono font-bold">--</span>
+                        <span id="rsiLabel" class="text-xs font-semibold px-2 py-1 rounded-lg">--</span>
+                    </div>
+                    <!-- Barra RSI -->
+                    <div class="relative h-3 rounded-full overflow-hidden mt-3" style="background: linear-gradient(to right, #00e676 0%, #00e676 30%, #555 30%, #555 70%, #ff1744 70%, #ff1744 100%);">
+                        <div id="rsiCursor" class="absolute top-0 w-2 h-3 rounded-full bg-white shadow-lg transition-all duration-500" style="left: 50%;"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-white/30 mt-1">
+                        <span>0</span><span>30</span><span>70</span><span>100</span>
+                    </div>
+                    <div class="mt-3 space-y-1 text-xs text-white/40">
+                        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#00e676] inline-block"></span> Punto verde = sobreventa (&lt;30)</div>
+                        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#ff1744] inline-block"></span> Punto rojo = sobrecompra (&gt;70)</div>
+                    </div>
+                </div>
+
+                <!-- Favoritos -->
                 <div class="glass rounded-2xl p-6">
                     <h3 class="text-sm uppercase tracking-wider text-white/40 font-semibold mb-4">Favoritos</h3>
                     <div class="space-y-2">
@@ -64,8 +84,8 @@
                 </div>
             </div>
 
-            <!-- Right Panel: Charts -->
-            <div class="lg:col-span-3 space-y-6">
+            <!-- Right Panel: Chart -->
+            <div class="lg:col-span-3">
                 <div class="glass rounded-2xl p-4 md:p-6">
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
@@ -77,20 +97,8 @@
                         </div>
                         <div class="text-xs text-white/40 font-medium">LIVE MARKET DATA</div>
                     </div>
-                    
                     <div id="mainChartContainer">
                         <canvas id="mainChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- RSI Chart -->
-                <div class="glass rounded-2xl p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold">Relative Strength Index (14)</h3>
-                        <span id="rsiValue" class="text-sm font-mono font-bold fuchsia-text">--</span>
-                    </div>
-                    <div id="rsiChartContainer">
-                        <canvas id="rsiChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -105,7 +113,6 @@
         let currentSymbol = 'BTC-USD';
         let currentPeriod = '1mo';
         let mainChart = null;
-        let rsiChart = null;
 
         async function fetchChartData(symbol, period) {
             try {
@@ -120,122 +127,80 @@
             }
         }
 
-        function renderCharts(data) {
-            // Render Main Chart with Chart.js
-            if (data.chart && data.chart.labels) {
-                const ctx = document.getElementById('mainChart').getContext('2d');
-                
-                if (mainChart) {
-                    mainChart.destroy();
-                }
-                
-                mainChart = new Chart(ctx, {
-                    type: 'line',
-                    data: data.chart,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                labels: {
-                                    color: 'rgba(255,255,255,0.8)',
-                                    font: { size: 11 }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                grid: {
-                                    color: 'rgba(255,255,255,0.1)',
-                                    drawBorder: false
-                                },
-                                ticks: {
-                                    color: 'rgba(255,255,255,0.6)',
-                                    font: { size: 10 }
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                },
-                                ticks: {
-                                    color: 'rgba(255,255,255,0.6)',
-                                    font: { size: 10 },
-                                    maxTicksLimit: 10
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+        function updateRSIWidget(rsi) {
+            const val = parseFloat(rsi);
+            document.getElementById('rsiValue').innerText = val.toFixed(1);
 
-            // Render RSI Chart with Chart.js
-            const rsiCtx = document.getElementById('rsiChart').getContext('2d');
-            
-            if (rsiChart) {
-                rsiChart.destroy();
+            const labelEl = document.getElementById('rsiLabel');
+            const cursor = document.getElementById('rsiCursor');
+
+            // Posición cursor (0-100 -> 0%-100%)
+            cursor.style.left = `calc(${Math.min(Math.max(val, 0), 100)}% - 4px)`;
+
+            if (val < 30) {
+                labelEl.innerText = 'SOBREVENTA';
+                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#00e676]/20 text-[#00e676]';
+                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-[#00e676]';
+            } else if (val > 70) {
+                labelEl.innerText = 'SOBRECOMPRA';
+                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#ff1744]/20 text-[#ff1744]';
+                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-[#ff1744]';
+            } else {
+                labelEl.innerText = 'NEUTRO';
+                labelEl.className = 'text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/60';
+                document.getElementById('rsiValue').className = 'text-3xl font-mono font-bold text-white';
             }
-            
-            rsiChart = new Chart(rsiCtx, {
+        }
+
+        function renderCharts(data) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (mainChart) mainChart.destroy();
+
+            mainChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: data.rsi.x,
-                    datasets: [{
-                        label: 'RSI (14)',
-                        data: data.rsi.y,
-                        borderColor: '#ff007f',
-                        backgroundColor: 'rgba(255, 0, 127, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
+                data: data.chart,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            labels: {
+                                color: 'rgba(255,255,255,0.7)',
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                pointStyleWidth: 10
+                            }
                         }
                     },
                     scales: {
                         y: {
-                            min: 0,
-                            max: 100,
-                            grid: {
-                                color: 'rgba(255,255,255,0.05)'
-                            },
-                            ticks: {
-                                color: 'rgba(255,255,255,0.6)',
-                                font: { size: 10 }
-                            }
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(255,255,255,0.06)', drawBorder: false },
+                            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } }
                         },
                         x: {
-                            display: false
+                            grid: { display: false },
+                            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 }, maxTicksLimit: 10 }
                         }
                     }
                 }
             });
 
-            // Update Info
+            // Info panel
             document.getElementById('displaySymbol').innerText = currentSymbol;
-            document.getElementById('displayPrice').innerText = data.last_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
+            document.getElementById('displayPrice').innerText = data.last_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
             const changeEl = document.getElementById('displayChange');
             const prefix = data.change >= 0 ? '+' : '';
             changeEl.innerText = `${prefix}${data.change.toFixed(2)} (${prefix}${data.change_pct.toFixed(2)}%)`;
-            changeEl.className = data.change >= 0 ? 'text-sm font-medium text-green-500' : 'text-sm font-medium text-red-500';
-            
-            document.getElementById('rsiValue').innerText = data.rsi.y[data.rsi.y.length - 1].toFixed(2);
+            changeEl.className = data.change >= 0 ? 'text-sm font-medium text-green-500 mb-4' : 'text-sm font-medium text-red-500 mb-4';
+
+            // RSI widget
+            updateRSIWidget(data.rsi_current);
         }
 
         async function loadSymbol(symbol) {
@@ -260,7 +225,6 @@
             if (data) renderCharts(data);
         }
 
-        // Initial Load
         window.onload = () => loadSymbol('BTC-USD');
     </script>
 </body>
