@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expande Tu Futuro | Trading Minimalista</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; }
@@ -13,6 +13,8 @@
         .btn-period.active { background-color: #ff007f; color: white; }
         .fuchsia-text { color: #ff007f; }
         .fuchsia-bg { background-color: #ff007f; }
+        #mainChartContainer { height: 500px; }
+        #rsiChartContainer { height: 150px; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -76,7 +78,9 @@
                         <div class="text-xs text-white/40 font-medium">LIVE MARKET DATA</div>
                     </div>
                     
-                    <div id="mainChart" class="w-full h-[450px]"></div>
+                    <div id="mainChartContainer">
+                        <canvas id="mainChart"></canvas>
+                    </div>
                 </div>
 
                 <!-- RSI Chart -->
@@ -85,7 +89,9 @@
                         <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold">Relative Strength Index (14)</h3>
                         <span id="rsiValue" class="text-sm font-mono font-bold fuchsia-text">--</span>
                     </div>
-                    <div id="rsiChart" class="w-full h-[120px]"></div>
+                    <div id="rsiChartContainer">
+                        <canvas id="rsiChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,6 +104,8 @@
     <script>
         let currentSymbol = 'BTC-USD';
         let currentPeriod = '1mo';
+        let mainChart = null;
+        let rsiChart = null;
 
         async function fetchChartData(symbol, period) {
             try {
@@ -113,34 +121,110 @@
         }
 
         function renderCharts(data) {
-            // Render Main Chart
-            Plotly.newPlot('mainChart', data.chart.data, data.chart.layout, {responsive: true, displayModeBar: false});
+            // Render Main Chart with Chart.js
+            if (data.chart && data.chart.labels) {
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                
+                if (mainChart) {
+                    mainChart.destroy();
+                }
+                
+                mainChart = new Chart(ctx, {
+                    type: 'line',
+                    data: data.chart,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: 'rgba(255,255,255,0.8)',
+                                    font: { size: 11 }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                grid: {
+                                    color: 'rgba(255,255,255,0.1)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.6)',
+                                    font: { size: 10 }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.6)',
+                                    font: { size: 10 },
+                                    maxTicksLimit: 10
+                                }
+                            }
+                        }
+                    }
+                });
+            }
 
-            // Render RSI Chart
-            const rsiTrace = {
-                x: data.rsi.x,
-                y: data.rsi.y,
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: '#ff007f', width: 2 },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(255, 0, 127, 0.1)'
-            };
-
-            const rsiLayout = {
-                template: 'plotly_dark',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                margin: { l: 0, r: 0, t: 0, b: 0 },
-                xaxis: { visible: false },
-                yaxis: { range: [0, 100], showgrid: true, gridcolor: 'rgba(255,255,255,0.05)', tickvals: [30, 70] },
-                shapes: [
-                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 70, y1: 70, line: { color: 'rgba(255,255,255,0.1)', width: 1, dash: 'dot' } },
-                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 30, y1: 30, line: { color: 'rgba(255,255,255,0.1)', width: 1, dash: 'dot' } }
-                ]
-            };
-
-            Plotly.newPlot('rsiChart', [rsiTrace], rsiLayout, {responsive: true, displayModeBar: false});
+            // Render RSI Chart with Chart.js
+            const rsiCtx = document.getElementById('rsiChart').getContext('2d');
+            
+            if (rsiChart) {
+                rsiChart.destroy();
+            }
+            
+            rsiChart = new Chart(rsiCtx, {
+                type: 'line',
+                data: {
+                    labels: data.rsi.x,
+                    datasets: [{
+                        label: 'RSI (14)',
+                        data: data.rsi.y,
+                        borderColor: '#ff007f',
+                        backgroundColor: 'rgba(255, 0, 127, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255,255,255,0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.6)',
+                                font: { size: 10 }
+                            }
+                        },
+                        x: {
+                            display: false
+                        }
+                    }
+                }
+            });
 
             // Update Info
             document.getElementById('displaySymbol').innerText = currentSymbol;
