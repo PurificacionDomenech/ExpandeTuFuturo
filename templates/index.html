@@ -23,7 +23,7 @@ body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; mi
 .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
 
 .btn-p { padding: 3px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
-         color: rgba(255,255,255,0.3); transition: all .15s; cursor: pointer; }
+         color: rgba(255,255,255,0.3); transition: all .15s; cursor: pointer; background: transparent; border: none; }
 .btn-p:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.06); }
 .btn-p.active { background: #ff007f; color: #fff; }
 
@@ -32,8 +32,9 @@ body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; mi
             background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
 .btn-zoom:hover { color: #fff; background: rgba(255,255,255,0.08); }
 
-#chartWrap { height: 600px; cursor: grab; }
+#chartWrap { position: relative; height: 520px; cursor: grab; }
 #chartWrap:active { cursor: grabbing; }
+#mainChart { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 
 /* Toasts */
 #toasts { position: fixed; top: 16px; right: 16px; z-index: 1000;
@@ -52,12 +53,15 @@ body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; mi
 .alerta-item.info     { background: rgba(255,0,127,.07);  color: #ff69b4; }
 
 .fav-row { display: flex; align-items: center; justify-content: space-between;
-           padding: 5px 8px; border-radius: 9px; cursor: pointer;
-           transition: background .15s; gap: 8px; }
+           padding: 7px 10px; border-radius: 9px; cursor: pointer;
+           transition: background .15s; gap: 10px; }
 .fav-row:hover { background: rgba(255,255,255,.04); }
 .fav-row.active-sym { background: rgba(255,0,127,.07); }
 
-#favList { overflow: hidden; transition: max-height .25s ease, opacity .2s ease; max-height: 500px; opacity: 1; }
+/* Acordeón favoritos */
+.fav-body { overflow: hidden; transition: max-height .3s ease, opacity .25s ease; }
+.fav-body.open  { max-height: 400px; opacity: 1; }
+.fav-body.closed { max-height: 0; opacity: 0; }
 
 input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
 ::-webkit-scrollbar { width: 4px; }
@@ -68,7 +72,7 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
 
 <div id="toasts"></div>
 
-<div class="max-w-[1600px] mx-auto p-4 lg:p-5 flex flex-col gap-4">
+<div class="max-w-[1400px] mx-auto p-4 lg:p-5 flex flex-col gap-4">
 
   <!-- HEADER -->
   <header class="flex items-center justify-between gap-3 flex-wrap">
@@ -93,11 +97,11 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
     </div>
   </header>
 
-  <!-- LAYOUT -->
+  <!-- FILA PRINCIPAL: Precio+RSI | Gráfica -->
   <div class="flex flex-col lg:flex-row gap-4">
 
-    <!-- SIDEBAR -->
-    <div class="lg:w-[205px] shrink-0 flex flex-col gap-3">
+    <!-- COLUMNA IZQUIERDA: Precio + RSI + Alertas -->
+    <div class="lg:w-[190px] shrink-0 flex flex-col gap-3">
 
       <!-- Precio + RSI -->
       <div class="card p-4">
@@ -121,46 +125,18 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
         </div>
       </div>
 
-      <!-- Favoritos colapsables -->
-      <div class="card p-3">
-        <button onclick="toggleFavs()" class="w-full flex items-center justify-between px-1 cursor-pointer bg-transparent border-0"
-                style="color:inherit">
-          <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold hover:text-white/40 transition-colors">Favoritos</span>
-          <span id="favChevron" class="text-[10px] text-white/20 transition-transform duration-200">▼</span>
-        </button>
-        <div id="favList">
-          <div id="favItems" class="flex flex-col gap-0.5 mt-2"></div>
-        </div>
-      </div>
-
-      <!-- Alertas -->
+      <!-- Alertas (solo en desktop junto al gráfico) -->
       <div id="alertBox" class="card p-3 hidden">
         <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">⚡ Alertas</div>
-        <div id="alertList" class="flex flex-col gap-1.5 max-h-64 overflow-y-auto"></div>
+        <div id="alertList" class="flex flex-col gap-1.5 max-h-48 overflow-y-auto"></div>
       </div>
-
-      <!-- Vigilancia -->
-      <div class="card p-3">
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold">Vigilancia</span>
-          <div class="flex items-center gap-1.5">
-            <span id="watchDot" class="w-1.5 h-1.5 rounded-full" style="background:rgba(255,255,255,.15)"></span>
-            <span id="watchLabel" class="text-[10px]" style="color:rgba(255,255,255,.2)">--</span>
-          </div>
-        </div>
-        <p class="text-[10px] mt-1.5 leading-4" style="color:rgba(255,255,255,.12)">
-          Comprueba favoritos cada 5 min. Alerta si precio toca cualquier SMA.
-        </p>
-      </div>
-
     </div>
 
-    <!-- CHART -->
-    <div class="flex-1 card p-4">
-      <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
-
-        <!-- Intervalos de vela -->
-        <div class="flex flex-col gap-2">
+    <!-- GRÁFICA -->
+    <div class="flex-1 card p-4 flex flex-col gap-3">
+      <!-- Controles superiores -->
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex flex-col gap-1.5">
           <div class="text-[9px] uppercase tracking-widest text-white/20 font-semibold px-1">Intervalo de vela</div>
           <div class="flex gap-0.5 bg-white/5 p-0.5 rounded-xl">
             <button class="btn-p active" data-i="1d"  onclick="setInterval_('1d')">1D</button>
@@ -169,9 +145,7 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
             <button class="btn-p"        data-i="3mo" onclick="setInterval_('3mo')">3M</button>
           </div>
         </div>
-
-        <!-- Zoom / Pan -->
-        <div class="flex flex-col gap-2 items-end">
+        <div class="flex flex-col gap-1.5 items-end">
           <div class="text-[9px] uppercase tracking-widest text-white/20 font-semibold px-1">Zoom · Arrastra para mover</div>
           <div class="flex gap-1">
             <button class="btn-zoom" onclick="zoomIn()">＋</button>
@@ -179,25 +153,63 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
             <button class="btn-zoom" onclick="resetZoom()">⟳</button>
           </div>
         </div>
-
       </div>
 
       <!-- Leyenda -->
-      <div class="flex items-center gap-3 flex-wrap mb-3" style="font-size:10px;color:rgba(255,255,255,.22)">
+      <div class="flex items-center gap-3 flex-wrap" style="font-size:10px;color:rgba(255,255,255,.22)">
         <span>🕯 Velas</span>
-        <span><span style="color:#00ffff70">─</span> SMA20</span>
-        <span><span style="color:#ffff0070">─</span> SMA50</span>
-        <span><span style="color:#fff17670">─</span> SMA100</span>
-        <span><span style="color:#ce93d870">─</span> SMA200</span>
-        <span><span style="color:#00ff00">·</span> ST▲ <span style="color:#ff3333">·</span> ST▼</span>
+        <span><span style="color:#00ffff">─</span> SMA20</span>
+        <span><span style="color:#ffff00">─</span> SMA50</span>
+        <span><span style="color:#fff176">─</span> SMA100</span>
+        <span><span style="color:#ce93d8">─</span> SMA200</span>
+        <span><span style="color:#00ff00">●</span> ST▲ <span style="color:#ff3333">●</span> ST▼</span>
         <span><span style="color:#ff007f">●</span> RSI extremo</span>
       </div>
 
+      <!-- Canvas wrapper con altura fija -->
       <div id="chartWrap"><canvas id="mainChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- FILA INFERIOR: Favoritos + Vigilancia -->
+  <div class="flex flex-col lg:flex-row gap-4">
+
+    <!-- FAVORITOS (plegados por defecto) -->
+    <div class="flex-1 card p-4">
+      <button onclick="toggleFavs()"
+              class="w-full flex items-center justify-between bg-transparent border-0 cursor-pointer"
+              style="color:inherit">
+        <div class="flex items-center gap-2">
+          <span style="color:#ff007f;font-size:14px">★</span>
+          <span class="text-sm font-semibold">Favoritos</span>
+          <span class="text-[10px] text-white/25 ml-1">— click para expandir</span>
+        </div>
+        <span id="favChevron" class="text-white/30 transition-transform duration-300 text-xs" style="transform:rotate(-90deg)">▼</span>
+      </button>
+
+      <!-- Body plegado por defecto -->
+      <div id="favBody" class="fav-body closed">
+        <div id="favItems" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 mt-3"></div>
+      </div>
+    </div>
+
+    <!-- VIGILANCIA -->
+    <div class="lg:w-[260px] shrink-0 card p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold">🔔 Vigilancia</span>
+        <div class="flex items-center gap-1.5">
+          <span id="watchDot" class="w-2 h-2 rounded-full" style="background:rgba(255,255,255,.15)"></span>
+          <span id="watchLabel" class="text-xs font-semibold" style="color:rgba(255,255,255,.2)">--</span>
+        </div>
+      </div>
+      <p class="text-[11px] leading-5" style="color:rgba(255,255,255,.25)">
+        Comprueba favoritos cada 5 min. Emite alerta cuando el precio toca cualquier SMA o se producen cruces relevantes.
+      </p>
     </div>
 
   </div>
-</div>
+
+</div><!-- end max-w -->
 
 <script>
 // ── STATE ─────────────────────────────────
@@ -205,7 +217,7 @@ let currentSymbol   = 'BTC-USD';
 let currentInterval = '1d';
 let mainChart       = null;
 let sparkCharts     = {};
-let favsOpen        = true;
+let favsOpen        = false;   // ← plegado por defecto
 let shownAlerts     = new Set();
 
 const FAVS = [
@@ -228,11 +240,17 @@ window.onload = () => {
 // ── TOGGLE FAVORITOS ──────────────────────
 function toggleFavs() {
   favsOpen = !favsOpen;
-  const list    = document.getElementById('favList');
+  const body    = document.getElementById('favBody');
   const chevron = document.getElementById('favChevron');
-  list.style.maxHeight = favsOpen ? '500px' : '0';
-  list.style.opacity   = favsOpen ? '1'     : '0';
-  chevron.style.transform = favsOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+  if (favsOpen) {
+    body.classList.remove('closed');
+    body.classList.add('open');
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    body.classList.remove('open');
+    body.classList.add('closed');
+    chevron.style.transform = 'rotate(-90deg)';
+  }
 }
 
 // ── FAVORITOS ─────────────────────────────
@@ -244,17 +262,17 @@ function buildFavs() {
   FAVS.forEach(f => {
     const id  = favId(f.ticker);
     const row = document.createElement('div');
-    row.className = 'fav-row';
+    row.className = 'fav-row card';
     row.id        = 'fav-' + id;
     row.onclick   = () => loadSymbol(f.ticker);
     row.innerHTML = `
-      <div class="min-w-0">
-        <div class="text-xs font-semibold truncate">${f.name}</div>
-        <div class="mono text-[9px] text-white/25">${f.ticker}</div>
-      </div>
-      <div class="flex flex-col items-end gap-0.5 shrink-0">
-        <canvas id="spark-${id}" width="52" height="20"></canvas>
-        <span id="pct-${id}" class="mono text-[9px] text-white/25">…</span>
+      <div class="flex flex-col gap-1 w-full">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold truncate">${f.name}</span>
+          <span id="pct-${id}" class="mono text-[9px] text-white/25 shrink-0">…</span>
+        </div>
+        <canvas id="spark-${id}" height="28" style="width:100%;max-width:100%"></canvas>
+        <div class="mono text-[9px] text-white/20">${f.ticker}</div>
       </div>`;
     c.appendChild(row);
     loadSparkline(f.ticker);
@@ -280,7 +298,7 @@ async function loadSparkline(ticker) {
           backgroundColor: up ? 'rgba(0,230,118,.07)' : 'rgba(255,68,68,.07)',
           borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }]
       },
-      options: { responsive:false, animation:false,
+      options: { responsive:true, maintainAspectRatio:false, animation:false,
         plugins:{ legend:{display:false}, tooltip:{enabled:false} },
         scales:{ x:{display:false}, y:{display:false} } }
     });
@@ -329,26 +347,33 @@ async function fetchData(symbol, interval) {
 
 // ── RENDER CANDLESTICK ────────────────────
 function renderChart(data) {
-  const ctx = document.getElementById('mainChart').getContext('2d');
-  if (mainChart) mainChart.destroy();
+  // Destruir chart previo
+  if (mainChart) { mainChart.destroy(); mainChart = null; }
 
-  const cd = data.chart;
+  const wrap = document.getElementById('chartWrap');
+  // Reemplazar canvas para evitar errores de reutilización
+  wrap.innerHTML = '<canvas id="mainChart"></canvas>';
+  const canvas = document.getElementById('mainChart');
+  canvas.style.position = 'absolute';
+  canvas.style.inset = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
 
-  // Función para convertir [{x,y}] a dataset de scatter
+  const ctx = canvas.getContext('2d');
+  const cd  = data.chart;
+
   const scatterDS = (pts, color, radius, label) => ({
-    type: 'scatter',
-    label,
+    type: 'scatter', label,
     data: pts,
     backgroundColor: color,
     borderColor: 'transparent',
     pointRadius: radius,
-    pointHoverRadius: radius + 3,
+    pointHoverRadius: radius + 2,
     showLine: false,
   });
 
   const lineDS = (pts, color, width, label, dash=[]) => ({
-    type: 'line',
-    label,
+    type: 'line', label,
     data: pts,
     borderColor: color,
     backgroundColor: 'transparent',
@@ -361,33 +386,21 @@ function renderChart(data) {
   });
 
   const datasets = [
-    // Velas OHLC
     {
       type: 'candlestick',
       label: 'Precio',
       data: cd.candles,
-      color: {
-        up:   '#26a69a',
-        down: '#ef5350',
-        unchanged: '#999',
-      },
-      borderColor: {
-        up:   '#26a69a',
-        down: '#ef5350',
-        unchanged: '#999',
-      },
+      color: { up:'#26a69a', down:'#ef5350', unchanged:'#999' },
+      borderColor: { up:'#26a69a', down:'#ef5350', unchanged:'#999' },
     },
-    // SMAs
-    lineDS(cd.sma20,  '#00ffff', 1,   'SMA 20'),
-    lineDS(cd.sma50,  '#ffff00', 1.5, 'SMA 50'),
-    lineDS(cd.sma100, '#fff176', 2,   'SMA 100'),
-    lineDS(cd.sma200, '#ce93d8', 3,   'SMA 200'),
-    // Supertrend
-    scatterDS(cd.st_buy,  '#00ff00', 2.5, 'ST ▲'),
-    scatterDS(cd.st_sell, '#ff3333', 2.5, 'ST ▼'),
-    // RSI señales
-    scatterDS(cd.rsi_os, '#ff007f', 6, 'RSI <30'),
-    scatterDS(cd.rsi_ob, '#ff007f', 6, 'RSI >70'),
+    lineDS(cd.sma20,  'rgba(0,255,255,0.7)',    1,   'SMA 20'),
+    lineDS(cd.sma50,  'rgba(255,255,0,0.7)',    1.5, 'SMA 50'),
+    lineDS(cd.sma100, 'rgba(255,241,118,0.7)',  2,   'SMA 100'),
+    lineDS(cd.sma200, 'rgba(206,147,216,0.85)', 2.5, 'SMA 200'),
+    scatterDS(cd.st_buy,  '#00ff00', 3, 'ST ▲'),
+    scatterDS(cd.st_sell, '#ff3333', 3, 'ST ▼'),
+    scatterDS(cd.rsi_os,  '#ff007f', 6, 'RSI <30'),
+    scatterDS(cd.rsi_ob,  '#ff007f', 6, 'RSI >70'),
   ];
 
   mainChart = new Chart(ctx, {
@@ -395,7 +408,7 @@ function renderChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 200 },
+      animation: { duration: 300 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
@@ -410,25 +423,17 @@ function renderChart(data) {
             label: ctx => {
               const r = ctx.raw;
               if (!r) return null;
-              // Vela OHLC
               if (r.o !== undefined) {
-                return [
-                  ` O: ${r.o?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                  ` H: ${r.h?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                  ` L: ${r.l?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                  ` C: ${r.c?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                ];
+                const fmt = v => v?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) ?? '-';
+                return [` O: ${fmt(r.o)}`, ` H: ${fmt(r.h)}`, ` L: ${fmt(r.l)}`, ` C: ${fmt(r.c)}`];
               }
-              if (r.y != null) {
-                return ` ${ctx.dataset.label}: ${r.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-              }
+              if (r.y != null) return ` ${ctx.dataset.label}: ${r.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
               return null;
             }
           }
         },
-        // Plugin zoom: rueda = zoom, arrastrar = pan
         zoom: {
-          pan:  { enabled: true,  mode: 'x', speed: 10 },
+          pan:  { enabled: true, mode: 'x', speed: 10 },
           zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
         }
       },
@@ -437,13 +442,15 @@ function renderChart(data) {
           type: 'time',
           time: { displayFormats: { day:'dd MMM', week:'dd MMM', month:'MMM yy', quarter:'MMM yy' } },
           grid: { display: false },
-          ticks: { color: 'rgba(255,255,255,.22)', font: { size: 10 }, maxTicksLimit: 10 }
+          ticks: { color: 'rgba(255,255,255,.22)', font:{ size:10 }, maxTicksLimit: 10 }
         },
         y: {
           display: true, position: 'right',
-          grid: { color: 'rgba(255,255,255,.03)', drawBorder: false },
-          ticks: { color: 'rgba(255,255,255,.28)', font: { size: 10 },
-                   callback: v => v >= 1000 ? v.toLocaleString() : v.toFixed(2) }
+          grid: { color: 'rgba(255,255,255,.03)' },
+          ticks: {
+            color: 'rgba(255,255,255,.28)', font:{ size:10 },
+            callback: v => v >= 1000 ? v.toLocaleString() : v >= 1 ? v.toFixed(2) : v.toFixed(4)
+          }
         }
       }
     }
@@ -461,16 +468,22 @@ function renderChart(data) {
 
   updateRSI(data.rsi_current);
   renderAlertas(data.alertas || []);
+
+  // Marcar favorito activo
+  document.querySelectorAll('.fav-row').forEach(r => r.classList.remove('active-sym'));
+  const el = document.getElementById('fav-' + favId(currentSymbol));
+  if (el) el.classList.add('active-sym');
 }
 
-// ── ZOOM CONTROLS ─────────────────────────
-function zoomIn()    { if(mainChart) mainChart.zoom(1.2); }
-function zoomOut()   { if(mainChart) mainChart.zoom(0.8); }
+// ── ZOOM ──────────────────────────────────
+function zoomIn()    { if(mainChart) mainChart.zoom(1.25); }
+function zoomOut()   { if(mainChart) mainChart.zoom(0.8);  }
 function resetZoom() { if(mainChart) mainChart.resetZoom(); }
 
 // ── RSI WIDGET ────────────────────────────
 function updateRSI(v) {
   v = parseFloat(v);
+  if (isNaN(v)) return;
   document.getElementById('rsiVal').innerText = v.toFixed(1);
   document.getElementById('rsiCur').style.left = `calc(${Math.min(Math.max(v,0),100)}% - 4px)`;
   const lbl = document.getElementById('rsiLbl');
@@ -482,7 +495,7 @@ function updateRSI(v) {
     lbl.innerText='SC'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700;';
     val.style.color='#ff5252';
   } else {
-    lbl.innerText='N'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
+    lbl.innerText='N';  lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
     val.style.color='#fff';
   }
 }
@@ -510,9 +523,6 @@ function showToast(msg, nivel, ms=7000) {
 async function loadSymbol(sym) {
   currentSymbol = sym;
   document.getElementById('symbolInput').value = sym;
-  document.querySelectorAll('.fav-row').forEach(r => r.classList.remove('active-sym'));
-  const el = document.getElementById('fav-' + favId(sym));
-  if (el) el.classList.add('active-sym');
   try {
     const data = await fetchData(sym, currentInterval);
     renderChart(data);
