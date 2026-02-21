@@ -1,254 +1,462 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expande Tu Futuro | Trading Minimalista</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; }
-        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .btn-period.active { background-color: #ff007f; color: white; }
-        .fuchsia-text { color: #ff007f; }
-        .fuchsia-bg   { background-color: #ff007f; }
-        #mainChartContainer { height: 640px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expande Tu Futuro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Glass cards */
+  .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
+
+  /* Period buttons */
+  .btn-p { padding: 3px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+           color: rgba(255,255,255,0.35); transition: all .15s; cursor: pointer; }
+  .btn-p:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .btn-p.active { background: #ff007f; color: #fff; }
+
+  /* Chart */
+  #chartWrap { height: 620px; }
+
+  /* Toast */
+  #toasts { position: fixed; top: 18px; right: 18px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast { padding: 11px 15px; border-radius: 11px; font-size: 13px; font-weight: 500;
+           max-width: 320px; backdrop-filter: blur(14px); pointer-events: auto;
+           animation: tin .25s ease; }
+  .toast.bullish { background: rgba(0,230,118,.13); color: #00e676; border: 1px solid rgba(0,230,118,.3); }
+  .toast.bearish  { background: rgba(255,23,68,.13);  color: #ff5252; border: 1px solid rgba(255,23,68,.3); }
+  .toast.info     { background: rgba(130,160,255,.13); color: #90b3ff; border: 1px solid rgba(130,160,255,.3); }
+  @keyframes tin { from { opacity:0; transform: translateX(14px); } to { opacity:1; transform: none; } }
+
+  /* Gema tags */
+  .gem-tag { display: inline-flex; align-items: center; gap: 5px;
+             background: rgba(130,160,255,.1); border: 1px solid rgba(130,160,255,.22);
+             border-radius: 20px; padding: 2px 9px; font-size: 11px; color: #90b3ff; }
+  .gem-tag .rm { cursor: pointer; opacity: .5; font-size: 14px; line-height: 1; }
+  .gem-tag .rm:hover { opacity: 1; }
+
+  /* Sparkline canvas */
+  .spark { display: block; }
+
+  /* Fav row */
+  .fav-row { display: flex; align-items: center; justify-content: space-between;
+             padding: 6px 10px; border-radius: 10px; cursor: pointer; transition: background .15s; }
+  .fav-row:hover { background: rgba(255,255,255,0.05); }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { display: none; }
+</style>
 </head>
-<body class="min-h-screen p-4 md:p-8">
-<div class="max-w-7xl mx-auto">
+<body>
 
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 fuchsia-bg rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,0,127,0.4)]">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold tracking-tight">EXPANDE <span class="fuchsia-text">TU FUTURO</span></h1>
-        </div>
-        <div class="flex items-center gap-2 w-full md:w-auto">
-            <input type="text" id="symbolInput" placeholder="Buscar símbolo (BTC-USD, AAPL...)"
-                   class="bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-[#ff007f]/50 transition-all">
-            <button onclick="updateChart()" class="fuchsia-bg hover:bg-[#d4006b] text-white px-4 py-2 rounded-lg font-semibold transition-all">Ver</button>
-        </div>
-    </header>
+<div id="toasts"></div>
 
-    <!-- Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="max-w-[1600px] mx-auto p-4 lg:p-6 flex flex-col gap-4">
 
-        <!-- Left Panel -->
-        <div class="lg:col-span-1 space-y-4">
-
-            <!-- Precio + cambio -->
-            <div class="glass rounded-2xl p-6">
-                <h2 id="displaySymbol" class="text-2xl font-bold mb-1 fuchsia-text">---</h2>
-                <p id="displayPrice" class="text-4xl font-mono font-semibold mb-2">0.00</p>
-                <div id="displayChange" class="text-sm font-medium">--%</div>
-            </div>
-
-            <!-- RSI widget -->
-            <div class="glass rounded-2xl p-5">
-                <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">RSI (14)</h3>
-                <div class="flex items-center justify-between mb-3">
-                    <span id="rsiValue" class="text-3xl font-mono font-bold">--</span>
-                    <span id="rsiLabel" class="text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/60">--</span>
-                </div>
-                <!-- Barra -->
-                <div class="relative h-2 rounded-full overflow-hidden"
-                     style="background: linear-gradient(to right, #00e676 0%, #00e676 30%, #444 30%, #444 70%, #ff1744 70%, #ff1744 100%);">
-                    <div id="rsiCursor" class="absolute top-0 w-2 h-2 rounded-full bg-white shadow transition-all duration-500" style="left:50%;transform:translateX(-50%)"></div>
-                </div>
-                <div class="flex justify-between text-[10px] text-white/25 mt-1 px-0.5">
-                    <span>0</span><span>30</span><span>70</span><span>100</span>
-                </div>
-                <!-- Leyenda señales -->
-                <div class="mt-4 space-y-1.5 text-xs text-white/40">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-[#00e676] shrink-0"></span>
-                        Punto verde → sobreventa (&lt;30)
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-[#ff1744] shrink-0"></span>
-                        Punto rojo → sobrecompra (&gt;70)
-                    </div>
-                    <div class="flex items-center gap-2 mt-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-[#00ff00] shrink-0"></span>
-                        ST · tendencia alcista
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-[#ff0000] shrink-0"></span>
-                        ST · tendencia bajista
-                    </div>
-                </div>
-            </div>
-
-            <!-- Favoritos -->
-            <div class="glass rounded-2xl p-5">
-                <h3 class="text-xs uppercase tracking-wider text-white/40 font-semibold mb-3">Favoritos</h3>
-                <div class="space-y-1">
-                    <button onclick="loadSymbol('BTC-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
-                        <span>Bitcoin</span><span class="text-white/30 text-xs">BTC-USD</span>
-                    </button>
-                    <button onclick="loadSymbol('^GSPC')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
-                        <span>S&amp;P 500</span><span class="text-white/30 text-xs">^GSPC</span>
-                    </button>
-                    <button onclick="loadSymbol('AAPL')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
-                        <span>Apple</span><span class="text-white/30 text-xs">AAPL</span>
-                    </button>
-                    <button onclick="loadSymbol('ETH-USD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
-                        <span>Ethereum</span><span class="text-white/30 text-xs">ETH-USD</span>
-                    </button>
-                    <button onclick="loadSymbol('GLD')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-all flex justify-between items-center text-sm">
-                        <span>Oro</span><span class="text-white/30 text-xs">GLD</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Chart Panel -->
-        <div class="lg:col-span-3">
-            <div class="glass rounded-2xl p-4 md:p-6">
-                <div class="flex justify-between items-center mb-5">
-                    <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
-                        <button onclick="setPeriod('1d')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1d">1D</button>
-                        <button onclick="setPeriod('5d')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="5d">5D</button>
-                        <button onclick="setPeriod('1mo')" class="btn-period active px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1mo">1M</button>
-                        <button onclick="setPeriod('6mo')" class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="6mo">6M</button>
-                        <button onclick="setPeriod('1y')"  class="btn-period px-4 py-1.5 rounded-lg text-sm font-medium transition-all" data-period="1y">1Y</button>
-                    </div>
-                    <span class="text-xs text-white/30 font-medium tracking-wider">LIVE MARKET DATA</span>
-                </div>
-                <div id="mainChartContainer">
-                    <canvas id="mainChart"></canvas>
-                </div>
-            </div>
-        </div>
+  <!-- ── HEADER ── -->
+  <header class="flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+           style="background:#ff007f;box-shadow:0 0 18px rgba(255,0,127,.4)">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+        </svg>
+      </div>
+      <span class="text-lg font-bold tracking-tight">EXPANDE <span style="color:#ff007f">TU FUTURO</span></span>
     </div>
 
-    <footer class="mt-10 text-center text-white/20 text-xs">
-        &copy; 2026 Expande Tu Futuro · Datos vía yfinance API
-    </footer>
-</div>
+    <!-- Buscador -->
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+      <input id="symbolInput" type="text" placeholder="Símbolo  (AAPL, BTC-USD, ^GSPC…)"
+             class="flex-1 sm:w-64 bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm
+                    focus:outline-none focus:border-[#ff007f]/60 transition-all"
+             onkeydown="if(event.key==='Enter') doSearch()">
+      <button onclick="doSearch()"
+              class="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all"
+              style="background:#ff007f">Buscar</button>
+    </div>
+  </header>
+
+  <!-- ── MAIN LAYOUT ── -->
+  <div class="flex flex-col lg:flex-row gap-4">
+
+    <!-- ── LEFT SIDEBAR ── -->
+    <div class="flex flex-col gap-3 lg:w-[210px] shrink-0">
+
+      <!-- Precio actual -->
+      <div class="card p-4">
+        <div id="displaySymbol" class="text-xs font-semibold mb-1 tracking-widest" style="color:#ff007f">---</div>
+        <div id="displayPrice" class="mono text-3xl font-semibold leading-tight">0.00</div>
+        <div id="displayChange" class="text-xs mt-1 font-medium">--</div>
+        <!-- RSI compacto -->
+        <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+          <span class="text-[10px] text-white/30 uppercase tracking-wider">RSI 14</span>
+          <div class="flex items-center gap-1.5">
+            <span id="rsiVal" class="mono text-sm font-bold">--</span>
+            <span id="rsiLbl" class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-white/10 text-white/40">--</span>
+          </div>
+        </div>
+        <!-- barra RSI -->
+        <div class="relative mt-2 h-1.5 rounded-full overflow-hidden"
+             style="background:linear-gradient(to right,#00e676 0%,#00e676 30%,#333 30%,#333 70%,#ff1744 70%,#ff1744 100%)">
+          <div id="rsiCur" class="absolute top-0 w-1.5 h-1.5 rounded-full bg-white"
+               style="left:50%;transform:translateX(-50%);transition:left .4s"></div>
+        </div>
+      </div>
+
+      <!-- Favoritos -->
+      <div class="card p-3">
+        <div class="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2 px-1">Favoritos</div>
+        <div id="favList"></div>
+      </div>
+
+      <!-- Gemas (niveles de precio) -->
+      <div class="card p-3">
+        <div class="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2 px-1">💎 Gemas · niveles</div>
+        <div class="flex gap-1.5 mb-2">
+          <input id="gemInput" type="number" placeholder="Precio…"
+                 class="flex-1 bg-[#111] border border-white/10 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#90b3ff]/50"
+                 onkeydown="if(event.key==='Enter') addGema()">
+          <button onclick="addGema()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#90b3ff]/20 text-[#90b3ff] hover:bg-[#90b3ff]/30 transition-all">+</button>
+        </div>
+        <div id="gemTags" class="flex flex-wrap gap-1"></div>
+      </div>
+
+      <!-- Alertas -->
+      <div id="alertBox" class="card p-3 hidden">
+        <div class="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2 px-1">⚡ Alertas activas</div>
+        <div id="alertList" class="flex flex-col gap-1.5 text-xs"></div>
+      </div>
+
+    </div>
+
+    <!-- ── CHART ── -->
+    <div class="flex-1 card p-4">
+      <!-- Period + leyenda -->
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex gap-0.5 bg-white/5 p-1 rounded-xl">
+          <button class="btn-p" data-p="1d"  onclick="setPeriod('1d')">1D</button>
+          <button class="btn-p" data-p="5d"  onclick="setPeriod('5d')">5D</button>
+          <button class="btn-p active" data-p="1mo" onclick="setPeriod('1mo')">1M</button>
+          <button class="btn-p" data-p="6mo" onclick="setPeriod('6mo')">6M</button>
+          <button class="btn-p" data-p="1y"  onclick="setPeriod('1y')">1Y</button>
+          <button class="btn-p" data-p="2y"  onclick="setPeriod('2y')">2Y</button>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] text-white/25 font-medium tracking-wider flex-wrap">
+          <span style="color:#ffffff80">── Precio</span>
+          <span style="color:#00ffff80">── SMA20</span>
+          <span style="color:#ffff0080">── SMA50</span>
+          <span style="color:#fff17680">── SMA100</span>
+          <span style="color:#ce93d880">── SMA200</span>
+          <span>● <span style="color:#00e676">RSI&lt;30</span></span>
+          <span>● <span style="color:#ff1744">RSI&gt;70</span></span>
+        </div>
+      </div>
+      <div id="chartWrap">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+
+  </div><!-- end main layout -->
+</div><!-- end container -->
 
 <script>
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
 let currentSymbol = 'BTC-USD';
 let currentPeriod = '1mo';
+let gemas = [];
 let mainChart = null;
 
-async function fetchChartData(symbol, period) {
-    try {
-        const res = await fetch(`/api/chart/${symbol}?period=${period}`);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        return data;
-    } catch(e) {
-        console.error(e);
-        alert("Error al cargar: " + symbol);
-        return null;
-    }
+const FAVS = [
+  { name:'Bitcoin',   ticker:'BTC-USD' },
+  { name:'Ethereum',  ticker:'ETH-USD' },
+  { name:'S&P 500',   ticker:'^GSPC'   },
+  { name:'Nasdaq',    ticker:'^NDX'    },
+  { name:'Apple',     ticker:'AAPL'    },
+  { name:'Oro',       ticker:'GLD'     },
+];
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+window.onload = () => {
+  buildFavs();
+  loadSymbol('BTC-USD');
+};
+
+// ─────────────────────────────────────────
+// FAVORITOS con sparkline
+// ─────────────────────────────────────────
+let sparkCharts = {};
+
+function buildFavs() {
+  const container = document.getElementById('favList');
+  container.innerHTML = '';
+  FAVS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'fav-row';
+    row.id = `fav-${f.ticker}`;
+    row.onclick = () => loadSymbol(f.ticker);
+    row.innerHTML = `
+      <div>
+        <div class="text-xs font-semibold">${f.name}</div>
+        <div class="text-[10px] text-white/25 mono">${f.ticker}</div>
+      </div>
+      <div class="flex flex-col items-end gap-0.5">
+        <canvas id="spark-${CSS.escape(f.ticker)}" class="spark" width="60" height="22"></canvas>
+        <span id="pct-${CSS.escape(f.ticker)}" class="text-[10px] mono text-white/30">…</span>
+      </div>`;
+    container.appendChild(row);
+    loadSparkline(f.ticker);
+  });
 }
 
-function updateRSIWidget(rsi) {
-    const val = parseFloat(rsi);
-    document.getElementById('rsiValue').innerText = val.toFixed(1);
+async function loadSparkline(ticker) {
+  try {
+    const res = await fetch(`/api/sparkline/${ticker}`);
+    const d   = await res.json();
+    if (!d.closes || d.closes.length < 2) return;
 
-    const cursor = document.getElementById('rsiCursor');
-    cursor.style.left = `calc(${Math.min(Math.max(val,0),100)}% - 4px)`;
+    const id  = CSS.escape(ticker);
+    const cvs = document.getElementById(`spark-${id}`);
+    if (!cvs) return;
 
-    const labelEl  = document.getElementById('rsiLabel');
-    const valueEl  = document.getElementById('rsiValue');
+    if (sparkCharts[ticker]) sparkCharts[ticker].destroy();
 
-    if (val < 30) {
-        labelEl.innerText   = 'SOBREVENTA';
-        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#00e676]/20 text-[#00e676]';
-        valueEl.className   = 'text-3xl font-mono font-bold text-[#00e676]';
-    } else if (val > 70) {
-        labelEl.innerText   = 'SOBRECOMPRA';
-        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-[#ff1744]/20 text-[#ff1744]';
-        valueEl.className   = 'text-3xl font-mono font-bold text-[#ff1744]';
-    } else {
-        labelEl.innerText   = 'NEUTRO';
-        labelEl.className   = 'text-xs font-semibold px-2 py-1 rounded-lg bg-white/10 text-white/50';
-        valueEl.className   = 'text-3xl font-mono font-bold text-white';
+    const up = d.pct >= 0;
+    sparkCharts[ticker] = new Chart(cvs.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: d.closes.map((_,i)=>i),
+        datasets: [{
+          data: d.closes,
+          borderColor: up ? '#00e676' : '#ff4444',
+          backgroundColor: up ? 'rgba(0,230,118,0.08)' : 'rgba(255,68,68,0.08)',
+          borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+
+    const pctEl = document.getElementById(`pct-${id}`);
+    if (pctEl) {
+      pctEl.style.color = up ? '#00e676' : '#ff4444';
+      pctEl.innerText   = `${up?'+':''}${d.pct.toFixed(2)}%`;
     }
+  } catch(e) { /* silencio */ }
 }
 
-function renderCharts(data) {
-    const ctx = document.getElementById('mainChart').getContext('2d');
-    if (mainChart) mainChart.destroy();
+// ─────────────────────────────────────────
+// GEMAS
+// ─────────────────────────────────────────
+function addGema() {
+  const v = parseFloat(document.getElementById('gemInput').value);
+  if (!isNaN(v) && v > 0 && !gemas.includes(v)) {
+    gemas.push(v);
+    document.getElementById('gemInput').value = '';
+    renderGemTags();
+    refreshChart();
+  }
+}
 
-    mainChart = new Chart(ctx, {
-        type: 'line',
-        data: data.chart,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        color: 'rgba(255,255,255,0.6)',
-                        font: { size: 11 },
-                        usePointStyle: true,
-                        pointStyleWidth: 8,
-                        padding: 16
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
-                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 }, maxTicksLimit: 10 }
-                }
+function removeGema(v) {
+  gemas = gemas.filter(g => g !== v);
+  renderGemTags();
+  refreshChart();
+}
+
+function renderGemTags() {
+  const c = document.getElementById('gemTags');
+  c.innerHTML = gemas.map(g =>
+    `<span class="gem-tag">$${g.toLocaleString()}
+      <span class="rm" onclick="removeGema(${g})">×</span>
+    </span>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────
+// FETCH + RENDER
+// ─────────────────────────────────────────
+async function fetchData(symbol, period) {
+  const nv = gemas.join(',');
+  const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?period=${period}&niveles=${nv}`);
+  const d   = await res.json();
+  if (d.error) throw new Error(d.error);
+  return d;
+}
+
+function renderChart(data) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (mainChart) mainChart.destroy();
+
+  // Anotaciones de gemas (líneas horizontales)
+  const gemasDatasets = data.gemas.map((g, i) => {
+    const colors = ['#90b3ff','#ffb347','#b8f0a0','#f0a0d0','#a0d4f0'];
+    const col    = colors[i % colors.length];
+    const len    = data.chart.labels.length;
+    return {
+      label: `Gema $${g.toLocaleString()}`,
+      data: Array(len).fill(g),
+      borderColor: col,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderDash: [5, 4],
+      fill: false,
+      pointRadius: 0,
+      tension: 0,
+      yAxisID: 'y'
+    };
+  });
+
+  const allDatasets = [...data.chart.datasets, ...gemasDatasets];
+
+  mainChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: data.chart.labels, datasets: allDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10,10,20,0.9)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#fff',
+          bodyColor: 'rgba(255,255,255,0.7)',
+          callbacks: {
+            label: ctx => {
+              if (ctx.parsed.y === null) return null;
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
             }
+          }
         }
-    });
+      },
+      scales: {
+        y: {
+          display: true, position: 'left',
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 10 },
+                   callback: v => v.toLocaleString() }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 10 }, maxTicksLimit: 10 }
+        }
+      }
+    }
+  });
 
-    // Panel lateral
-    document.getElementById('displaySymbol').innerText = currentSymbol;
-    document.getElementById('displayPrice').innerText  = data.last_price.toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+  // Panel precio
+  document.getElementById('displaySymbol').innerText = currentSymbol;
+  document.getElementById('displayPrice').innerText  =
+    data.last_price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
-    const changeEl = document.getElementById('displayChange');
-    const prefix   = data.change >= 0 ? '+' : '';
-    changeEl.innerText   = `${prefix}${data.change.toFixed(2)} (${prefix}${data.change_pct.toFixed(2)}%)`;
-    changeEl.className   = data.change >= 0 ? 'text-sm font-medium text-green-400' : 'text-sm font-medium text-red-400';
+  const chEl = document.getElementById('displayChange');
+  const pre  = data.change >= 0 ? '+' : '';
+  chEl.innerText   = `${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
+  chEl.style.color = data.change >= 0 ? '#00e676' : '#ff4444';
 
-    updateRSIWidget(data.rsi_current);
+  // RSI widget
+  updateRSI(data.rsi_current);
+
+  // Alertas
+  renderAlertas(data.alertas);
 }
 
-async function loadSymbol(symbol) {
-    currentSymbol = symbol;
-    document.getElementById('symbolInput').value = symbol;
-    const data = await fetchChartData(currentSymbol, currentPeriod);
-    if (data) renderCharts(data);
+function updateRSI(v) {
+  v = parseFloat(v);
+  document.getElementById('rsiVal').innerText = v.toFixed(1);
+  const cur = document.getElementById('rsiCur');
+  cur.style.left = `calc(${Math.min(Math.max(v,0),100)}% - 3px)`;
+
+  const lbl = document.getElementById('rsiLbl');
+  const val = document.getElementById('rsiVal');
+  if (v < 30) {
+    lbl.innerText = 'SV'; lbl.style.cssText = 'background:rgba(0,230,118,.15);color:#00e676;font-size:10px;padding:1px 5px;border-radius:4px;';
+    val.style.color = '#00e676';
+  } else if (v > 70) {
+    lbl.innerText = 'SC'; lbl.style.cssText = 'background:rgba(255,23,68,.15);color:#ff5252;font-size:10px;padding:1px 5px;border-radius:4px;';
+    val.style.color = '#ff5252';
+  } else {
+    lbl.innerText = 'N'; lbl.style.cssText = 'background:rgba(255,255,255,.08);color:rgba(255,255,255,.35);font-size:10px;padding:1px 5px;border-radius:4px;';
+    val.style.color = '#fff';
+  }
 }
 
-async function updateChart() {
-    const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
-    if (symbol) loadSymbol(symbol);
+function renderAlertas(alertas) {
+  const box  = document.getElementById('alertBox');
+  const list = document.getElementById('alertList');
+  if (!alertas || alertas.length === 0) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  list.innerHTML = alertas.map(a =>
+    `<div class="px-2 py-1.5 rounded-lg text-xs font-medium
+      ${a.nivel==='bullish'?'bg-green-500/10 text-green-400':a.nivel==='bearish'?'bg-red-500/10 text-red-400':'bg-blue-500/10 text-blue-300'}">
+      ${a.msg}
+    </div>`
+  ).join('');
+
+  // Toasts
+  alertas.forEach(a => showToast(a.msg, a.nivel));
 }
 
-async function setPeriod(period) {
-    currentPeriod = period;
-    document.querySelectorAll('.btn-period').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-period') === period);
-    });
-    const data = await fetchChartData(currentSymbol, currentPeriod);
-    if (data) renderCharts(data);
+function showToast(msg, nivel) {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${nivel}`;
+  t.innerText = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
 }
 
-window.onload = () => loadSymbol('BTC-USD');
+// ─────────────────────────────────────────
+// CONTROL
+// ─────────────────────────────────────────
+async function loadSymbol(sym) {
+  currentSymbol = sym;
+  document.getElementById('symbolInput').value = sym;
+
+  // Highlight favorito activo
+  document.querySelectorAll('.fav-row').forEach(r => r.style.background = '');
+  const el = document.getElementById(`fav-${sym}`);
+  if (el) el.style.background = 'rgba(255,0,127,0.08)';
+
+  try {
+    const data = await fetchData(sym, currentPeriod);
+    renderChart(data);
+  } catch(e) {
+    showToast('❌ ' + e.message, 'bearish');
+  }
+}
+
+function doSearch() {
+  const sym = document.getElementById('symbolInput').value.trim().toUpperCase();
+  if (sym) loadSymbol(sym);
+}
+
+function refreshChart() { loadSymbol(currentSymbol); }
+
+function setPeriod(p) {
+  currentPeriod = p;
+  document.querySelectorAll('.btn-p').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+  refreshChart();
+}
 </script>
 </body>
 </html>
