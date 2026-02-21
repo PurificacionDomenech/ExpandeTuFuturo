@@ -101,10 +101,10 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
   #rsiDiv{height:100px}
 }
 
-/* Loading */
-#loadWrap{display:none;align-items:center;justify-content:center;
-  height:min(60vw,420px);flex-direction:column;gap:12px;color:rgba(255,255,255,.3)}
-@media(min-width:900px){#loadWrap{height:420px}}
+/* Loading — overlay sobre el gráfico */
+#loadWrap{display:none;position:absolute;inset:0;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;color:rgba(255,255,255,.3);
+  background:rgba(7,7,15,.75);z-index:10;border-radius:14px}
 .spin{width:32px;height:32px;border:3px solid rgba(255,0,127,.15);
   border-top-color:#ff007f;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -222,7 +222,7 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
     </div><!-- /sidebar -->
 
     <!-- CHART CARD -->
-    <div class="card" id="chart-card">
+    <div class="card" id="chart-card" style="position:relative">
 
       <!-- Barra de indicadores -->
       <div id="ind-bar">
@@ -252,13 +252,13 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
       </div>
 
       <!-- Loading -->
-      <div id="loadWrap">
+      <div id="loadWrap" style="display:none">
         <div class="spin"></div>
         <span style="font-size:12px">Cargando…</span>
       </div>
 
       <!-- Gráficas -->
-      <div id="chartArea" style="display:none;flex-direction:column">
+      <div id="chartArea" style="display:flex;flex-direction:column">
         <div id="plotDiv"></div>
         <div id="rsiWrap">
           <div style="padding:3px 60px 1px 8px;display:flex;justify-content:space-between;align-items:center">
@@ -755,20 +755,18 @@ async function loadSymbol(sym){
   const el=document.getElementById('fc-'+favId(sym));
   if(el) el.classList.add('active-sym');
 
+  // show spinner, keep chart visible underneath
   document.getElementById('loadWrap').style.display='flex';
-  document.getElementById('chartArea').style.display='none';
 
   try {
     const data=await fetchData(sym);
     lastData=data;
     document.getElementById('loadWrap').style.display='none';
-    document.getElementById('chartArea').style.display='flex';
     renderPlotly(data);
     updateSidebar(data);
     renderCurrentAlerts();
   } catch(e){
     document.getElementById('loadWrap').style.display='none';
-    document.getElementById('chartArea').style.display='flex';
     showToast('❌ '+e.message,'bearish');
   }
 }
