@@ -11,50 +11,47 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; min-height: 100vh; }
 .mono { font-family: 'JetBrains Mono', monospace; }
-
 .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
-
 .btn-p { padding: 3px 13px; border-radius: 7px; font-size: 12px; font-weight: 600;
          color: rgba(255,255,255,0.3); transition: all .15s; cursor: pointer; }
 .btn-p:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.06); }
 .btn-p.active { background: #ff007f; color: #fff; }
-
 #chartWrap { height: 620px; }
 
-/* Toast */
+/* Toasts */
 #toasts { position: fixed; top: 16px; right: 16px; z-index: 1000;
           display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .toast { padding: 11px 15px; border-radius: 11px; font-size: 13px; font-weight: 500;
          max-width: 340px; backdrop-filter: blur(14px); pointer-events: auto;
-         animation: slideIn .25s ease; line-height: 1.4; }
+         animation: slideIn .25s ease; line-height: 1.45; }
 .toast.bullish { background: rgba(0,230,118,.12); color: #00e676; border: 1px solid rgba(0,230,118,.25); }
 .toast.bearish  { background: rgba(255,68,68,.12);  color: #ff5252; border: 1px solid rgba(255,68,68,.25); }
 .toast.info     { background: rgba(255,0,127,.12);  color: #ff69b4; border: 1px solid rgba(255,0,127,.25); }
 @keyframes slideIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
 
-/* Alerta en sidebar */
-.alerta-item { padding: 8px 10px; border-radius: 9px; font-size: 11.5px; font-weight: 500; line-height: 1.4; }
-.alerta-item.bullish { background: rgba(0,230,118,.08); color: #00e676; }
-.alerta-item.bearish  { background: rgba(255,68,68,.08);  color: #ff5252; }
-.alerta-item.info     { background: rgba(255,0,127,.08);  color: #ff69b4; }
+.alerta-item { padding: 7px 10px; border-radius: 9px; font-size: 11.5px; font-weight: 500; line-height: 1.4; }
+.alerta-item.bullish { background: rgba(0,230,118,.07); color: #00e676; }
+.alerta-item.bearish  { background: rgba(255,68,68,.07);  color: #ff5252; }
+.alerta-item.info     { background: rgba(255,0,127,.07);  color: #ff69b4; }
 
-/* Gema tag */
-.gem-tag { display: inline-flex; align-items: center; gap: 5px;
-           background: rgba(255,0,127,.1); border: 1px solid rgba(255,0,127,.2);
-           border-radius: 20px; padding: 2px 9px; font-size: 11px; color: #ff69b4; }
-.gem-tag .rm { cursor: pointer; opacity: .5; font-size: 14px; line-height: 1; }
-.gem-tag .rm:hover { opacity: 1; }
-
-/* Fav */
 .fav-row { display: flex; align-items: center; justify-content: space-between;
-           padding: 5px 8px; border-radius: 9px; cursor: pointer; transition: background .15s; gap: 8px; }
-.fav-row:hover { background: rgba(255,255,255,0.04); }
-.fav-row.active-sym { background: rgba(255,0,127,0.07); }
+           padding: 5px 8px; border-radius: 9px; cursor: pointer;
+           transition: background .15s; gap: 8px; }
+.fav-row:hover { background: rgba(255,255,255,.04); }
+.fav-row.active-sym { background: rgba(255,0,127,.07); }
+
+/* Toggle favoritos */
+.fav-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between;
+              padding: 0 2px 0 2px; cursor: pointer; background: none; border: none; color: inherit; }
+.fav-toggle:hover .fav-label { color: rgba(255,255,255,.4); }
+.fav-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+             color: rgba(255,255,255,.2); font-weight: 600; transition: color .15s; }
+.fav-chevron { font-size: 9px; color: rgba(255,255,255,.2); transition: transform .2s; }
+.fav-chevron.open { transform: rotate(0deg); }
+.fav-chevron.closed { transform: rotate(-90deg); }
+#favList { overflow: hidden; transition: max-height .25s ease, opacity .2s ease; }
 
 input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
-input[type=number]::-webkit-inner-spin-button { display: none; }
-
-/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
@@ -66,99 +63,96 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 
 <div class="max-w-[1600px] mx-auto p-4 lg:p-5 flex flex-col gap-4">
 
-  <!-- ── HEADER ── -->
+  <!-- HEADER -->
   <header class="flex items-center justify-between gap-3 flex-wrap">
     <div class="flex items-center gap-2.5">
       <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-           style="background:#ff007f;box-shadow:0 0 16px rgba(255,0,127,.4)">
+           style="background:#ff007f;box-shadow:0 0 16px rgba(255,0,127,.35)">
         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
         </svg>
       </div>
-      <span class="text-base font-bold tracking-tight">EXPANDE <span style="color:#ff007f">TU FUTURO</span></span>
+      <span class="text-base font-bold tracking-tight">EXPANDE
+        <span style="color:#ff007f">TU FUTURO</span></span>
     </div>
 
-    <!-- Buscador -->
     <div class="flex items-center gap-2 flex-1 max-w-sm">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
              class="flex-1 bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm transition-all"
              onkeydown="if(event.key==='Enter') doSearch()">
       <button onclick="doSearch()"
-              class="px-4 py-2 rounded-lg text-sm font-semibold text-white shrink-0 transition-all hover:brightness-110"
+              class="px-4 py-2 rounded-lg text-sm font-semibold text-white shrink-0 hover:brightness-110 transition-all"
               style="background:#ff007f">Buscar</button>
     </div>
   </header>
 
-  <!-- ── LAYOUT ── -->
+  <!-- LAYOUT -->
   <div class="flex flex-col lg:flex-row gap-4">
 
-    <!-- ── SIDEBAR ── -->
-    <div class="lg:w-[200px] shrink-0 flex flex-col gap-3">
+    <!-- SIDEBAR -->
+    <div class="lg:w-[205px] shrink-0 flex flex-col gap-3">
 
-      <!-- Precio -->
+      <!-- Precio + RSI -->
       <div class="card p-4">
         <div id="displaySymbol" class="text-[11px] font-bold tracking-widest mb-1" style="color:#ff007f">---</div>
         <div id="displayPrice" class="mono text-2xl font-semibold leading-tight">---</div>
         <div id="displayChange" class="text-xs mt-1.5 font-medium">--</div>
 
-        <!-- RSI compacto -->
         <div class="mt-3 pt-3 border-t border-white/5">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-[10px] text-white/25 uppercase tracking-wider">RSI 14</span>
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1.5">
               <span id="rsiVal" class="mono text-sm font-bold text-white">--</span>
-              <span id="rsiLbl" class="text-[9px] px-1.5 py-0.5 rounded font-bold bg-white/08 text-white/30">--</span>
+              <span id="rsiLbl" class="text-[9px] px-1.5 py-0.5 rounded font-bold"
+                    style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">--</span>
             </div>
           </div>
           <div class="relative h-1.5 rounded-full overflow-visible"
-               style="background:linear-gradient(to right,#00e67640 0%,#00e67640 30%,rgba(255,255,255,.08) 30%,rgba(255,255,255,.08) 70%,#ff174440 70%,#ff174440 100%)">
-            <div id="rsiCur" class="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-md"
+               style="background:linear-gradient(to right,#00e67630 0%,#00e67630 30%,rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,#ff174430 70%,#ff174430 100%)">
+            <div id="rsiCur" class="absolute top-1/2 w-2 h-2 rounded-full bg-white shadow"
                  style="left:50%;transform:translate(-50%,-50%);transition:left .4s"></div>
           </div>
-          <div class="mt-3 space-y-1">
-            <div class="flex items-center gap-1.5 text-[10px] text-white/30">
-              <span class="w-2 h-2 rounded-full shrink-0" style="background:#ff007f"></span>
-              ● fucsia = RSI extremo
-            </div>
+        </div>
+      </div>
+
+      <!-- Favoritos (colapsable) -->
+      <div class="card p-3">
+        <button class="fav-toggle" onclick="toggleFavs()">
+          <span class="fav-label">Favoritos</span>
+          <span id="favChevron" class="fav-chevron open">▼</span>
+        </button>
+        <div id="favList" style="max-height:400px;opacity:1;">
+          <div class="flex flex-col gap-0.5 mt-2" id="favItems"></div>
+        </div>
+      </div>
+
+      <!-- Alertas activas -->
+      <div id="alertBox" class="card p-3 hidden">
+        <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">
+          ⚡ Alertas
+        </div>
+        <div id="alertList" class="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-0.5"></div>
+      </div>
+
+      <!-- Estado monitoreo -->
+      <div class="card p-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold">Vigilancia</span>
+          <div class="flex items-center gap-1.5">
+            <span id="watchDot" class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
+            <span id="watchLabel" class="text-[10px] text-white/20">--</span>
           </div>
         </div>
-      </div>
-
-      <!-- Favoritos -->
-      <div class="card p-3">
-        <button onclick="toggleFavs()" class="w-full flex items-center justify-between px-1 group">
-          <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold group-hover:text-white/40 transition-colors">Favoritos</span>
-          <span id="favChevron" class="text-white/20 group-hover:text-white/40 transition-all duration-200 text-[10px]">▲</span>
-        </button>
-        <div id="favList" class="flex flex-col gap-0.5 mt-2"></div>
-      </div>
-
-      <!-- Niveles personalizados -->
-      <div class="card p-3">
-        <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">Niveles 💎</div>
-        <div class="flex gap-1.5 mb-2">
-          <input id="gemInput" type="number" placeholder="Precio…"
-                 class="flex-1 min-w-0 bg-[#111] border border-white/10 rounded-lg px-2 py-1.5 text-xs transition-all"
-                 onkeydown="if(event.key==='Enter') addGema()">
-          <button onclick="addGema()"
-                  class="px-2.5 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-all hover:brightness-110"
-                  style="background:rgba(255,0,127,.2);color:#ff69b4">+</button>
-        </div>
-        <div id="gemTags" class="flex flex-wrap gap-1"></div>
-      </div>
-
-      <!-- Alertas -->
-      <div id="alertBox" class="card p-3 hidden">
-        <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">⚡ Alertas</div>
-        <div id="alertList" class="flex flex-col gap-1.5 max-h-60 overflow-y-auto"></div>
+        <p class="text-[10px] text-white/15 mt-1.5 leading-4">
+          Comprueba todos los favoritos cada 5 min y alerta si el precio toca alguna SMA.
+        </p>
       </div>
 
     </div><!-- end sidebar -->
 
-    <!-- ── CHART ── -->
+    <!-- CHART -->
     <div class="flex-1 card p-4">
-
-      <!-- Controles -->
       <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div class="flex gap-0.5 bg-white/5 p-0.5 rounded-xl">
           <button class="btn-p" data-p="1d"  onclick="setPeriod('1d')">1D</button>
@@ -168,71 +162,77 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
           <button class="btn-p" data-p="1y"  onclick="setPeriod('1y')">1Y</button>
           <button class="btn-p" data-p="2y"  onclick="setPeriod('2y')">2Y</button>
         </div>
-
-        <!-- Leyenda inline -->
-        <div class="flex items-center gap-3 flex-wrap" style="font-size:10px;color:rgba(255,255,255,.3)">
-          <span><span style="color:rgba(255,255,255,.7)">─</span> Precio</span>
-          <span><span style="color:#00ffff80">─</span> SMA20</span>
-          <span><span style="color:#ffff0080">─</span> SMA50</span>
-          <span><span style="color:#fff17680">─</span> SMA100</span>
-          <span><span style="color:#ce93d880">─</span> SMA200</span>
-          <span><span style="color:#00ff00">•</span> ST▲ <span style="color:#ff3333">•</span> ST▼</span>
+        <div class="flex items-center gap-3 flex-wrap" style="font-size:10px;color:rgba(255,255,255,.25)">
+          <span><span style="color:rgba(255,255,255,.65)">─</span> Precio</span>
+          <span><span style="color:#00ffff70">─</span> SMA20</span>
+          <span><span style="color:#ffff0070">─</span> SMA50</span>
+          <span><span style="color:#fff17670">─</span> SMA100</span>
+          <span><span style="color:#ce93d870">─</span> SMA200</span>
+          <span><span style="color:#00ff00">·</span>ST▲ <span style="color:#ff3333">·</span>ST▼</span>
           <span><span style="color:#ff007f">●</span> RSI</span>
         </div>
       </div>
-
-      <div id="chartWrap">
-        <canvas id="mainChart"></canvas>
-      </div>
+      <div id="chartWrap"><canvas id="mainChart"></canvas></div>
     </div>
 
   </div>
-</div><!-- end container -->
+</div>
 
 <script>
-// ── STATE ──────────────────────────────────
+// ── STATE ─────────────────────────────────
 let currentSymbol = 'BTC-USD';
 let currentPeriod = '1mo';
-let gemas = [];
-let mainChart = null;
-let sparkCharts = {};
+let mainChart     = null;
+let sparkCharts   = {};
+let favsOpen      = true;
+let watchInterval = null;
+// Guardamos las alertas ya mostradas para no repetir toasts
+let shownAlerts   = new Set();
 
 const FAVS = [
-  { name:'Bitcoin',   ticker:'BTC-USD' },
-  { name:'Ethereum',  ticker:'ETH-USD' },
-  { name:'S&P 500',   ticker:'^GSPC'   },
-  { name:'Nasdaq 100',ticker:'^NDX'    },
-  { name:'Apple',     ticker:'AAPL'    },
-  { name:'SPY',       ticker:'SPY'     },
-  { name:'Oro',       ticker:'GLD'     },
+  { name:'Bitcoin',    ticker:'BTC-USD' },
+  { name:'Ethereum',   ticker:'ETH-USD' },
+  { name:'S&P 500',    ticker:'^GSPC'   },
+  { name:'Nasdaq 100', ticker:'^NDX'    },
+  { name:'Apple',      ticker:'AAPL'    },
+  { name:'SPY',        ticker:'SPY'     },
+  { name:'Oro',        ticker:'GLD'     },
 ];
 
-// ── TOGGLE FAVORITOS ────────────────────────
-let favsOpen = true;
+// ── INIT ──────────────────────────────────
+window.onload = () => {
+  buildFavs();
+  loadSymbol('BTC-USD');
+  startWatcher();
+};
+
+// ── TOGGLE FAVORITOS ──────────────────────
 function toggleFavs() {
   favsOpen = !favsOpen;
   const list    = document.getElementById('favList');
   const chevron = document.getElementById('favChevron');
-  list.style.display   = favsOpen ? 'flex' : 'none';
-  list.style.flexDirection = 'column';
-  list.style.gap       = '2px';
-  chevron.innerText    = favsOpen ? '▲' : '▼';
+  if (favsOpen) {
+    list.style.maxHeight = '400px';
+    list.style.opacity   = '1';
+    chevron.classList.replace('closed','open');
+  } else {
+    list.style.maxHeight = '0';
+    list.style.opacity   = '0';
+    chevron.classList.replace('open','closed');
+  }
 }
 
-// ── INIT ────────────────────────────────────
-window.onload = () => {
-  buildFavs();
-  loadSymbol('BTC-USD');
-};
+// ── FAVORITOS ─────────────────────────────
+function favId(ticker) { return ticker.replace(/[^a-z0-9]/gi,'_'); }
 
-// ── FAVORITOS ───────────────────────────────
 function buildFavs() {
-  const c = document.getElementById('favList');
+  const c = document.getElementById('favItems');
   c.innerHTML = '';
   FAVS.forEach(f => {
+    const id  = favId(f.ticker);
     const row = document.createElement('div');
     row.className = 'fav-row';
-    row.id = 'fav-' + f.ticker.replace(/[^a-z0-9]/gi,'_');
+    row.id = 'fav-' + id;
     row.onclick = () => loadSymbol(f.ticker);
     row.innerHTML = `
       <div class="min-w-0">
@@ -240,8 +240,8 @@ function buildFavs() {
         <div class="mono text-[9px] text-white/25">${f.ticker}</div>
       </div>
       <div class="flex flex-col items-end gap-0.5 shrink-0">
-        <canvas id="spark-${f.ticker.replace(/[^a-z0-9]/gi,'_')}" width="52" height="20"></canvas>
-        <span id="pct-${f.ticker.replace(/[^a-z0-9]/gi,'_')}" class="mono text-[9px] text-white/25">…</span>
+        <canvas id="spark-${id}" width="52" height="20"></canvas>
+        <span id="pct-${id}" class="mono text-[9px] text-white/25">…</span>
       </div>`;
     c.appendChild(row);
     loadSparkline(f.ticker);
@@ -253,7 +253,7 @@ async function loadSparkline(ticker) {
     const res = await fetch(`/api/sparkline/${ticker}`);
     const d   = await res.json();
     if (!d.closes || d.closes.length < 2) return;
-    const id  = ticker.replace(/[^a-z0-9]/gi,'_');
+    const id  = favId(ticker);
     const cvs = document.getElementById(`spark-${id}`);
     if (!cvs) return;
     if (sparkCharts[ticker]) sparkCharts[ticker].destroy();
@@ -267,82 +267,98 @@ async function loadSparkline(ticker) {
           backgroundColor: up ? 'rgba(0,230,118,.07)' : 'rgba(255,68,68,.07)',
           borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }]
       },
-      options: { responsive: false, animation: false,
-        plugins: { legend: { display:false }, tooltip: { enabled:false } },
-        scales: { x: { display:false }, y: { display:false } } }
+      options: { responsive:false, animation:false,
+        plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+        scales:{ x:{display:false}, y:{display:false} } }
     });
     const pEl = document.getElementById(`pct-${id}`);
     if (pEl) { pEl.style.color = up ? '#00e676' : '#ff4444'; pEl.innerText = `${up?'+':''}${d.pct.toFixed(2)}%`; }
   } catch(e) {}
 }
 
-// ── GEMAS ───────────────────────────────────
-function addGema() {
-  const v = parseFloat(document.getElementById('gemInput').value);
-  if (!isNaN(v) && v > 0 && !gemas.includes(v)) {
-    gemas.push(v);
-    document.getElementById('gemInput').value = '';
-    renderGemTags();
-    refreshChart();
-  }
-}
-function removeGema(v) {
-  gemas = gemas.filter(g => g !== v);
-  renderGemTags();
-  refreshChart();
-}
-function renderGemTags() {
-  document.getElementById('gemTags').innerHTML = gemas.map(g =>
-    `<span class="gem-tag">$${g.toLocaleString()}<span class="rm" onclick="removeGema(${g})">×</span></span>`
-  ).join('');
+// ── VIGILANCIA AUTOMÁTICA ─────────────────
+function startWatcher() {
+  checkAllFavs(); // primera comprobación inmediata
+  watchInterval = setInterval(checkAllFavs, 5 * 60 * 1000); // cada 5 min
 }
 
-// ── FETCH ────────────────────────────────────
+async function checkAllFavs() {
+  const tickers = FAVS.map(f => f.ticker).join(',');
+  try {
+    const res  = await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
+    const data = await res.json();
+    if (!data.alertas || data.alertas.length === 0) {
+      setWatchStatus('ok');
+      return;
+    }
+    setWatchStatus('alert');
+    // Solo mostrar toasts nuevos
+    data.alertas.forEach(a => {
+      if (!shownAlerts.has(a.msg)) {
+        shownAlerts.add(a.msg);
+        showToast(a.msg, a.nivel);
+        // Limpiar cache de alertas pasadas las 2h para que no se acumule
+        setTimeout(() => shownAlerts.delete(a.msg), 2 * 60 * 60 * 1000);
+      }
+    });
+    // Actualizar panel de alertas si estamos en un fav afectado
+    renderAlertas(data.alertas.filter(a => a.msg.includes(`[${currentSymbol}]`) || !a.msg.includes('[')));
+  } catch(e) {
+    setWatchStatus('err');
+  }
+}
+
+function setWatchStatus(state) {
+  const dot   = document.getElementById('watchDot');
+  const label = document.getElementById('watchLabel');
+  const map   = {
+    ok:    ['#00e676', 'Activa'],
+    alert: ['#ff007f', '¡Alerta!'],
+    err:   ['#555',    'Error'],
+  };
+  const [color, text] = map[state] || map.ok;
+  dot.style.background  = color;
+  label.style.color     = color;
+  label.innerText       = text;
+}
+
+// ── FETCH CHART ───────────────────────────
 async function fetchData(symbol, period) {
-  const nv  = gemas.join(',');
-  const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?period=${period}&niveles=${nv}`);
+  const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?period=${period}`);
   const d   = await res.json();
   if (d.error) throw new Error(d.error);
   return d;
 }
 
-// ── RENDER ───────────────────────────────────
+// ── RENDER ────────────────────────────────
 function renderChart(data) {
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (mainChart) mainChart.destroy();
 
-  // Líneas horizontales de niveles personalizados
-  const gemColors = ['#ff69b4','#ffa040','#80ff80','#80d4ff','#d4a0ff'];
-  const gemasDS = data.gemas.map((g, i) => ({
-    label: `Nivel $${g.toLocaleString()}`,
-    data:  Array(data.chart.labels.length).fill(g),
-    borderColor: gemColors[i % gemColors.length],
-    backgroundColor: 'transparent',
-    borderWidth: 1, borderDash: [6,4],
-    fill: false, pointRadius: 0, tension: 0, yAxisID: 'y'
-  }));
-
   mainChart = new Chart(ctx, {
     type: 'line',
-    data: { labels: data.chart.labels, datasets: [...data.chart.datasets, ...gemasDS] },
+    data: { labels: data.chart.labels, datasets: data.chart.datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 250 },
+      animation: { duration: 200 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(8,8,20,.92)',
-          borderColor: 'rgba(255,255,255,.08)',
+          backgroundColor: 'rgba(8,8,20,.93)',
+          borderColor: 'rgba(255,255,255,.07)',
           borderWidth: 1,
           titleColor: '#fff',
-          bodyColor: 'rgba(255,255,255,.6)',
+          bodyColor: 'rgba(255,255,255,.55)',
           padding: 10,
           callbacks: {
             label: ctx => {
-              if (ctx.parsed.y === null) return null;
-              return ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+              if (ctx.parsed.y === null || ctx.parsed.y === undefined) return null;
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${v >= 1000
+                ? v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+                : v.toFixed(4)}`;
             }
           }
         }
@@ -350,13 +366,13 @@ function renderChart(data) {
       scales: {
         y: {
           display: true, position: 'left',
-          grid: { color: 'rgba(255,255,255,0.035)', drawBorder: false },
-          ticks: { color: 'rgba(255,255,255,.3)', font: { size: 10 },
+          grid: { color: 'rgba(255,255,255,.03)', drawBorder: false },
+          ticks: { color: 'rgba(255,255,255,.28)', font: { size: 10 },
                    callback: v => v >= 1000 ? v.toLocaleString() : v.toFixed(2) }
         },
         x: {
           grid: { display: false },
-          ticks: { color: 'rgba(255,255,255,.25)', font: { size: 10 }, maxTicksLimit: 10 }
+          ticks: { color: 'rgba(255,255,255,.22)', font: { size: 10 }, maxTicksLimit: 10 }
         }
       }
     }
@@ -373,7 +389,7 @@ function renderChart(data) {
   chEl.style.color = data.change >= 0 ? '#00e676' : '#ff4444';
 
   updateRSI(data.rsi_current);
-  renderAlertas(data.alertas);
+  renderAlertas(data.alertas || []);
 }
 
 function updateRSI(v) {
@@ -383,13 +399,13 @@ function updateRSI(v) {
   const lbl = document.getElementById('rsiLbl');
   const val = document.getElementById('rsiVal');
   if (v < 30) {
-    lbl.innerText = 'SV'; lbl.style.cssText = 'font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700;';
+    lbl.innerText = 'SV'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700;';
     val.style.color = '#00e676';
   } else if (v > 70) {
-    lbl.innerText = 'SC'; lbl.style.cssText = 'font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700;';
+    lbl.innerText = 'SC'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700;';
     val.style.color = '#ff5252';
   } else {
-    lbl.innerText = 'N'; lbl.style.cssText = 'font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
+    lbl.innerText = 'N';  lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
     val.style.color = '#fff';
   }
 }
@@ -400,31 +416,25 @@ function renderAlertas(alertas) {
   if (!alertas || alertas.length === 0) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   list.innerHTML = alertas.map(a =>
-    `<div class="alerta-item ${a.nivel}">${a.msg}</div>`
-  ).join('');
-  // Mostrar toasts
-  alertas.forEach(a => showToast(a.msg, a.nivel));
+    `<div class="alerta-item ${a.nivel}">${a.msg}</div>`).join('');
 }
 
-function showToast(msg, nivel) {
+function showToast(msg, nivel, duration=7000) {
   const c = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = `toast ${nivel}`;
   t.innerText = msg;
   c.appendChild(t);
-  setTimeout(() => t.remove(), 7000);
+  setTimeout(() => t.remove(), duration);
 }
 
-// ── CONTROL ─────────────────────────────────
+// ── CONTROL ───────────────────────────────
 async function loadSymbol(sym) {
   currentSymbol = sym;
   document.getElementById('symbolInput').value = sym;
-
-  // Highlight activo
   document.querySelectorAll('.fav-row').forEach(r => r.classList.remove('active-sym'));
-  const el = document.getElementById('fav-' + sym.replace(/[^a-z0-9]/gi,'_'));
+  const el = document.getElementById('fav-' + favId(sym));
   if (el) el.classList.add('active-sym');
-
   try {
     const data = await fetchData(sym, currentPeriod);
     renderChart(data);
@@ -438,12 +448,10 @@ function doSearch() {
   if (sym) loadSymbol(sym);
 }
 
-function refreshChart() { loadSymbol(currentSymbol); }
-
 function setPeriod(p) {
   currentPeriod = p;
   document.querySelectorAll('.btn-p').forEach(b => b.classList.toggle('active', b.dataset.p === p));
-  refreshChart();
+  loadSymbol(currentSymbol);
 }
 </script>
 </body>
