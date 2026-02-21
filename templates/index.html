@@ -94,12 +94,12 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .btn-ind.off{opacity:.25;filter:grayscale(.7)}
 
 /* Chart containers — altura dinámica */
-#plotDiv{width:100%;height:min(60vw,500px)}
+#plotDiv{width:100%;height:min(120vw,600px)}
 #rsiWrap{display:block}
-#rsiDiv{width:100%;height:min(20vw,120px)}
+#rsiDiv{width:100%;height:min(30vw,150px)}
 @media(min-width:900px){
-  #plotDiv{height:600px}
-  #rsiDiv{height:150px}
+  #plotDiv{height:750px}
+  #rsiDiv{height:180px}
 }
 
 /* Loading — overlay sobre el gráfico */
@@ -640,7 +640,7 @@ function renderPlotly(apiData){
     x:dates, y:closes,
     type:'scatter', mode:'lines', name:'Precio',
     line:{color:'rgba(255,255,255,1)',width:1,shape:'linear'},
-    fill:'tozeroy', fillcolor:'rgba(255,255,255,.03)',
+    fill:'tozeroy', fillcolor:'rgba(255,255,255,.08)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>',
   });
 
@@ -692,12 +692,14 @@ function renderPlotly(apiData){
     showlegend:false,
     xaxis:{type:'date',
       gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickcolor:'rgba(255,255,255,.07)',tickfont:{color:'rgba(255,255,255,.35)',size:10},
-      tickformat:'%d %b %Y',
+      tickcolor:'rgba(255,255,255,.2)',tickfont:{color:'rgba(255,255,255,.45)',size:9},
+      tickformat:'%d',
+      dtick: 86400000 * 2,
+      tickvals: dates.filter((d, i) => i % 2 === 0 || d.getDate() === 1),
       showspikes:true,spikecolor:'rgba(255,255,255,.1)',spikedash:'dot',spikethickness:1,
       rangeslider:{visible:false}},
     yaxis:{gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickfont:{color:'rgba(255,255,255,.35)',size:10},side:'right',tickformat:yFmt},
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},side:'right',tickformat:yFmt},
     dragmode:'pan',font:{family:'Inter,sans-serif'}
   };
 
@@ -706,11 +708,11 @@ function renderPlotly(apiData){
     if(div && div.layout && div.layout.xaxis && div.layout.xaxis.range) {
       layout.xaxis.range = div.layout.xaxis.range;
     } else {
-      // Por defecto, mostrar las últimas 2 semanas
+      // Por defecto, mostrar los últimos 2 meses
       const lastDate = dates[dates.length - 1];
       if(lastDate) {
-        const twoWeeksAgo = new Date(lastDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-        layout.xaxis.range = [twoWeeksAgo.toISOString(), lastDate.toISOString()];
+        const twoMonthsAgo = new Date(lastDate.getTime() - 60 * 24 * 60 * 60 * 1000);
+        layout.xaxis.range = [twoMonthsAgo.toISOString(), lastDate.toISOString()];
       }
     }
 
