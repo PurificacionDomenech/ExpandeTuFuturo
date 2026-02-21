@@ -2,13 +2,11 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 app = FastAPI(title="Expande Tu Futuro Web")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
 # ─────────────────────────────────────────────
 # MAPEO DE INTERVALOS
@@ -148,9 +146,9 @@ def safe(v):
 # RUTAS
 # ─────────────────────────────────────────────
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/")
+async def index():
+    return FileResponse("templates/index.html")
 
 
 @app.get("/api/chart/{ticker}")
