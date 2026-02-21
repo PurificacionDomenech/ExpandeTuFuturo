@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+from datetime import timedelta
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -50,8 +51,8 @@ def calcular_indicadores(df):
             df.iloc[i, df.columns.get_loc("Supertrend")] = cl
             df.iloc[i, df.columns.get_loc("Direction")]  = 1
             continue
-        st  = max(cl, ps) if pd_ == 1 else min(cu, ps)
-        d   = 1 if cc > st else -1
+        st = max(cl, ps) if pd_ == 1 else min(cu, ps)
+        d  = 1 if cc > st else -1
         df.iloc[i, df.columns.get_loc("Supertrend")] = st
         df.iloc[i, df.columns.get_loc("Direction")]  = d
 
@@ -59,38 +60,73 @@ def calcular_indicadores(df):
 
 
 # ─────────────────────────────────────────────
-# ALERTAS
+# ALERTAS AUTOMÁTICAS
 # ─────────────────────────────────────────────
 
-def detectar_alertas(df, gemas: list[float]):
+def detectar_alertas(df, medias: list):
     alertas = []
     n = len(df) - 1
-    if n < 1:
+    if n < 2:
         return alertas
 
-    s100_n = df["SMA100"].iloc[n];   s100_p = df["SMA100"].iloc[n-1]
-    s200_n = df["SMA200"].iloc[n];   s200_p = df["SMA200"].iloc[n-1]
-    s20_n  = df["SMA20"].iloc[n];    s20_p  = df["SMA20"].iloc[n-1]
-    s50_n  = df["SMA50"].iloc[n];    s50_p  = df["SMA50"].iloc[n-1]
+    precio_actual = float(df["Close"].iloc[n])
+    precio_prev   = float(df["Close"].iloc[n - 1])
 
+    smas = {
+        "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
+        "SMA50":  (df["SMA50"].iloc[n],  df["SMA50"].iloc[n-1]),
+        "SMA100": (df["SMA100"].iloc[n], df["SMA100"].iloc[n-1]),
+        "SMA200": (df["SMA200"].iloc[n], df["SMA200"].iloc[n-1]),
+    }
+
+    # ── Cruce precio / media móvil ──────────────────────────
+    for nombre, (sma_now, sma_prev) in smas.items():
+        if not (pd.notna(sma_now) and pd.notna(sma_prev)):
+            continue
+        # precio cruza hacia arriba
+        if precio_prev < sma_prev and precio_actual >= sma_now:
+            alertas.append({
+                "nivel": "bullish",
+                "msg":   f"📈 Precio cruza {nombre} hacia arriba — ${precio_actual:,.2f}"
+            })
+        # precio cruza hacia abajo
+        elif precio_prev > sma_prev and precio_actual <= sma_now:
+            alertas.append({
+                "nivel": "bearish",
+                "msg":   f"📉 Precio cruza {nombre} hacia abajo — ${precio_actual:,.2f}"
+            })
+        # precio muy cerca (≤0.5%)
+        elif abs(precio_actual - sma_now) / sma_now * 100 <= 0.5:
+            alertas.append({
+                "nivel": "info",
+                "msg":   f"⚠️ Precio tocando {nombre} — ${precio_actual:,.2f} / MA ${sma_now:,.2f}"
+            })
+
+    # ── Cruces entre medias (100/200 y 20/50) ─────────────
+    s100_n, s100_p = smas["SMA100"]
+    s200_n, s200_p = smas["SMA200"]
     if pd.notna(s100_n) and pd.notna(s200_n):
         if s100_p < s200_p and s100_n >= s200_n:
             alertas.append({"nivel": "bullish", "msg": "🟢 Golden Cross — SMA100 cruza sobre SMA200"})
         elif s100_p > s200_p and s100_n <= s200_n:
             alertas.append({"nivel": "bearish", "msg": "🔴 Death Cross — SMA100 cruza bajo SMA200"})
 
+    s20_n, s20_p = smas["SMA20"]
+    s50_n, s50_p = smas["SMA50"]
     if pd.notna(s20_n) and pd.notna(s50_n):
         if s20_p < s50_p and s20_n >= s50_n:
             alertas.append({"nivel": "bullish", "msg": "🟡 Cruce alcista — SMA20 sobre SMA50"})
         elif s20_p > s50_p and s20_n <= s50_n:
             alertas.append({"nivel": "bearish", "msg": "🟠 Cruce bajista — SMA20 bajo SMA50"})
 
-    precio = float(df["Close"].iloc[n])
-    for g in gemas:
-        pct = abs(precio - g) / g * 100
-        if pct <= 1.5:
-            alertas.append({"nivel": "info",
-                             "msg": f"💎 Precio cerca de gema ${g:,.2f} · actual ${precio:,.2f} ({pct:.2f}%)"})
+    # ── Niveles de precio personalizados (medias) ──────────
+    for g in medias:
+        pct = abs(precio_actual - g) / g * 100
+        if pct <= 1.0:
+            alertas.append({
+                "nivel": "info",
+                "msg":   f"💎 Precio cerca de nivel ${g:,.2f} — {pct:.2f}% de distancia"
+            })
 
     return alertas
 
@@ -106,42 +142,53 @@ async def index(request: Request):
 
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
-    interval = "1d"
-    if period == "1d":   interval = "5m"
-    elif period == "5d": interval = "30m"
-
     try:
-        df = yf.download(ticker.upper(), period=period, interval=interval, progress=False)
-        if df.empty:
+        # ── Siempre descargar 2 años diarios para que SMA100/200 estén disponibles ──
+        df_full = yf.download(ticker.upper(), period="2y", interval="1d", progress=False)
+        if df_full.empty:
             return {"error": f"Símbolo no encontrado: {ticker}"}
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        if isinstance(df_full.columns, pd.MultiIndex):
+            df_full.columns = df_full.columns.get_level_values(0)
 
-        df = calcular_indicadores(df)
+        # Calcular indicadores sobre el histórico completo
+        df_full = calcular_indicadores(df_full)
+
+        # ── Filtrar al periodo de visualización ──────────────────────────────────
+        periodo_dias = {
+            "1d": 1, "5d": 5, "1mo": 30, "6mo": 180, "1y": 365, "2y": 730
+        }
+        dias = periodo_dias.get(period, 30)
+        cutoff = df_full.index[-1] - timedelta(days=dias)
+        df = df_full[df_full.index >= cutoff].copy()
+
+        if df.empty:
+            df = df_full.tail(30).copy()
 
         def safe(v):
             return float(v) if pd.notna(v) else None
 
-        labels     = df.index.strftime('%Y-%m-%d %H:%M').tolist()
+        labels     = df.index.strftime('%Y-%m-%d').tolist()
         close_vals = df["Close"].values
         rsi_vals   = df["RSI"].values
 
         st_buy  = [safe(v) if df["Direction"].iloc[i] == 1  else None for i, v in enumerate(df["Supertrend"])]
         st_sell = [safe(v) if df["Direction"].iloc[i] == -1 else None for i, v in enumerate(df["Supertrend"])]
-        rsi_os  = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
-        rsi_ob  = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
+
+        # RSI señales en precio — color fucsia
+        rsi_os = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
+        rsi_ob = [safe(close_vals[i]) if pd.notna(rsi_vals[i]) and rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
 
         chart_data = {
             "labels": labels,
             "datasets": [
-                # Precio — blanco con sombra gris clara
+                # Precio — blanco con sombra
                 {"label": "Precio", "data": [safe(v) for v in close_vals],
-                 "borderColor": "#ffffff", "backgroundColor": "rgba(255,255,255,0.08)",
+                 "borderColor": "#ffffff", "backgroundColor": "rgba(255,255,255,0.07)",
                  "borderWidth": 2, "fill": "origin", "tension": 0.3,
                  "pointRadius": 0, "yAxisID": "y"},
 
-                # SMAs — grosores escalonados
+                # SMAs escalonadas en grosor
                 {"label": "SMA 20", "data": [safe(v) for v in df["SMA20"]],
                  "borderColor": "#00ffff", "backgroundColor": "transparent",
                  "borderWidth": 1, "fill": False, "tension": 0.1,
@@ -162,53 +209,54 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
                  "borderWidth": 3, "fill": False, "tension": 0.1,
                  "pointRadius": 0, "yAxisID": "y"},
 
-                # Supertrend — puntos diminutos
+                # Supertrend — puntos muy pequeños
                 {"label": "ST ▲", "data": st_buy,
                  "borderColor": "transparent", "backgroundColor": "#00ff00",
                  "borderWidth": 0, "fill": False, "showLine": False,
-                 "pointRadius": 2, "pointHoverRadius": 4, "yAxisID": "y"},
+                 "pointRadius": 2, "pointHoverRadius": 5, "yAxisID": "y"},
 
                 {"label": "ST ▼", "data": st_sell,
                  "borderColor": "transparent", "backgroundColor": "#ff3333",
                  "borderWidth": 0, "fill": False, "showLine": False,
-                 "pointRadius": 2, "pointHoverRadius": 4, "yAxisID": "y"},
+                 "pointRadius": 2, "pointHoverRadius": 5, "yAxisID": "y"},
 
-                # RSI señales — círculos sobre precio
+                # RSI señales — fucsia
                 {"label": "RSI <30", "data": rsi_os,
-                 "borderColor": "rgba(0,230,118,0.6)", "backgroundColor": "#00e676",
-                 "borderWidth": 1.5, "fill": False, "showLine": False,
+                 "borderColor": "transparent", "backgroundColor": "#ff007f",
+                 "borderWidth": 0, "fill": False, "showLine": False,
                  "pointRadius": 6, "pointHoverRadius": 9, "yAxisID": "y"},
 
                 {"label": "RSI >70", "data": rsi_ob,
-                 "borderColor": "rgba(255,23,68,0.6)", "backgroundColor": "#ff1744",
-                 "borderWidth": 1.5, "fill": False, "showLine": False,
+                 "borderColor": "transparent", "backgroundColor": "#ff007f",
+                 "borderWidth": 0, "fill": False, "showLine": False,
                  "pointRadius": 6, "pointHoverRadius": 9, "yAxisID": "y"},
             ]
         }
 
-        # Gemas
-        gemas = []
+        # medias (niveles manuales)
+        Medias = []
         if niveles:
             for n in niveles.split(","):
                 try:
-                    gemas.append(float(n.strip()))
+                    medias.append(float(n.strip()))
                 except Exception:
                     pass
 
-        alertas = detectar_alertas(df, gemas)
+        # Alertas sobre el dataset completo (último día disponible)
+        alertas = detectar_alertas(df_full, medias)
 
         last  = float(df["Close"].iloc[-1])
         first = float(df["Close"].iloc[0])
         rsi_c = float(df["RSI"].dropna().iloc[-1]) if not df["RSI"].dropna().empty else 50
 
         return {
-            "chart":      chart_data,
-            "last_price": last,
-            "change":     last - first,
-            "change_pct": (last - first) / first * 100,
+            "chart":       chart_data,
+            "last_price":  last,
+            "change":      last - first,
+            "change_pct":  (last - first) / first * 100,
             "rsi_current": rsi_c,
-            "alertas":    alertas,
-            "gemas":      gemas,
+            "alertas":     alertas,
+            "medias":       medias,
         }
 
     except Exception as e:
@@ -226,8 +274,8 @@ async def sparkline(ticker: str):
         closes = df["Close"].dropna().tolist()
         pct = (closes[-1] - closes[0]) / closes[0] * 100 if len(closes) > 1 else 0
         return {"closes": [float(c) for c in closes], "pct": round(pct, 2)}
-    except Exception as e:
-        return {"closes": [], "pct": 0, "error": str(e)}
+    except Exception:
+        return {"closes": [], "pct": 0}
 
 
 if __name__ == "__main__":
