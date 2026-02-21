@@ -12,7 +12,6 @@ from typing import Optional
 
 app = FastAPI(title="Expande Tu Futuro Web")
 
-# Configuración de archivos estáticos y plantillas
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -24,54 +23,54 @@ def calcular_indicadores(data):
     data["SMA50"] = data["Close"].rolling(window=50).mean()
     data["SMA100"] = data["Close"].rolling(window=100).mean()
     data["SMA200"] = data["Close"].rolling(window=200).mean()
-    
+
     # RSI
     delta = data["Close"].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     data["RSI"] = 100 - (100 / (1 + rs))
-    
+
     # Supertrend (7, 3.0)
     atr_period = 7
     factor = 3.0
-    
+
     data["H-L"] = data["High"] - data["Low"]
     data["H-PC"] = abs(data["High"] - data["Close"].shift(1))
     data["L-PC"] = abs(data["Low"] - data["Close"].shift(1))
     data["TR"] = data[["H-L", "H-PC", "L-PC"]].max(axis=1)
     data["ATR"] = data["TR"].rolling(window=atr_period).mean()
-    
+
     hl2 = (data["High"] + data["Low"]) / 2
     data["UpperBand"] = hl2 + factor * data["ATR"]
     data["LowerBand"] = hl2 - factor * data["ATR"]
-    
+
     data["Supertrend"] = np.nan
     data["Direction"] = 0
-    
+
     for i in range(1, len(data)):
         prev_st = data.iloc[i-1]["Supertrend"]
         prev_dir = data.iloc[i-1]["Direction"]
-        
+
         curr_lower = float(data.iloc[i]["LowerBand"])
         curr_upper = float(data.iloc[i]["UpperBand"])
         curr_close = float(data.iloc[i]["Close"])
-        
+
         if np.isnan(prev_st):
             data.iloc[i, data.columns.get_loc("Supertrend")] = curr_lower
             data.iloc[i, data.columns.get_loc("Direction")] = 1
             continue
-            
+
         if prev_dir == 1:
             curr_st = max(curr_lower, prev_st)
             curr_dir = 1 if curr_close > curr_st else -1
         else:
             curr_st = min(curr_upper, prev_st)
             curr_dir = 1 if curr_close > curr_st else -1
-            
+
         data.iloc[i, data.columns.get_loc("Supertrend")] = curr_st
         data.iloc[i, data.columns.get_loc("Direction")] = curr_dir
-        
+
     return data
 
 # --- Rutas ---
@@ -82,138 +81,42 @@ async def index(request: Request):
 
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, period: str = "1mo"):
-    # period: 1d, 5d, 1mo, 6mo, 1y, 5y, max
-    # interval: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
-    
     interval = "1d"
     if period == "1d": interval = "5m"
     elif period == "5d": interval = "30m"
-    
+
     try:
         df = yf.download(ticker, period=period, interval=interval)
         if df.empty:
             return {"error": "No se encontraron datos"}
-        
-        # Limpiar columnas si son multi-index (yfinance v1.2.0+)
+
         if isinstance(df.columns, pd.MultiIndex):
-            # En yfinance nuevo, el primer nivel suele ser el nombre de la columna (Close, High...)
-            # y el segundo nivel es el Ticker. Queremos el primer nivel.
             df.columns = df.columns.get_level_values(0)
-        
+
         df = calcular_indicadores(df)
-        
-        # Crear Gráfica de Línea de Precio
-        fig = go.Figure()
-        
-        # Línea de Precio (Fucsia)
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["Close"],
-            fill='none',
-            mode='lines',
-            line=dict(color='#ff007f', width=3),
-            name="Precio",
-            hovertemplate='<b>Precio</b><br>%{y:,.2f}<extra></extra>'
-        ))
-        
-        # SMA 20
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA20"],
-            mode='lines',
-            line=dict(color='#00ffff', width=2),
-            name="SMA 20"
-        ))
-        
-        # SMA 50
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA50"],
-            mode='lines',
-            line=dict(color='#ffff00', width=2),
-            name="SMA 50"
-        ))
-        
-        # Supertrend Buy
-        fig.add_trace(go.Scatter(
-            x=df.index,
-            y=np.where(df["Direction"] == 1, df["Supertrend"], np.nan),
-            mode='lines',
-            line=dict(color='#00ff00', width=2.5),
-            name="Supertrend Buy"
-        ))
-        
-        # Supertrend Sell
-        fig.add_trace(go.Scatter(
-            x=df.index,
-            y=np.where(df["Direction"] == -1, df["Supertrend"], np.nan),
-            mode='lines',
-            line=dict(color='#ff0000', width=2.5),
-            name="Supertrend Sell"
-        ))
-        
-        # Calcular rango dinámico del eje Y
-        all_y_values = []
-        all_y_values.extend(df["High"].dropna().values.tolist())
-        all_y_values.extend(df["Low"].dropna().values.tolist())
-        all_y_values.extend(df["SMA20"].dropna().values.tolist())
-        all_y_values.extend(df["SMA50"].dropna().values.tolist())
-        all_y_values.extend(df["Supertrend"].dropna().values.tolist())
-        
-        y_min = min(all_y_values)
-        y_max = max(all_y_values)
-        y_range = y_max - y_min
-        y_padding = y_range * 0.05
-        
-        fig.update_layout(
-            template="plotly_dark",
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=50, r=50, t=40, b=40),
-            xaxis=dict(
-                showgrid=False,
-                rangeslider=dict(visible=False),
-                showline=True,
-                linewidth=1,
-                linecolor='rgba(255,255,255,0.2)'
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='rgba(255,255,255,0.1)',
-                gridwidth=0.5,
-                range=[y_min - y_padding, y_max + y_padding],
-                showline=True,
-                linewidth=1,
-                linecolor='rgba(255,255,255,0.2)'
-            ),
-            hovermode='x unified',
-            height=600,
-            width=1200,
-            font=dict(size=11, color='rgba(255,255,255,0.8)'),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="right",
-                x=0.99,
-                bgcolor='rgba(0,0,0,0.3)',
-                bordercolor='rgba(255,255,255,0.2)',
-                borderwidth=1
-            )
-        )
-        
-        # RSI Data para gráfica separada
-        rsi_data = {
-            "x": df.index.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-            "y": [float(v) for v in df["RSI"].fillna(50).values]
-        }
-        
-        # Preparar datos para Chart.js
-        labels = df.index.strftime('%Y-%m-%d').tolist()
-        
+
+        labels = df.index.strftime('%Y-%m-%d %H:%M').tolist()
+
+        # --- Supertrend: puntos en vez de línea ---
+        st_buy_y = [float(v) if pd.notna(v) and df["Direction"].iloc[i] == 1 else None
+                    for i, v in enumerate(df["Supertrend"].values)]
+        st_sell_y = [float(v) if pd.notna(v) and df["Direction"].iloc[i] == -1 else None
+                     for i, v in enumerate(df["Supertrend"].values)]
+
+        # --- RSI: señales sobre precio en zonas extremas ---
+        rsi_vals = df["RSI"].values
+        close_vals = df["Close"].values
+
+        # Puntos verdes = sobreventa (RSI < 30), puntos rojos = sobrecompra (RSI > 70)
+        rsi_oversold_y  = [float(close_vals[i]) if rsi_vals[i] < 30 else None for i in range(len(rsi_vals))]
+        rsi_overbought_y = [float(close_vals[i]) if rsi_vals[i] > 70 else None for i in range(len(rsi_vals))]
+
         chart_data = {
             "labels": labels,
             "datasets": [
                 {
                     "label": "Precio",
-                    "data": [float(v) for v in df["Close"].values],
+                    "data": [float(v) for v in close_vals],
                     "borderColor": "#ff007f",
                     "backgroundColor": "rgba(255, 0, 127, 0.05)",
                     "borderWidth": 2,
@@ -245,41 +148,98 @@ async def get_chart(ticker: str, period: str = "1mo"):
                     "yAxisID": "y"
                 },
                 {
-                    "label": "Supertrend Buy",
-                    "data": [float(v) if pd.notna(v) and df["Direction"].iloc[i] == 1 else None for i, v in enumerate(df["Supertrend"].values)],
-                    "borderColor": "#00ff00",
+                    "label": "SMA 100",
+                    "data": [float(v) if pd.notna(v) else None for v in df["SMA100"].values],
+                    "borderColor": "#fff176",
                     "backgroundColor": "transparent",
-                    "borderWidth": 2.5,
+                    "borderWidth": 1.8,
                     "fill": False,
                     "tension": 0.1,
                     "pointRadius": 0,
                     "yAxisID": "y"
                 },
                 {
-                    "label": "Supertrend Sell",
-                    "data": [float(v) if pd.notna(v) and df["Direction"].iloc[i] == -1 else None for i, v in enumerate(df["Supertrend"].values)],
-                    "borderColor": "#ff0000",
+                    "label": "SMA 200",
+                    "data": [float(v) if pd.notna(v) else None for v in df["SMA200"].values],
+                    "borderColor": "#ce93d8",
                     "backgroundColor": "transparent",
-                    "borderWidth": 2.5,
+                    "borderWidth": 2,
                     "fill": False,
                     "tension": 0.1,
                     "pointRadius": 0,
                     "yAxisID": "y"
+                },
+                {
+                    "label": "Supertrend Buy",
+                    "data": st_buy_y,
+                    "borderColor": "transparent",
+                    "backgroundColor": "#00ff00",
+                    "borderWidth": 0,
+                    "fill": False,
+                    "tension": 0,
+                    "pointRadius": 4,
+                    "pointHoverRadius": 6,
+                    "showLine": False,
+                    "yAxisID": "y"
+                },
+                {
+                    "label": "Supertrend Sell",
+                    "data": st_sell_y,
+                    "borderColor": "transparent",
+                    "backgroundColor": "#ff0000",
+                    "borderWidth": 0,
+                    "fill": False,
+                    "tension": 0,
+                    "pointRadius": 4,
+                    "pointHoverRadius": 6,
+                    "showLine": False,
+                    "yAxisID": "y"
+                },
+                {
+                    "label": "RSI Sobreventa",
+                    "data": rsi_oversold_y,
+                    "borderColor": "transparent",
+                    "backgroundColor": "#00e676",
+                    "borderWidth": 0,
+                    "fill": False,
+                    "tension": 0,
+                    "pointRadius": 7,
+                    "pointHoverRadius": 9,
+                    "pointStyle": "circle",
+                    "showLine": False,
+                    "yAxisID": "y"
+                },
+                {
+                    "label": "RSI Sobrecompra",
+                    "data": rsi_overbought_y,
+                    "borderColor": "transparent",
+                    "backgroundColor": "#ff1744",
+                    "borderWidth": 0,
+                    "fill": False,
+                    "tension": 0,
+                    "pointRadius": 7,
+                    "pointHoverRadius": 9,
+                    "pointStyle": "circle",
+                    "showLine": False,
+                    "yAxisID": "y"
                 }
             ]
         }
-        
+
         last_close = float(df["Close"].iloc[-1])
         first_close = float(df["Close"].iloc[0])
-        
+
+        # RSI actual para el indicador lateral
+        rsi_current = float(df["RSI"].dropna().iloc[-1])
+
         return {
             "chart": chart_data,
-            "rsi": rsi_data,
             "last_price": last_close,
             "change": last_close - first_close,
-            "change_pct": ((last_close - first_close) / first_close) * 100
+            "change_pct": ((last_close - first_close) / first_close) * 100,
+            "rsi_current": rsi_current
         }
-        
+
     except Exception as e:
         return {"error": str(e)}
 
