@@ -51,17 +51,21 @@ def calcular_indicadores(data):
         prev_st = data.iloc[i-1]["Supertrend"]
         prev_dir = data.iloc[i-1]["Direction"]
         
+        curr_lower = float(data.iloc[i]["LowerBand"])
+        curr_upper = float(data.iloc[i]["UpperBand"])
+        curr_close = float(data.iloc[i]["Close"])
+        
         if np.isnan(prev_st):
-            data.iloc[i, data.columns.get_loc("Supertrend")] = data.iloc[i]["LowerBand"]
+            data.iloc[i, data.columns.get_loc("Supertrend")] = curr_lower
             data.iloc[i, data.columns.get_loc("Direction")] = 1
             continue
             
         if prev_dir == 1:
-            curr_st = max(data.iloc[i]["LowerBand"], prev_st)
-            curr_dir = 1 if data.iloc[i]["Close"] > curr_st else -1
+            curr_st = max(curr_lower, prev_st)
+            curr_dir = 1 if curr_close > curr_st else -1
         else:
-            curr_st = min(data.iloc[i]["UpperBand"], prev_st)
-            curr_dir = 1 if data.iloc[i]["Close"] > curr_st else -1
+            curr_st = min(curr_upper, prev_st)
+            curr_dir = 1 if curr_close > curr_st else -1
             
         data.iloc[i, data.columns.get_loc("Supertrend")] = curr_st
         data.iloc[i, data.columns.get_loc("Direction")] = curr_dir
@@ -88,8 +92,11 @@ async def get_chart(ticker: str, period: str = "1mo"):
         if df.empty:
             return {"error": "No se encontraron datos"}
         
-        # Limpiar columnas si son multi-index
-        df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
+        # Limpiar columnas si son multi-index (yfinance v1.2.0+)
+        if isinstance(df.columns, pd.MultiIndex):
+            # En yfinance nuevo, el primer nivel suele ser el nombre de la columna (Close, High...)
+            # y el segundo nivel es el Ticker. Queremos el primer nivel.
+            df.columns = df.columns.get_level_values(0)
         
         df = calcular_indicadores(df)
         
@@ -99,10 +106,9 @@ async def get_chart(ticker: str, period: str = "1mo"):
         # Área principal
         fig.add_trace(go.Scatter(
             x=df.index, y=df["Close"],
-            fill='tozeroy',
+            fill='none',
             mode='lines',
             line=dict(color='#ff007f', width=2),
-            fillcolor='rgba(255, 0, 127, 0.2)',
             name="Precio"
         ))
         
@@ -145,24 +151,27 @@ async def get_chart(ticker: str, period: str = "1mo"):
             paper_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=0, r=0, t=30, b=0),
             xaxis=dict(showgrid=False),
-            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)', rangemode='normal'),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
         # RSI Data para gráfica separada
         rsi_data = {
             "x": df.index.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-            "y": df["RSI"].fillna(50).tolist()
+            "y": [float(v) for v in df["RSI"].fillna(50).values]
         }
         
         chart_json = json.loads(plotly.utils.PlotlyJSONEncoder().encode(fig))
         
+        last_close = float(df["Close"].iloc[-1])
+        first_close = float(df["Close"].iloc[0])
+        
         return {
             "chart": chart_json,
             "rsi": rsi_data,
-            "last_price": float(df["Close"].iloc[-1]),
-            "change": float(df["Close"].iloc[-1] - df["Close"].iloc[0]),
-            "change_pct": float((df["Close"].iloc[-1] / df["Close"].iloc[0] - 1) * 100)
+            "last_price": last_close,
+            "change": float(last_close - first_close),
+            "change_pct": float((last_close / first_close - 1) * 100)
         }
         
     except Exception as e:
@@ -170,4 +179,6 @@ async def get_chart(ticker: str, period: str = "1mo"):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -19,7 +19,14 @@ Aplicación web de trading minimalista y profesional diseñada para el análisis
 ## Despliegue en Railway
 1. Conecta tu repositorio de GitHub a Railway.
 2. Railway detectará automáticamente el `requirements.txt` y el `Procfile`.
-3. ¡Listo! Tu app estará en línea.
+3. La aplicación se ejecutará en el puerto asignado por Railway (variable `PORT`).
+4. ¡Listo! Tu app estará en línea.
+
+## Cambios Recientes
+- Compatibilidad con yfinance v1.2.0+
+- Corrección del cálculo de indicadores técnicos
+- Optimización de la visualización de gráficas
+- Configuración mejorada para Railway
 
 ## Ejecución Local
 ```bash
