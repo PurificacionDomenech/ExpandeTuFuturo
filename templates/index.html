@@ -5,23 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Expande Tu Futuro</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js + adaptador de tiempo + velas financieras + zoom -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; min-height: 100vh; }
 .mono { font-family: 'JetBrains Mono', monospace; }
 .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
-.btn-p { padding: 3px 13px; border-radius: 7px; font-size: 12px; font-weight: 600;
+
+.btn-p { padding: 3px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
          color: rgba(255,255,255,0.3); transition: all .15s; cursor: pointer; }
 .btn-p:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.06); }
 .btn-p.active { background: #ff007f; color: #fff; }
-#chartWrap { height: 620px; }
+
+.btn-zoom { padding: 3px 10px; border-radius: 7px; font-size: 11px; font-weight: 600;
+            color: rgba(255,255,255,0.3); cursor: pointer; transition: all .15s;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+.btn-zoom:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+#chartWrap { height: 600px; cursor: grab; }
+#chartWrap:active { cursor: grabbing; }
 
 /* Toasts */
 #toasts { position: fixed; top: 16px; right: 16px; z-index: 1000;
           display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.toast { padding: 11px 15px; border-radius: 11px; font-size: 13px; font-weight: 500;
+.toast { padding: 11px 16px; border-radius: 11px; font-size: 13px; font-weight: 500;
          max-width: 340px; backdrop-filter: blur(14px); pointer-events: auto;
          animation: slideIn .25s ease; line-height: 1.45; }
 .toast.bullish { background: rgba(0,230,118,.12); color: #00e676; border: 1px solid rgba(0,230,118,.25); }
@@ -40,20 +57,10 @@ body { font-family: 'Inter', sans-serif; background: #07070f; color: #e0e0e0; mi
 .fav-row:hover { background: rgba(255,255,255,.04); }
 .fav-row.active-sym { background: rgba(255,0,127,.07); }
 
-/* Toggle favoritos */
-.fav-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between;
-              padding: 0 2px 0 2px; cursor: pointer; background: none; border: none; color: inherit; }
-.fav-toggle:hover .fav-label { color: rgba(255,255,255,.4); }
-.fav-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
-             color: rgba(255,255,255,.2); font-weight: 600; transition: color .15s; }
-.fav-chevron { font-size: 9px; color: rgba(255,255,255,.2); transition: transform .2s; }
-.fav-chevron.open { transform: rotate(0deg); }
-.fav-chevron.closed { transform: rotate(-90deg); }
-#favList { overflow: hidden; transition: max-height .25s ease, opacity .2s ease; }
+#favList { overflow: hidden; transition: max-height .25s ease, opacity .2s ease; max-height: 500px; opacity: 1; }
 
 input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
 </style>
 </head>
@@ -76,7 +83,6 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
       <span class="text-base font-bold tracking-tight">EXPANDE
         <span style="color:#ff007f">TU FUTURO</span></span>
     </div>
-
     <div class="flex items-center gap-2 flex-1 max-w-sm">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
              class="flex-1 bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm transition-all"
@@ -98,7 +104,6 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
         <div id="displaySymbol" class="text-[11px] font-bold tracking-widest mb-1" style="color:#ff007f">---</div>
         <div id="displayPrice" class="mono text-2xl font-semibold leading-tight">---</div>
         <div id="displayChange" class="text-xs mt-1.5 font-medium">--</div>
-
         <div class="mt-3 pt-3 border-t border-white/5">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-[10px] text-white/25 uppercase tracking-wider">RSI 14</span>
@@ -108,70 +113,86 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
                     style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">--</span>
             </div>
           </div>
-          <div class="relative h-1.5 rounded-full overflow-visible"
-               style="background:linear-gradient(to right,#00e67630 0%,#00e67630 30%,rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,#ff174430 70%,#ff174430 100%)">
+          <div class="relative h-1.5 rounded-full"
+               style="background:linear-gradient(to right,#00e67630 0%,#00e67630 30%,rgba(255,255,255,.05) 30%,rgba(255,255,255,.05) 70%,#ff174430 70%,#ff174430 100%)">
             <div id="rsiCur" class="absolute top-1/2 w-2 h-2 rounded-full bg-white shadow"
                  style="left:50%;transform:translate(-50%,-50%);transition:left .4s"></div>
           </div>
         </div>
       </div>
 
-      <!-- Favoritos (colapsable) -->
+      <!-- Favoritos colapsables -->
       <div class="card p-3">
-        <button class="fav-toggle" onclick="toggleFavs()">
-          <span class="fav-label">Favoritos</span>
-          <span id="favChevron" class="fav-chevron open">▼</span>
+        <button onclick="toggleFavs()" class="w-full flex items-center justify-between px-1 cursor-pointer bg-transparent border-0"
+                style="color:inherit">
+          <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold hover:text-white/40 transition-colors">Favoritos</span>
+          <span id="favChevron" class="text-[10px] text-white/20 transition-transform duration-200">▼</span>
         </button>
-        <div id="favList" style="max-height:400px;opacity:1;">
-          <div class="flex flex-col gap-0.5 mt-2" id="favItems"></div>
+        <div id="favList">
+          <div id="favItems" class="flex flex-col gap-0.5 mt-2"></div>
         </div>
       </div>
 
-      <!-- Alertas activas -->
+      <!-- Alertas -->
       <div id="alertBox" class="card p-3 hidden">
-        <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">
-          ⚡ Alertas
-        </div>
-        <div id="alertList" class="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-0.5"></div>
+        <div class="text-[10px] uppercase tracking-widest text-white/20 font-semibold mb-2 px-1">⚡ Alertas</div>
+        <div id="alertList" class="flex flex-col gap-1.5 max-h-64 overflow-y-auto"></div>
       </div>
 
-      <!-- Estado monitoreo -->
+      <!-- Vigilancia -->
       <div class="card p-3">
         <div class="flex items-center justify-between">
           <span class="text-[10px] uppercase tracking-widest text-white/20 font-semibold">Vigilancia</span>
           <div class="flex items-center gap-1.5">
-            <span id="watchDot" class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
-            <span id="watchLabel" class="text-[10px] text-white/20">--</span>
+            <span id="watchDot" class="w-1.5 h-1.5 rounded-full" style="background:rgba(255,255,255,.15)"></span>
+            <span id="watchLabel" class="text-[10px]" style="color:rgba(255,255,255,.2)">--</span>
           </div>
         </div>
-        <p class="text-[10px] text-white/15 mt-1.5 leading-4">
-          Comprueba todos los favoritos cada 5 min y alerta si el precio toca alguna SMA.
+        <p class="text-[10px] mt-1.5 leading-4" style="color:rgba(255,255,255,.12)">
+          Comprueba favoritos cada 5 min. Alerta si precio toca cualquier SMA.
         </p>
       </div>
 
-    </div><!-- end sidebar -->
+    </div>
 
     <!-- CHART -->
     <div class="flex-1 card p-4">
       <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div class="flex gap-0.5 bg-white/5 p-0.5 rounded-xl">
-          <button class="btn-p" data-p="1d"  onclick="setPeriod('1d')">1D</button>
-          <button class="btn-p" data-p="5d"  onclick="setPeriod('5d')">5D</button>
-          <button class="btn-p active" data-p="1mo" onclick="setPeriod('1mo')">1M</button>
-          <button class="btn-p" data-p="6mo" onclick="setPeriod('6mo')">6M</button>
-          <button class="btn-p" data-p="1y"  onclick="setPeriod('1y')">1Y</button>
-          <button class="btn-p" data-p="2y"  onclick="setPeriod('2y')">2Y</button>
+
+        <!-- Intervalos de vela -->
+        <div class="flex flex-col gap-2">
+          <div class="text-[9px] uppercase tracking-widest text-white/20 font-semibold px-1">Intervalo de vela</div>
+          <div class="flex gap-0.5 bg-white/5 p-0.5 rounded-xl">
+            <button class="btn-p active" data-i="1d"  onclick="setInterval_('1d')">1D</button>
+            <button class="btn-p"        data-i="1wk" onclick="setInterval_('1wk')">1S</button>
+            <button class="btn-p"        data-i="1mo" onclick="setInterval_('1mo')">1M</button>
+            <button class="btn-p"        data-i="3mo" onclick="setInterval_('3mo')">3M</button>
+          </div>
         </div>
-        <div class="flex items-center gap-3 flex-wrap" style="font-size:10px;color:rgba(255,255,255,.25)">
-          <span><span style="color:rgba(255,255,255,.65)">─</span> Precio</span>
-          <span><span style="color:#00ffff70">─</span> SMA20</span>
-          <span><span style="color:#ffff0070">─</span> SMA50</span>
-          <span><span style="color:#fff17670">─</span> SMA100</span>
-          <span><span style="color:#ce93d870">─</span> SMA200</span>
-          <span><span style="color:#00ff00">·</span>ST▲ <span style="color:#ff3333">·</span>ST▼</span>
-          <span><span style="color:#ff007f">●</span> RSI</span>
+
+        <!-- Zoom / Pan -->
+        <div class="flex flex-col gap-2 items-end">
+          <div class="text-[9px] uppercase tracking-widest text-white/20 font-semibold px-1">Zoom · Arrastra para mover</div>
+          <div class="flex gap-1">
+            <button class="btn-zoom" onclick="zoomIn()">＋</button>
+            <button class="btn-zoom" onclick="zoomOut()">－</button>
+            <button class="btn-zoom" onclick="resetZoom()">⟳</button>
+          </div>
         </div>
+
       </div>
+
+      <!-- Leyenda -->
+      <div class="flex items-center gap-3 flex-wrap mb-3" style="font-size:10px;color:rgba(255,255,255,.22)">
+        <span>🕯 Velas</span>
+        <span><span style="color:#00ffff70">─</span> SMA20</span>
+        <span><span style="color:#ffff0070">─</span> SMA50</span>
+        <span><span style="color:#fff17670">─</span> SMA100</span>
+        <span><span style="color:#ce93d870">─</span> SMA200</span>
+        <span><span style="color:#00ff00">·</span> ST▲ <span style="color:#ff3333">·</span> ST▼</span>
+        <span><span style="color:#ff007f">●</span> RSI extremo</span>
+      </div>
+
       <div id="chartWrap"><canvas id="mainChart"></canvas></div>
     </div>
 
@@ -180,14 +201,12 @@ input:focus { outline: none; border-color: rgba(255,0,127,.5) !important; }
 
 <script>
 // ── STATE ─────────────────────────────────
-let currentSymbol = 'BTC-USD';
-let currentPeriod = '1mo';
-let mainChart     = null;
-let sparkCharts   = {};
-let favsOpen      = true;
-let watchInterval = null;
-// Guardamos las alertas ya mostradas para no repetir toasts
-let shownAlerts   = new Set();
+let currentSymbol   = 'BTC-USD';
+let currentInterval = '1d';
+let mainChart       = null;
+let sparkCharts     = {};
+let favsOpen        = true;
+let shownAlerts     = new Set();
 
 const FAVS = [
   { name:'Bitcoin',    ticker:'BTC-USD' },
@@ -211,15 +230,9 @@ function toggleFavs() {
   favsOpen = !favsOpen;
   const list    = document.getElementById('favList');
   const chevron = document.getElementById('favChevron');
-  if (favsOpen) {
-    list.style.maxHeight = '400px';
-    list.style.opacity   = '1';
-    chevron.classList.replace('closed','open');
-  } else {
-    list.style.maxHeight = '0';
-    list.style.opacity   = '0';
-    chevron.classList.replace('open','closed');
-  }
+  list.style.maxHeight = favsOpen ? '500px' : '0';
+  list.style.opacity   = favsOpen ? '1'     : '0';
+  chevron.style.transform = favsOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 
 // ── FAVORITOS ─────────────────────────────
@@ -232,8 +245,8 @@ function buildFavs() {
     const id  = favId(f.ticker);
     const row = document.createElement('div');
     row.className = 'fav-row';
-    row.id = 'fav-' + id;
-    row.onclick = () => loadSymbol(f.ticker);
+    row.id        = 'fav-' + id;
+    row.onclick   = () => loadSymbol(f.ticker);
     row.innerHTML = `
       <div class="min-w-0">
         <div class="text-xs font-semibold truncate">${f.name}</div>
@@ -276,10 +289,10 @@ async function loadSparkline(ticker) {
   } catch(e) {}
 }
 
-// ── VIGILANCIA AUTOMÁTICA ─────────────────
+// ── VIGILANCIA ────────────────────────────
 function startWatcher() {
-  checkAllFavs(); // primera comprobación inmediata
-  watchInterval = setInterval(checkAllFavs, 5 * 60 * 1000); // cada 5 min
+  checkAllFavs();
+  setInterval(checkAllFavs, 5 * 60 * 1000);
 }
 
 async function checkAllFavs() {
@@ -287,57 +300,98 @@ async function checkAllFavs() {
   try {
     const res  = await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
     const data = await res.json();
-    if (!data.alertas || data.alertas.length === 0) {
-      setWatchStatus('ok');
-      return;
-    }
-    setWatchStatus('alert');
-    // Solo mostrar toasts nuevos
-    data.alertas.forEach(a => {
+    setWatchStatus(data.alertas && data.alertas.length > 0 ? 'alert' : 'ok');
+    (data.alertas || []).forEach(a => {
       if (!shownAlerts.has(a.msg)) {
         shownAlerts.add(a.msg);
         showToast(a.msg, a.nivel);
-        // Limpiar cache de alertas pasadas las 2h para que no se acumule
         setTimeout(() => shownAlerts.delete(a.msg), 2 * 60 * 60 * 1000);
       }
     });
-    // Actualizar panel de alertas si estamos en un fav afectado
-    renderAlertas(data.alertas.filter(a => a.msg.includes(`[${currentSymbol}]`) || !a.msg.includes('[')));
-  } catch(e) {
-    setWatchStatus('err');
-  }
+  } catch(e) { setWatchStatus('err'); }
 }
 
 function setWatchStatus(state) {
   const dot   = document.getElementById('watchDot');
   const label = document.getElementById('watchLabel');
-  const map   = {
-    ok:    ['#00e676', 'Activa'],
-    alert: ['#ff007f', '¡Alerta!'],
-    err:   ['#555',    'Error'],
-  };
-  const [color, text] = map[state] || map.ok;
-  dot.style.background  = color;
-  label.style.color     = color;
-  label.innerText       = text;
+  const m = { ok:['#00e676','Activa'], alert:['#ff007f','¡Alerta!'], err:['#555','Error'] };
+  const [c, t] = m[state] || m.ok;
+  dot.style.background = c; label.style.color = c; label.innerText = t;
 }
 
-// ── FETCH CHART ───────────────────────────
-async function fetchData(symbol, period) {
-  const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?period=${period}`);
+// ── FETCH ─────────────────────────────────
+async function fetchData(symbol, interval) {
+  const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?interval=${interval}`);
   const d   = await res.json();
   if (d.error) throw new Error(d.error);
   return d;
 }
 
-// ── RENDER ────────────────────────────────
+// ── RENDER CANDLESTICK ────────────────────
 function renderChart(data) {
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (mainChart) mainChart.destroy();
 
-  mainChart = new Chart(ctx, {
+  const cd = data.chart;
+
+  // Función para convertir [{x,y}] a dataset de scatter
+  const scatterDS = (pts, color, radius, label) => ({
+    type: 'scatter',
+    label,
+    data: pts,
+    backgroundColor: color,
+    borderColor: 'transparent',
+    pointRadius: radius,
+    pointHoverRadius: radius + 3,
+    showLine: false,
+  });
+
+  const lineDS = (pts, color, width, label, dash=[]) => ({
     type: 'line',
-    data: { labels: data.chart.labels, datasets: data.chart.datasets },
+    label,
+    data: pts,
+    borderColor: color,
+    backgroundColor: 'transparent',
+    borderWidth: width,
+    borderDash: dash,
+    fill: false,
+    tension: 0.1,
+    pointRadius: 0,
+    parsing: false,
+  });
+
+  const datasets = [
+    // Velas OHLC
+    {
+      type: 'candlestick',
+      label: 'Precio',
+      data: cd.candles,
+      color: {
+        up:   '#26a69a',
+        down: '#ef5350',
+        unchanged: '#999',
+      },
+      borderColor: {
+        up:   '#26a69a',
+        down: '#ef5350',
+        unchanged: '#999',
+      },
+    },
+    // SMAs
+    lineDS(cd.sma20,  '#00ffff', 1,   'SMA 20'),
+    lineDS(cd.sma50,  '#ffff00', 1.5, 'SMA 50'),
+    lineDS(cd.sma100, '#fff176', 2,   'SMA 100'),
+    lineDS(cd.sma200, '#ce93d8', 3,   'SMA 200'),
+    // Supertrend
+    scatterDS(cd.st_buy,  '#00ff00', 2.5, 'ST ▲'),
+    scatterDS(cd.st_sell, '#ff3333', 2.5, 'ST ▼'),
+    // RSI señales
+    scatterDS(cd.rsi_os, '#ff007f', 6, 'RSI <30'),
+    scatterDS(cd.rsi_ob, '#ff007f', 6, 'RSI >70'),
+  ];
+
+  mainChart = new Chart(ctx, {
+    data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -354,31 +408,48 @@ function renderChart(data) {
           padding: 10,
           callbacks: {
             label: ctx => {
-              if (ctx.parsed.y === null || ctx.parsed.y === undefined) return null;
-              const v = ctx.parsed.y;
-              return ` ${ctx.dataset.label}: ${v >= 1000
-                ? v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
-                : v.toFixed(4)}`;
+              const r = ctx.raw;
+              if (!r) return null;
+              // Vela OHLC
+              if (r.o !== undefined) {
+                return [
+                  ` O: ${r.o?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+                  ` H: ${r.h?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+                  ` L: ${r.l?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+                  ` C: ${r.c?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+                ];
+              }
+              if (r.y != null) {
+                return ` ${ctx.dataset.label}: ${r.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+              }
+              return null;
             }
           }
+        },
+        // Plugin zoom: rueda = zoom, arrastrar = pan
+        zoom: {
+          pan:  { enabled: true,  mode: 'x', speed: 10 },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
         }
       },
       scales: {
+        x: {
+          type: 'time',
+          time: { displayFormats: { day:'dd MMM', week:'dd MMM', month:'MMM yy', quarter:'MMM yy' } },
+          grid: { display: false },
+          ticks: { color: 'rgba(255,255,255,.22)', font: { size: 10 }, maxTicksLimit: 10 }
+        },
         y: {
-          display: true, position: 'left',
+          display: true, position: 'right',
           grid: { color: 'rgba(255,255,255,.03)', drawBorder: false },
           ticks: { color: 'rgba(255,255,255,.28)', font: { size: 10 },
                    callback: v => v >= 1000 ? v.toLocaleString() : v.toFixed(2) }
-        },
-        x: {
-          grid: { display: false },
-          ticks: { color: 'rgba(255,255,255,.22)', font: { size: 10 }, maxTicksLimit: 10 }
         }
       }
     }
   });
 
-  // Panel precio
+  // Panel lateral
   document.getElementById('displaySymbol').innerText = currentSymbol;
   document.getElementById('displayPrice').innerText  =
     data.last_price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -392,6 +463,12 @@ function renderChart(data) {
   renderAlertas(data.alertas || []);
 }
 
+// ── ZOOM CONTROLS ─────────────────────────
+function zoomIn()    { if(mainChart) mainChart.zoom(1.2); }
+function zoomOut()   { if(mainChart) mainChart.zoom(0.8); }
+function resetZoom() { if(mainChart) mainChart.resetZoom(); }
+
+// ── RSI WIDGET ────────────────────────────
 function updateRSI(v) {
   v = parseFloat(v);
   document.getElementById('rsiVal').innerText = v.toFixed(1);
@@ -399,33 +476,34 @@ function updateRSI(v) {
   const lbl = document.getElementById('rsiLbl');
   const val = document.getElementById('rsiVal');
   if (v < 30) {
-    lbl.innerText = 'SV'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700;';
-    val.style.color = '#00e676';
+    lbl.innerText='SV'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700;';
+    val.style.color='#00e676';
   } else if (v > 70) {
-    lbl.innerText = 'SC'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700;';
-    val.style.color = '#ff5252';
+    lbl.innerText='SC'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700;';
+    val.style.color='#ff5252';
   } else {
-    lbl.innerText = 'N';  lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
-    val.style.color = '#fff';
+    lbl.innerText='N'; lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700;';
+    val.style.color='#fff';
   }
 }
 
+// ── ALERTAS ───────────────────────────────
 function renderAlertas(alertas) {
   const box  = document.getElementById('alertBox');
   const list = document.getElementById('alertList');
-  if (!alertas || alertas.length === 0) { box.classList.add('hidden'); return; }
+  if (!alertas.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   list.innerHTML = alertas.map(a =>
     `<div class="alerta-item ${a.nivel}">${a.msg}</div>`).join('');
 }
 
-function showToast(msg, nivel, duration=7000) {
+function showToast(msg, nivel, ms=7000) {
   const c = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = `toast ${nivel}`;
   t.innerText = msg;
   c.appendChild(t);
-  setTimeout(() => t.remove(), duration);
+  setTimeout(() => t.remove(), ms);
 }
 
 // ── CONTROL ───────────────────────────────
@@ -436,7 +514,7 @@ async function loadSymbol(sym) {
   const el = document.getElementById('fav-' + favId(sym));
   if (el) el.classList.add('active-sym');
   try {
-    const data = await fetchData(sym, currentPeriod);
+    const data = await fetchData(sym, currentInterval);
     renderChart(data);
   } catch(e) {
     showToast('❌ ' + e.message, 'bearish');
@@ -448,9 +526,9 @@ function doSearch() {
   if (sym) loadSymbol(sym);
 }
 
-function setPeriod(p) {
-  currentPeriod = p;
-  document.querySelectorAll('.btn-p').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+function setInterval_(i) {
+  currentInterval = i;
+  document.querySelectorAll('.btn-p').forEach(b => b.classList.toggle('active', b.dataset.i === i));
   loadSymbol(currentSymbol);
 }
 </script>
