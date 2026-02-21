@@ -63,7 +63,7 @@ def calcular_indicadores(df):
 # ALERTAS AUTOMÁTICAS
 # ─────────────────────────────────────────────
 
-def detectar_alertas(df, medias: list):
+def detectar_alertas(df, gemas: list):
     alertas = []
     n = len(df) - 1
     if n < 2:
@@ -119,8 +119,8 @@ def detectar_alertas(df, medias: list):
         elif s20_p > s50_p and s20_n <= s50_n:
             alertas.append({"nivel": "bearish", "msg": "🟠 Cruce bajista — SMA20 bajo SMA50"})
 
-    # ── Niveles de precio personalizados (medias) ──────────
-    for g in medias:
+    # ── Niveles de precio personalizados (gemas) ──────────
+    for g in gemas:
         pct = abs(precio_actual - g) / g * 100
         if pct <= 1.0:
             alertas.append({
@@ -233,17 +233,17 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
             ]
         }
 
-        # medias (niveles manuales)
-        Medias = []
+        # Gemas (niveles manuales)
+        gemas = []
         if niveles:
             for n in niveles.split(","):
                 try:
-                    medias.append(float(n.strip()))
+                    gemas.append(float(n.strip()))
                 except Exception:
                     pass
 
         # Alertas sobre el dataset completo (último día disponible)
-        alertas = detectar_alertas(df_full, medias)
+        alertas = detectar_alertas(df_full, gemas)
 
         last  = float(df["Close"].iloc[-1])
         first = float(df["Close"].iloc[0])
@@ -256,7 +256,7 @@ async def get_chart(ticker: str, period: str = "1mo", niveles: str = ""):
             "change_pct":  (last - first) / first * 100,
             "rsi_current": rsi_c,
             "alertas":     alertas,
-            "medias":       medias,
+            "gemas":       gemas,
         }
 
     except Exception as e:
