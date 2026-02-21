@@ -241,10 +241,10 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
         <button class="btn-ind" id="tog-sma200"
           style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"
           onclick="toggleInd('sma200')">SMA200</button>
-        <button class="btn-ind" id="tog-st"
+        <button class="btn-ind off" id="tog-st"
           style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"
           onclick="toggleInd('st')">SuperT</button>
-        <button class="btn-ind" id="tog-rsi"
+        <button class="btn-ind off" id="tog-rsi"
           style="background:rgba(255,0,127,.1);color:#ff69b4;border-color:rgba(255,0,127,.3)"
           onclick="toggleInd('rsi')">RSI</button>
         <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
@@ -359,7 +359,7 @@ const ALL_ASSETS = [
 // ═══════════════════════════════════════════════════════════
 let currentSymbol = 'BTC-USD';
 let favsOpen      = false;
-let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
+let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:false,rsi:false};
 let lastData      = null;
 let watchlist     = new Set();
 let alertsByTicker = {};   // { ticker: [{msg,nivel,ts},...] } — últimos 7 días
@@ -564,9 +564,13 @@ function renderWatchPanel(){
       </div>`;
     alerts.slice().reverse().forEach(a=>{
       const rel=relTime(a.ts);
+      const dateStr = new Date(a.ts).toLocaleDateString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
       html+=`<div class="w-alerta ${a.nivel}" onclick="loadSymbol('${ticker}')">
         <span class="w-ticker">${ticker}</span>${a.msg.replace(/^\[[^\]]+\]\s*/,'')}
-        <span style="float:right;font-size:9px;opacity:.5;margin-left:4px">${rel}</span>
+        <div style="font-size:8px;opacity:.5;margin-top:2px;display:flex;justify-content:space-between">
+          <span>${dateStr}</span>
+          <span>${rel}</span>
+        </div>
       </div>`;
     });
     html+='</div>';
@@ -697,7 +701,20 @@ function renderPlotly(apiData){
     dragmode:'pan',font:{family:'Inter,sans-serif'}
   };
 
-  Plotly.react('plotDiv',traces,layout,
+    // Si ya existe el gráfico, intentar mantener el rango actual de X
+    const div = document.getElementById('plotDiv');
+    if(div && div.layout && div.layout.xaxis && div.layout.xaxis.range) {
+      layout.xaxis.range = div.layout.xaxis.range;
+    } else {
+      // Por defecto, mostrar las últimas 2 semanas
+      const lastDate = dates[dates.length - 1];
+      if(lastDate) {
+        const twoWeeksAgo = new Date(lastDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+        layout.xaxis.range = [twoWeeksAgo.toISOString(), lastDate.toISOString()];
+      }
+    }
+
+    Plotly.react('plotDiv',traces,layout,
     {responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
 
   // ── RSI panel ──
@@ -748,6 +765,17 @@ function renderRSIPanel(cd,dates){
 function toggleInd(key){
   indVisible[key]=!indVisible[key];
   document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
+  
+  // Actualizar visualización de botones
+  const btn = document.getElementById('tog-'+key);
+  if(btn) {
+    if(indVisible[key]) {
+      btn.classList.remove('off');
+    } else {
+      btn.classList.add('off');
+    }
+  }
+
   if(lastData) renderPlotly(lastData);
 }
 
