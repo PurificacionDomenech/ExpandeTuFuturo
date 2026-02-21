@@ -37,19 +37,19 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 /* ── MAIN LAYOUT: mobile=col, desktop=row ── */
 #main{display:flex;flex-direction:column;gap:10px;width:100%}
 @media(min-width:900px){
-  #main{flex-direction:row;align-items:flex-start}
-  #sidebar{width:170px;flex-shrink:0}
-  #chart-card{flex:1;min-width:0}
+  #main{display:grid;grid-template-columns:170px 1fr;align-items:flex-start}
+  #sidebar{width:170px}
+  #chart-card{width:100%;min-width:0}
 }
 
 /* ── SIDEBAR ── */
 #sidebar{display:flex;flex-direction:column;gap:8px;width:100%}
 
 /* Precio widget */
-#price-widget{padding:13px}
-#dispSym{font-size:10px;font-weight:800;letter-spacing:.12em;color:#ff007f;margin-bottom:2px}
-#dispPrice{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
-#dispChange{font-size:11px;margin-top:4px;font-weight:600}
+#price-widget{padding:10px}
+#dispSym{font-size:9px;font-weight:800;letter-spacing:.1em;color:#ff007f;margin-bottom:1px}
+#dispPrice{font-size:18px;font-weight:700;line-height:1.1;color:#fff}
+#dispChange{font-size:10px;margin-top:2px;font-weight:600}
 #rsiRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #rsiBar{height:5px;border-radius:3px;position:relative;margin-top:5px;
   background:linear-gradient(to right,
@@ -83,8 +83,8 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .alerta-item.info{background:rgba(255,0,127,.07);color:#ff69b4}
 
 /* ── CHART CARD ── */
-#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;justify-content:center;align-items:center;width:100%}
-#chartArea{width:100%;max-width:1400px;margin:0 auto}
+#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;width:100%}
+#chartArea{width:100%;margin:0 auto}
 
 /* Controles barra: indicadores */
 #ind-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -247,9 +247,13 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
         <button class="btn-ind" id="tog-rsi"
           style="background:rgba(255,0,127,.1);color:#ff69b4;border-color:rgba(255,0,127,.3)"
           onclick="toggleInd('rsi')">RSI</button>
-        <span style="font-size:9px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">
-          Arrastra · rueda zoom · doble clic reset
-        </span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <button class="btn-ind" onclick="zoomChart(1.2)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">+</button>
+          <button class="btn-ind" onclick="zoomChart(0.8)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">-</button>
+          <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap;margin-left:4px">
+            Doble clic reset
+          </span>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -631,8 +635,8 @@ function renderPlotly(apiData){
   traces.push({
     x:dates, y:closes,
     type:'scatter', mode:'lines', name:'Precio',
-    line:{color:'rgba(255,255,255,.92)',width:2,shape:'linear'},
-    fill:'tozeroy', fillcolor:'rgba(255,255,255,.06)',
+    line:{color:'rgba(255,255,255,1)',width:1,shape:'linear'},
+    fill:'tozeroy', fillcolor:'rgba(255,255,255,.03)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>',
   });
 
@@ -676,7 +680,7 @@ function renderPlotly(apiData){
   }
 
   const layout={
-    paper_bgcolor:BG, plot_bgcolor:BG,
+    paper_bgcolor:BG, plot_bgcolor:'#0a0a12',
     margin:{t:12,r:60,b:50,l:50},
     hovermode:'x unified',
     hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',
@@ -745,6 +749,25 @@ function toggleInd(key){
   indVisible[key]=!indVisible[key];
   document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
   if(lastData) renderPlotly(lastData);
+}
+
+function zoomChart(factor){
+  const div = document.getElementById('plotDiv');
+  if(!div || !div.layout || !div.layout.xaxis) return;
+  const xRange = div.layout.xaxis.range;
+  if(!xRange || xRange.length < 2) return;
+  
+  const start = new Date(xRange[0]).getTime();
+  const end = new Date(xRange[1]).getTime();
+  const center = (start + end) / 2;
+  const newHalfWidth = ((end - start) / 2) / factor;
+  
+  const newRange = [
+    new Date(center - newHalfWidth).toISOString(),
+    new Date(center + newHalfWidth).toISOString()
+  ];
+  
+  Plotly.relayout('plotDiv', { 'xaxis.range': newRange });
 }
 
 // ═══════════════════════════════════════════════════════════
