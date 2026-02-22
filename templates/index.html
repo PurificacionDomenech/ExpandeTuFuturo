@@ -37,19 +37,19 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 /* ── MAIN LAYOUT: mobile=col, desktop=row ── */
 #main{display:flex;flex-direction:column;gap:10px;width:100%}
 @media(min-width:900px){
-  #main{display:grid;grid-template-columns:170px 1fr;align-items:flex-start}
-  #sidebar{width:170px}
-  #chart-card{width:100%;min-width:0}
+  #main{flex-direction:row;align-items:flex-start}
+  #sidebar{width:170px;flex-shrink:0}
+  #chart-card{flex:1;min-width:0}
 }
 
 /* ── SIDEBAR ── */
 #sidebar{display:flex;flex-direction:column;gap:8px;width:100%}
 
 /* Precio widget */
-#price-widget{padding:10px}
-#dispSym{font-size:9px;font-weight:800;letter-spacing:.1em;color:#ff007f;margin-bottom:1px}
-#dispPrice{font-size:18px;font-weight:700;line-height:1.1;color:#fff}
-#dispChange{font-size:10px;margin-top:2px;font-weight:600}
+#price-widget{padding:13px}
+#dispSym{font-size:10px;font-weight:800;letter-spacing:.12em;color:#ff007f;margin-bottom:2px}
+#dispPrice{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
+#dispChange{font-size:11px;margin-top:4px;font-weight:600}
 #rsiRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #rsiBar{height:5px;border-radius:3px;position:relative;margin-top:5px;
   background:linear-gradient(to right,
@@ -83,8 +83,7 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .alerta-item.info{background:rgba(255,0,127,.07);color:#ff69b4}
 
 /* ── CHART CARD ── */
-#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;width:100%}
-#chartArea{width:100%;margin:0 auto}
+#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px}
 
 /* Controles barra: indicadores */
 #ind-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -94,12 +93,12 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .btn-ind.off{opacity:.25;filter:grayscale(.7)}
 
 /* Chart containers — altura dinámica */
-#plotDiv{width:100%;height:min(120vw,600px)}
+#plotDiv{width:100%;height:min(60vw,420px)}
 #rsiWrap{display:block}
-#rsiDiv{width:100%;height:min(30vw,150px)}
+#rsiDiv{width:100%;height:min(20vw,100px)}
 @media(min-width:900px){
-  #plotDiv{height:750px}
-  #rsiDiv{height:180px}
+  #plotDiv{height:420px}
+  #rsiDiv{height:100px}
 }
 
 /* Loading — overlay sobre el gráfico */
@@ -118,36 +117,15 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
 .acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
 .acc-body.open{max-height:5000px;opacity:1}
-#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
-    gap:10px;margin-top:12px}
-	
-	/* Scanner Table */
-	.scanner-row {
-	  border-bottom: 1px solid rgba(255,255,255,0.05);
-	  transition: background 0.2s;
-	  cursor: pointer;
-	}
-	.scanner-row:hover {
-	  background: rgba(255,255,255,0.03);
-	}
-	.scanner-row.active-sym {
-	  background: rgba(255,0,127,0.05);
-	  border-left: 2px solid #ff007f;
-	}
-	.sma-tag {
-	  padding: 1px 4px;
-	  border-radius: 3px;
-	  color: #fff;
-	}
-	.signal-tag {
-	  padding: 2px 6px;
-	  border-radius: 4px;
-	  font-size: 9px;
-	  font-weight: 800;
-	}
-	.signal-optimo { background: rgba(0,230,118,0.2); color: #00e676; }
-	.signal-interesante { background: rgba(255,200,100,0.2); color: #ffc864; }
-	.signal-evitar { background: rgba(255,68,68,0.2); color: #ff5252; }
+#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+  gap:7px;margin-top:10px}
+
+/* Tarjeta de activo */
+.fav-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;
+  min-width:0;position:relative}
+.fav-card:hover{background:rgba(255,255,255,.04);border-color:rgba(255,0,127,.25)}
+.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.07)}
 .fav-star{position:absolute;top:5px;right:6px;font-size:11px;cursor:pointer;
   user-select:none;transition:transform .15s;line-height:1;z-index:2}
 .fav-star.watching{color:#ff007f;text-shadow:0 0 8px rgba(255,0,127,.6)}
@@ -168,6 +146,9 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .toast.info{background:rgba(255,0,127,.13);color:#ff69b4;border:1px solid rgba(255,0,127,.25)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 
+.sma-pill{font-size:11px;font-weight:700;color:rgba(255,255,255,.25)}
+.asset-row.active-sym td:first-child{border-left:3px solid #ff007f}
+.asset-row.active-sym{background:rgba(255,0,127,.04)!important}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 </style>
@@ -262,19 +243,15 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
         <button class="btn-ind" id="tog-sma200"
           style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"
           onclick="toggleInd('sma200')">SMA200</button>
-        <button class="btn-ind off" id="tog-st"
+        <button class="btn-ind" id="tog-st"
           style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"
           onclick="toggleInd('st')">SuperT</button>
-        <button class="btn-ind off" id="tog-rsi"
+        <button class="btn-ind" id="tog-rsi"
           style="background:rgba(255,0,127,.1);color:#ff69b4;border-color:rgba(255,0,127,.3)"
           onclick="toggleInd('rsi')">RSI</button>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
-          <button class="btn-ind" onclick="zoomChart(1.2)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">+</button>
-          <button class="btn-ind" onclick="zoomChart(0.8)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">-</button>
-          <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap;margin-left:4px">
-            Doble clic reset
-          </span>
-        </div>
+        <span style="font-size:9px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">
+          Arrastra · rueda zoom · doble clic reset
+        </span>
       </div>
 
       <!-- Loading -->
@@ -304,34 +281,58 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 
   </div><!-- /main -->
 
-  <!-- FAVORITOS / TODOS LOS ACTIVOS -->
-  <div class="card" id="favs-panel">
-    <button id="favs-hdr" onclick="toggleFavs()">
-      <div style="display:flex;align-items:center;gap:7px">
+  <!-- TABLA DE ACTIVOS -->
+  <div class="card" id="favs-panel" style="overflow:hidden">
+    <button id="favs-hdr" onclick="toggleFavs()" style="width:100%;display:flex;align-items:center;
+      justify-content:space-between;background:none;border:none;cursor:pointer;color:inherit;
+      font-family:inherit;padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:8px">
         <span style="color:#ff007f;font-size:14px">★</span>
         <span style="font-size:13px;font-weight:700">Todos los activos</span>
         <span id="favCount" style="font-size:10px;color:rgba(255,255,255,.25)"></span>
         <span id="watchingCount" style="font-size:10px;color:#ff007f;font-weight:700"></span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:10px;color:rgba(255,255,255,.18)">★ = añadir vigilancia</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.18)">★ vigilancia · clic fila = gráfico</span>
         <span id="favChevron" style="color:rgba(255,255,255,.3);font-size:11px;
           transition:transform .3s;display:inline-block;transform:rotate(-90deg)">▼</span>
       </div>
     </button>
     <div id="favBody" class="acc-body closed">
-      <div style="overflow-x:auto; margin-top:12px;">
-        <table id="scannerTable" style="width:100%; border-collapse:collapse; font-size:11px; color:#e0e0e0;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table id="assetsTable" style="width:100%;border-collapse:collapse;min-width:700px">
           <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em;">
-              <th style="padding:8px 10px;">Activo</th>
-              <th style="padding:8px 10px;">Precio</th>
-              <th style="padding:8px 10px;">Cambio %</th>
-              <th style="padding:8px 10px;">RSI (14)</th>
-              <th style="padding:8px 10px;">SMAs (20/50/100/200)</th>
-              <th style="padding:8px 10px;">Cruce 100/200</th>
-              <th style="padding:8px 10px;">Señal</th>
-              <th style="padding:8px 10px; text-align:right;">Tendencia</th>
+            <tr style="border-bottom:1px solid rgba(255,255,255,.07)">
+              <th style="padding:8px 10px 8px 16px;text-align:left;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                ★ Activo</th>
+              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                Precio</th>
+              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                Cambio %</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                RSI 14</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                SMA20</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                SMA50</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                SMA100</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                SMA200</th>
+              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                Cruce 100/200</th>
+              <th style="padding:8px 16px 8px 10px;text-align:center;font-size:10px;font-weight:700;
+                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
+                Tendencia</th>
             </tr>
           </thead>
           <tbody id="favItems"></tbody>
@@ -396,7 +397,7 @@ const ALL_ASSETS = [
 // ═══════════════════════════════════════════════════════════
 let currentSymbol = 'BTC-USD';
 let favsOpen      = false;
-let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:false,rsi:false};
+let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
 let lastData      = null;
 let watchlist     = new Set();
 let alertsByTicker = {};   // { ticker: [{msg,nivel,ts},...] } — últimos 7 días
@@ -408,66 +409,75 @@ function loadWL(){ try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
-	window.onload = () => {
-	  loadWL();
-    try {
-      const savedAlerts = localStorage.getItem('etf_alerts');
-      if(savedAlerts) alertsByTicker = JSON.parse(savedAlerts);
-    } catch(e) {}
-	  document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
-	  buildFavGrid();
-	  updateWatchingCount();
-	  loadSymbol('BTC-USD');
-	  startWatcher();
-	};
+window.onload = () => {
+  loadWL();
+  document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
+  buildFavGrid();
+  updateWatchingCount();
+  loadSymbol('BTC-USD');
+  startWatcher();
+};
 
 // ═══════════════════════════════════════════════════════════
 // GRID DE ACTIVOS
 // ═══════════════════════════════════════════════════════════
 function favId(t){ return 'f_'+t.replace(/[^a-z0-9]/gi,'_'); }
 
-	function buildFavGrid(){
-	  const c = document.getElementById('favItems');
-	  c.innerHTML = '';
-	  ALL_ASSETS.forEach(f => {
-	    const id  = favId(f.ticker);
-	    const isW = watchlist.has(f.ticker);
-	    const tr = document.createElement('tr');
-	    tr.className = 'scanner-row';
-	    tr.id = 'fc-'+id;
-	    tr.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
-	    tr.innerHTML = `
-        <td style="padding:10px; white-space:nowrap;">
+function buildFavGrid(){
+  const tbody = document.getElementById('favItems');
+  tbody.innerHTML = '';
+  ALL_ASSETS.forEach(f => {
+    const id  = favId(f.ticker);
+    const isW = watchlist.has(f.ticker);
+    const tr  = document.createElement('tr');
+    tr.id = 'fc-'+id;
+    tr.className = 'asset-row';
+    tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s';
+    tr.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
+    tr.onmouseenter = () => tr.style.background = 'rgba(255,255,255,.03)';
+    tr.onmouseleave = () => tr.style.background = '';
+    tr.innerHTML = `
+      <td style="padding:9px 10px 9px 16px;white-space:nowrap">
+        <div style="display:flex;align-items:center;gap:7px">
           <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}"
-            title="${isW?'Quitar vigilancia':'Añadir vigilancia'}"
-            onclick="toggleWatch('${f.ticker}',event)" style="position:static; margin-right:8px; font-size:14px;">★</span>
-          <span style="font-weight:800; color:#fff;">${f.ticker}</span>
-          <div style="font-size:9px; color:rgba(255,255,255,0.3);">${f.name}</div>
-        </td>
-        <td id="price-${id}" class="mono" style="padding:10px; font-weight:700; color:#ff007f;">---</td>
-        <td id="pct-${id}" class="mono" style="padding:10px; font-weight:800; color:rgba(255,255,255,0.2);">--%</td>
-        <td id="rsi-col-${id}" style="padding:10px;">
-          <span id="rsi-val-${id}" class="mono" style="font-weight:700;">--</span>
-          <div id="rsi-lbl-${id}" style="font-size:8px; opacity:0.5; text-transform:uppercase;">--</div>
-        </td>
-        <td id="sma-col-${id}" style="padding:10px;">
-          <div style="display:flex; gap:4px; font-size:8px; font-weight:700;">
-            <span id="sma20-${id}" title="SMA20">20</span>
-            <span id="sma50-${id}" title="SMA50">50</span>
-            <span id="sma100-${id}" title="SMA100">100</span>
-            <span id="sma200-${id}" title="SMA200">200</span>
+            onclick="toggleWatch('${f.ticker}',event)">★</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.3)">${f.cat} ${f.name}</div>
           </div>
-        </td>
-        <td id="cross-${id}" style="padding:10px; font-size:9px; font-weight:700;">--</td>
-        <td id="signal-${id}" style="padding:10px;">
-          <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:800; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.2);">ESPERANDO</span>
-        </td>
-        <td style="padding:10px; text-align:right; width:100px;">
-          <canvas id="spark-${id}" style="width:100px; height:24px; display:inline-block;"></canvas>
-        </td>`;
-	    c.appendChild(tr);
-	  });
-	}
+        </div>
+      </td>
+      <td style="padding:9px 10px;text-align:right;font-family:'JetBrains Mono',monospace">
+        <span id="tp-${id}" style="font-size:12px;font-weight:600;color:#fff">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:right">
+        <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;
+          border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="ts20-${id}" class="sma-pill">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="ts50-${id}" class="sma-pill">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="ts100-${id}" class="sma-pill">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="ts200-${id}" class="sma-pill">—</span>
+      </td>
+      <td style="padding:9px 10px;text-align:center">
+        <span id="tcr-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
+      </td>
+      <td style="padding:9px 16px 9px 10px;text-align:center">
+        <span id="tst-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
 
 function refreshStars(){
   ALL_ASSETS.forEach(f => {
@@ -497,81 +507,86 @@ function updateWatchingCount(){
   document.getElementById('watchCount').innerText    = n>0 ? `${n} activo${n>1?'s':''} en vigilancia` : '';
 }
 
-async function loadSparkline(ticker){
+async function loadRowData(ticker){
   try {
-    const r = await fetch(`/api/sparkline/${ticker}`);
+    const r = await fetch(`/api/row/${encodeURIComponent(ticker)}`);
     const d = await r.json();
-    if(!d.closes||d.closes.length<2)return;
-    const id  = favId(ticker);
-    
-    // 1. Sparkline
-    const cvs = document.getElementById(`spark-${id}`);
-    if(cvs){
-      const dpr = window.devicePixelRatio||1;
-      const W = 100, H=24;
-      cvs.width=W*dpr; cvs.height=H*dpr;
-      const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
-      const mn=Math.min(...d.closes),mx=Math.max(...d.closes),rng=mx-mn||1;
-      const up=d.pct>=0, col=up?'#00e676':'#ff4444';
-      const pts=d.closes.map((v,i)=>({x:i/(d.closes.length-1)*W, y:H-2-(v-mn)/rng*(H-6)}));
-      const gr=ctx.createLinearGradient(0,0,0,H);
-      gr.addColorStop(0,up?'rgba(0,230,118,.2)':'rgba(255,68,68,.2)');
-      gr.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
-      ctx.fillStyle=gr; ctx.fill();
-      ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-      ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
-      
-      // 2. Precio y Cambio
-      const pEl=document.getElementById(`pct-${id}`);
-      if(pEl){ pEl.style.color=col; pEl.innerText=`${up?'+':''}${d.pct.toFixed(2)}%`; pEl.style.opacity="1"; }
-      const prEl=document.getElementById(`price-${id}`);
-      if(prEl){ prEl.innerText = d.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); prEl.style.color = col; }
+    if(d.error) return;
+    const id = favId(ticker);
+
+    // Precio
+    const priceEl = document.getElementById(`tp-${id}`);
+    if(priceEl) priceEl.innerText = d.price > 100
+      ? d.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+      : d.price.toFixed(4);
+
+    // Cambio %
+    const chEl = document.getElementById(`tc-${id}`);
+    if(chEl){
+      const up = d.change_pct >= 0;
+      chEl.innerText = `${up?'+':''}${d.change_pct.toFixed(2)}%`;
+      chEl.style.color = up ? '#00e676' : '#ff4444';
     }
 
-    // 3. RSI
-    const rsiVal = document.getElementById(`rsi-val-${id}`);
-    const rsiLbl = document.getElementById(`rsi-lbl-${id}`);
-    if(rsiVal && d.rsi){
-      rsiVal.innerText = d.rsi.toFixed(1);
-      if(d.rsi > 70){ rsiVal.style.color="#ff007f"; rsiLbl.innerText="Sobrecompra"; rsiLbl.style.color="#ff007f"; }
-      else if(d.rsi < 30){ rsiVal.style.color="#00e676"; rsiLbl.innerText="Sobreventa"; rsiLbl.style.color="#00e676"; }
-      else { rsiVal.style.color="#fff"; rsiLbl.innerText="Neutral"; rsiLbl.style.color="rgba(255,255,255,0.3)"; }
+    // RSI
+    const rsiEl = document.getElementById(`tr-${id}`);
+    if(rsiEl){
+      const v = d.rsi;
+      rsiEl.innerText = isNaN(v) ? '—' : v.toFixed(1);
+      if(v < 30){ rsiEl.style.background='rgba(0,230,118,.15)'; rsiEl.style.color='#00e676'; }
+      else if(v > 70){ rsiEl.style.background='rgba(255,68,68,.15)'; rsiEl.style.color='#ff5252'; }
+      else{ rsiEl.style.background='rgba(255,255,255,.06)'; rsiEl.style.color='rgba(255,255,255,.5)'; }
     }
 
-    // 4. SMAs Proximidad
-    const smas = {sma20:d.sma20, sma50:d.sma50, sma100:d.sma100, sma200:d.sma200};
-    let nearSMA = false;
-    for(let key in smas){
-      const el = document.getElementById(`${key}-${id}`);
-      if(el && smas[key]){
-        const dist = Math.abs(d.price - smas[key]) / smas[key];
-        if(dist < 0.005){ el.style.color="#ff007f"; el.style.textDecoration="underline"; nearSMA=true; }
-        else if(d.price > smas[key]){ el.style.color="#00e676"; }
-        else { el.style.color="#ff4444"; }
-      }
+    // SMAs — muestra precio vs SMA con flecha
+    const smaCols = {20:'ts20',50:'ts50',100:'ts100',200:'ts200'};
+    Object.entries(smaCols).forEach(([period, prefix]) => {
+      const el = document.getElementById(`${prefix}-${id}`);
+      if(!el) return;
+      const sma = d[`sma${period}`];
+      if(!sma){ el.innerText='—'; return; }
+      const above = d.price > sma;
+      el.innerHTML = above
+        ? `<span style="color:#00e676;font-size:10px;font-weight:700">▲</span>`
+        : `<span style="color:#ff4444;font-size:10px;font-weight:700">▼</span>`;
+      el.title = `SMA${period}: ${sma.toFixed(2)}`;
+    });
+
+    // Cruce 100/200
+    const crEl = document.getElementById(`tcr-${id}`);
+    if(crEl){
+      if(d.sma100 && d.sma200){
+        if(d.sma100 > d.sma200){
+          crEl.innerHTML = '<span style="color:#00e676;font-weight:800;font-size:11px">Golden</span>';
+        } else {
+          crEl.innerHTML = '<span style="color:#ff4444;font-weight:800;font-size:11px">Death</span>';
+        }
+      } else { crEl.innerText = '—'; }
     }
 
-    // 5. Cruce 100/200
-    const crossEl = document.getElementById(`cross-${id}`);
-    if(crossEl && d.sma100 && d.sma200 && d.prev_sma100 && d.prev_sma200){
-      if(d.prev_sma100 < d.prev_sma200 && d.sma100 >= d.sma200){ crossEl.innerText="GOLDEN"; crossEl.style.color="#00e676"; }
-      else if(d.prev_sma100 > d.prev_sma200 && d.sma100 <= d.sma200){ crossEl.innerText="DEATH"; crossEl.style.color="#ff4444"; }
-      else { crossEl.innerText="--"; crossEl.style.color="rgba(255,255,255,0.2)"; }
+    // Señal Tendencia (Supertrend dir)
+    const stEl = document.getElementById(`tst-${id}`);
+    if(stEl){
+      if(d.st_dir === 1){
+        stEl.innerHTML = '<span style="color:#00e676;font-size:13px">▲</span> <span style="color:#00e676;font-size:10px">Alcista</span>';
+      } else if(d.st_dir === -1){
+        stEl.innerHTML = '<span style="color:#ff4444;font-size:13px">▼</span> <span style="color:#ff4444;font-size:10px">Bajista</span>';
+      } else { stEl.innerText = '—'; }
     }
 
-    // 6. Señal
-    const sigEl = document.getElementById(`signal-${id}`);
-    if(sigEl){
-      let signal = "ESPERAR", cls = "signal-tag";
-      if(d.rsi < 35 && nearSMA && d.price > d.sma200){ signal="ÓPTIMO"; cls+=" signal-optimo"; }
-      else if(d.rsi < 45 || nearSMA){ signal="INTERESANTE"; cls+=" signal-interesante"; }
-      else if(d.rsi > 65){ signal="EVITAR"; cls+=" signal-evitar"; }
-      sigEl.innerHTML = `<span class="${cls}">${signal}</span>`;
-    }
+    // Badge alerta
+    applyAlertBadgeRow(ticker);
+  } catch(e){}
+}
 
-  }catch(e){ console.error(e); }
+function applyAlertBadgeRow(ticker){
+  const tr = document.getElementById('fc-'+favId(ticker));
+  if(!tr) return;
+  const now=Date.now(), week=7*24*3600*1000;
+  const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
+  const hasAlert = watchlist.has(ticker) && alerts.length > 0;
+  // Color the row border if alert
+  tr.style.borderLeft = hasAlert ? '3px solid #ff007f' : '3px solid transparent';
 }
 
 function toggleFavs(){
@@ -579,7 +594,7 @@ function toggleFavs(){
   document.getElementById('favBody').classList.toggle('open',favsOpen);
   document.getElementById('favBody').classList.toggle('closed',!favsOpen);
   document.getElementById('favChevron').style.transform=favsOpen?'rotate(0deg)':'rotate(-90deg)';
-  if(favsOpen) setTimeout(()=>ALL_ASSETS.forEach(f=>loadSparkline(f.ticker)),60);
+  if(favsOpen) setTimeout(()=>ALL_ASSETS.forEach(f=>loadRowData(f.ticker)),120);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -604,9 +619,6 @@ async function checkWatchlist(){
       const isDup = alertsByTicker[t].some(x=>x.msg===a.msg && now-x.ts < 5*60*1000);
       if(!isDup) alertsByTicker[t].push({msg:a.msg, nivel:a.nivel, ts:now});
     });
-
-    // Guardar alertas en localStorage para persistencia
-    localStorage.setItem('etf_alerts', JSON.stringify(alertsByTicker));
 
     // Limpiar entradas > 7 días
     const week = 7*24*3600*1000;
@@ -673,13 +685,9 @@ function renderWatchPanel(){
       </div>`;
     alerts.slice().reverse().forEach(a=>{
       const rel=relTime(a.ts);
-      const dateStr = new Date(a.ts).toLocaleDateString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
       html+=`<div class="w-alerta ${a.nivel}" onclick="loadSymbol('${ticker}')">
         <span class="w-ticker">${ticker}</span>${a.msg.replace(/^\[[^\]]+\]\s*/,'')}
-        <div style="font-size:8px;opacity:.5;margin-top:2px;display:flex;justify-content:space-between">
-          <span>${dateStr}</span>
-          <span>${rel}</span>
-        </div>
+        <span style="float:right;font-size:9px;opacity:.5;margin-left:4px">${rel}</span>
       </div>`;
     });
     html+='</div>';
@@ -704,20 +712,7 @@ function relTime(ts){
 }
 
 function applyAlertBadges(){
-  const now=Date.now(), week=7*24*3600*1000;
-  ALL_ASSETS.forEach(f=>{
-    const card=document.getElementById('fc-'+favId(f.ticker));
-    if(!card)return;
-    const existing=card.querySelector('.alert-badge');
-    const alerts=(alertsByTicker[f.ticker]||[]).filter(x=>now-x.ts<week);
-    const hasAlert=watchlist.has(f.ticker)&&alerts.length>0;
-    if(hasAlert&&!existing){
-      const b=document.createElement('span');
-      b.className='alert-badge';
-      b.title=alerts.map(a=>a.msg).join('\n');
-      card.appendChild(b);
-    } else if(!hasAlert&&existing){ existing.remove(); }
-  });
+  ALL_ASSETS.forEach(f=>applyAlertBadgeRow(f.ticker));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -748,8 +743,8 @@ function renderPlotly(apiData){
   traces.push({
     x:dates, y:closes,
     type:'scatter', mode:'lines', name:'Precio',
-    line:{color:'rgba(255,255,255,1)',width:1,shape:'linear'},
-    fill:'tozeroy', fillcolor:'rgba(255,255,255,.08)',
+    line:{color:'rgba(255,255,255,.92)',width:2,shape:'linear'},
+    fill:'tozeroy', fillcolor:'rgba(255,255,255,.06)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>',
   });
 
@@ -793,39 +788,23 @@ function renderPlotly(apiData){
   }
 
   const layout={
-    paper_bgcolor:BG, plot_bgcolor:'#0a0a12',
-    margin:{t:12,r:60,b:50,l:50},
+    paper_bgcolor:BG, plot_bgcolor:BG,
+    margin:{t:8,r:58,b:8,l:6},
     hovermode:'x unified',
     hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',
       font:{family:'JetBrains Mono,monospace',size:11,color:'#e0e0e0'}},
     showlegend:false,
     xaxis:{type:'date',
       gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickcolor:'rgba(255,255,255,.2)',tickfont:{color:'rgba(255,255,255,.45)',size:9},
-      tickformat:'%d',
-      dtick: 86400000 * 2,
-      tickvals: dates.filter((d, i) => i % 2 === 0 || d.getDate() === 1),
+      tickcolor:'rgba(255,255,255,.07)',tickfont:{color:'rgba(255,255,255,.28)',size:9},
       showspikes:true,spikecolor:'rgba(255,255,255,.1)',spikedash:'dot',spikethickness:1,
       rangeslider:{visible:false}},
     yaxis:{gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickfont:{color:'rgba(255,255,255,.4)',size:9},side:'right',tickformat:yFmt},
+      tickfont:{color:'rgba(255,255,255,.28)',size:9},side:'right',tickformat:yFmt},
     dragmode:'pan',font:{family:'Inter,sans-serif'}
   };
 
-    // Si ya existe el gráfico, intentar mantener el rango actual de X
-    const div = document.getElementById('plotDiv');
-    if(div && div.layout && div.layout.xaxis && div.layout.xaxis.range) {
-      layout.xaxis.range = div.layout.xaxis.range;
-    } else {
-      // Por defecto, mostrar los últimos 2 meses
-      const lastDate = dates[dates.length - 1];
-      if(lastDate) {
-        const twoMonthsAgo = new Date(lastDate.getTime() - 60 * 24 * 60 * 60 * 1000);
-        layout.xaxis.range = [twoMonthsAgo.toISOString(), lastDate.toISOString()];
-      }
-    }
-
-    Plotly.react('plotDiv',traces,layout,
+  Plotly.react('plotDiv',traces,layout,
     {responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
 
   // ── RSI panel ──
@@ -856,9 +835,9 @@ function renderRSIPanel(cd,dates){
   ];
   const rl={
     paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',
-    margin:{t:8,r:60,b:40,l:50},showlegend:false,
+    margin:{t:4,r:58,b:26,l:6},showlegend:false,
     xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',
-      tickfont:{color:'rgba(255,255,255,.3)',size:9},tickformat:'%d %b',rangeslider:{visible:false}},
+      tickfont:{color:'rgba(255,255,255,.2)',size:8},rangeslider:{visible:false}},
     yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',
       tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[30,50,70]},
     shapes:[
@@ -876,37 +855,7 @@ function renderRSIPanel(cd,dates){
 function toggleInd(key){
   indVisible[key]=!indVisible[key];
   document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
-  
-  // Actualizar visualización de botones
-  const btn = document.getElementById('tog-'+key);
-  if(btn) {
-    if(indVisible[key]) {
-      btn.classList.remove('off');
-    } else {
-      btn.classList.add('off');
-    }
-  }
-
   if(lastData) renderPlotly(lastData);
-}
-
-function zoomChart(factor){
-  const div = document.getElementById('plotDiv');
-  if(!div || !div.layout || !div.layout.xaxis) return;
-  const xRange = div.layout.xaxis.range;
-  if(!xRange || xRange.length < 2) return;
-  
-  const start = new Date(xRange[0]).getTime();
-  const end = new Date(xRange[1]).getTime();
-  const center = (start + end) / 2;
-  const newHalfWidth = ((end - start) / 2) / factor;
-  
-  const newRange = [
-    new Date(center - newHalfWidth).toISOString(),
-    new Date(center + newHalfWidth).toISOString()
-  ];
-  
-  Plotly.relayout('plotDiv', { 'xaxis.range': newRange });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -915,7 +864,7 @@ function zoomChart(factor){
 async function loadSymbol(sym){
   currentSymbol=sym;
   document.getElementById('symbolInput').value=sym;
-  document.querySelectorAll('.fav-card').forEach(c=>c.classList.remove('active-sym'));
+  document.querySelectorAll('.asset-row').forEach(c=>c.classList.remove('active-sym'));
   const el=document.getElementById('fc-'+favId(sym));
   if(el) el.classList.add('active-sym');
 
