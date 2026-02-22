@@ -689,7 +689,7 @@ function renderPlotly(apiData){
 
   traces.push({x:dates,y:closes,type:'scatter',mode:'lines',name:'Precio',
     line:{color:'rgba(255,255,255,1)',width:1,shape:'linear'},
-    fill:'tozeroy',fillcolor:'rgba(255,255,255,.08)',
+    fill:'tozeroy',fillcolor:'rgba(255,255,255,.25)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>'});
 
   const xy=arr=>({xs:arr.map(p=>new Date(p.x)),ys:arr.map(p=>p.y)});
