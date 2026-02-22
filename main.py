@@ -259,15 +259,33 @@ async def watch_favorites(tickers: str = ""):
 @app.get("/api/sparkline/{ticker}")
 async def sparkline(ticker: str):
     try:
-        df = yf.download(ticker.upper(), period="1mo", interval="1d", progress=False)
+        df = yf.download(ticker.upper(), period="max", interval="1d", progress=False)
         if df.empty:
             return {"closes": [], "pct": 0}
         df = clean_df(df)
-        closes = df["Close"].dropna().tolist()
+        df = calcular_indicadores(df)
+        
+        # Últimos 30 días para el sparkline
+        df_recent = df.tail(30)
+        closes = df_recent["Close"].dropna().tolist()
         pct = (closes[-1] - closes[0]) / closes[0] * 100 if len(closes) > 1 else 0
-        return {"closes": [float(c) for c in closes], "pct": round(pct, 2)}
-    except Exception:
-        return {"closes": [], "pct": 0}
+        
+        last = df.iloc[-1]
+        
+        return {
+            "closes": [float(c) for c in closes],
+            "pct": round(pct, 2),
+            "rsi": safe(last["RSI"]),
+            "sma20": safe(last["SMA20"]),
+            "sma50": safe(last["SMA50"]),
+            "sma100": safe(last["SMA100"]),
+            "sma200": safe(last["SMA200"]),
+            "price": safe(last["Close"]),
+            "prev_sma100": safe(df["SMA100"].iloc[-2]) if len(df) > 1 else None,
+            "prev_sma200": safe(df["SMA200"].iloc[-2]) if len(df) > 1 else None
+        }
+    except Exception as e:
+        return {"closes": [], "pct": 0, "error": str(e)}
 
 
 if __name__ == "__main__":

@@ -121,12 +121,33 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 #favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
     gap:10px;margin-top:12px}
 	
-	/* Tarjeta de activo */
-	.fav-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
-	  border-radius:12px;padding:10px 12px;cursor:pointer;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);
-	  min-width:0;position:relative;display:flex;flex-direction:column;justify-content:space-between}
-	.fav-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,0,127,.3);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
-	.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.08);box-shadow:0 0 15px rgba(255,0,127,0.1)}
+	/* Scanner Table */
+	.scanner-row {
+	  border-bottom: 1px solid rgba(255,255,255,0.05);
+	  transition: background 0.2s;
+	  cursor: pointer;
+	}
+	.scanner-row:hover {
+	  background: rgba(255,255,255,0.03);
+	}
+	.scanner-row.active-sym {
+	  background: rgba(255,0,127,0.05);
+	  border-left: 2px solid #ff007f;
+	}
+	.sma-tag {
+	  padding: 1px 4px;
+	  border-radius: 3px;
+	  color: #fff;
+	}
+	.signal-tag {
+	  padding: 2px 6px;
+	  border-radius: 4px;
+	  font-size: 9px;
+	  font-weight: 800;
+	}
+	.signal-optimo { background: rgba(0,230,118,0.2); color: #00e676; }
+	.signal-interesante { background: rgba(255,200,100,0.2); color: #ffc864; }
+	.signal-evitar { background: rgba(255,68,68,0.2); color: #ff5252; }
 .fav-star{position:absolute;top:5px;right:6px;font-size:11px;cursor:pointer;
   user-select:none;transition:transform .15s;line-height:1;z-index:2}
 .fav-star.watching{color:#ff007f;text-shadow:0 0 8px rgba(255,0,127,.6)}
@@ -299,7 +320,23 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
       </div>
     </button>
     <div id="favBody" class="acc-body closed">
-      <div id="favItems"></div>
+      <div style="overflow-x:auto; margin-top:12px;">
+        <table id="scannerTable" style="width:100%; border-collapse:collapse; font-size:11px; color:#e0e0e0;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em;">
+              <th style="padding:8px 10px;">Activo</th>
+              <th style="padding:8px 10px;">Precio</th>
+              <th style="padding:8px 10px;">Cambio %</th>
+              <th style="padding:8px 10px;">RSI (14)</th>
+              <th style="padding:8px 10px;">SMAs (20/50/100/200)</th>
+              <th style="padding:8px 10px;">Cruce 100/200</th>
+              <th style="padding:8px 10px;">Señal</th>
+              <th style="padding:8px 10px; text-align:right;">Tendencia</th>
+            </tr>
+          </thead>
+          <tbody id="favItems"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -371,48 +408,66 @@ function loadWL(){ try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
-window.onload = () => {
-  loadWL();
-  document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
-  buildFavGrid();
-  updateWatchingCount();
-  loadSymbol('BTC-USD');
-  startWatcher();
-};
+	window.onload = () => {
+	  loadWL();
+    try {
+      const savedAlerts = localStorage.getItem('etf_alerts');
+      if(savedAlerts) alertsByTicker = JSON.parse(savedAlerts);
+    } catch(e) {}
+	  document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
+	  buildFavGrid();
+	  updateWatchingCount();
+	  loadSymbol('BTC-USD');
+	  startWatcher();
+	};
 
 // ═══════════════════════════════════════════════════════════
 // GRID DE ACTIVOS
 // ═══════════════════════════════════════════════════════════
 function favId(t){ return 'f_'+t.replace(/[^a-z0-9]/gi,'_'); }
 
-function buildFavGrid(){
-  const c = document.getElementById('favItems');
-  c.innerHTML = '';
-  ALL_ASSETS.forEach(f => {
-    const id  = favId(f.ticker);
-    const isW = watchlist.has(f.ticker);
-    const div = document.createElement('div');
-    div.className = 'fav-card';
-    div.id = 'fc-'+id;
-    div.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
-    div.innerHTML = `
-      <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}"
-        title="${isW?'Quitar vigilancia':'Añadir vigilancia'}"
-        onclick="toggleWatch('${f.ticker}',event)">★</span>
-      <div style="padding-right:12px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px">
-          <div style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff">${f.name}</div>
-          <div id="price-${id}" class="mono" style="font-size:11px;font-weight:700;color:#ff007f">---</div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:9px;color:rgba(255,255,255,.3);font-weight:600">${f.cat} ${f.ticker}</span>
-          <span id="pct-${id}" class="mono" style="font-size:10px;font-weight:800;color:rgba(255,255,255,.2)">--%</span>
-        </div>
-        <canvas id="spark-${id}" style="width:100%;height:28px;display:block;margin-top:2px;filter:drop-shadow(0 0 4px rgba(255,0,127,0.1))"></canvas>
-      </div>`;
-    c.appendChild(div);
-  });
-}
+	function buildFavGrid(){
+	  const c = document.getElementById('favItems');
+	  c.innerHTML = '';
+	  ALL_ASSETS.forEach(f => {
+	    const id  = favId(f.ticker);
+	    const isW = watchlist.has(f.ticker);
+	    const tr = document.createElement('tr');
+	    tr.className = 'scanner-row';
+	    tr.id = 'fc-'+id;
+	    tr.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
+	    tr.innerHTML = `
+        <td style="padding:10px; white-space:nowrap;">
+          <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}"
+            title="${isW?'Quitar vigilancia':'Añadir vigilancia'}"
+            onclick="toggleWatch('${f.ticker}',event)" style="position:static; margin-right:8px; font-size:14px;">★</span>
+          <span style="font-weight:800; color:#fff;">${f.ticker}</span>
+          <div style="font-size:9px; color:rgba(255,255,255,0.3);">${f.name}</div>
+        </td>
+        <td id="price-${id}" class="mono" style="padding:10px; font-weight:700; color:#ff007f;">---</td>
+        <td id="pct-${id}" class="mono" style="padding:10px; font-weight:800; color:rgba(255,255,255,0.2);">--%</td>
+        <td id="rsi-col-${id}" style="padding:10px;">
+          <span id="rsi-val-${id}" class="mono" style="font-weight:700;">--</span>
+          <div id="rsi-lbl-${id}" style="font-size:8px; opacity:0.5; text-transform:uppercase;">--</div>
+        </td>
+        <td id="sma-col-${id}" style="padding:10px;">
+          <div style="display:flex; gap:4px; font-size:8px; font-weight:700;">
+            <span id="sma20-${id}" title="SMA20">20</span>
+            <span id="sma50-${id}" title="SMA50">50</span>
+            <span id="sma100-${id}" title="SMA100">100</span>
+            <span id="sma200-${id}" title="SMA200">200</span>
+          </div>
+        </td>
+        <td id="cross-${id}" style="padding:10px; font-size:9px; font-weight:700;">--</td>
+        <td id="signal-${id}" style="padding:10px;">
+          <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:800; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.2);">ESPERANDO</span>
+        </td>
+        <td style="padding:10px; text-align:right; width:100px;">
+          <canvas id="spark-${id}" style="width:100px; height:24px; display:inline-block;"></canvas>
+        </td>`;
+	    c.appendChild(tr);
+	  });
+	}
 
 function refreshStars(){
   ALL_ASSETS.forEach(f => {
@@ -448,36 +503,75 @@ async function loadSparkline(ticker){
     const d = await r.json();
     if(!d.closes||d.closes.length<2)return;
     const id  = favId(ticker);
+    
+    // 1. Sparkline
     const cvs = document.getElementById(`spark-${id}`);
-    if(!cvs)return;
-    const dpr = window.devicePixelRatio||1;
-    const W = cvs.offsetWidth||100, H=24;
-    cvs.width=W*dpr; cvs.height=H*dpr;
-    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
-    const mn=Math.min(...d.closes),mx=Math.max(...d.closes),rng=mx-mn||1;
-    const up=d.pct>=0, col=up?'#00e676':'#ff4444';
-    const pts=d.closes.map((v,i)=>({x:i/(d.closes.length-1)*W, y:H-2-(v-mn)/rng*(H-6)}));
-    const gr=ctx.createLinearGradient(0,0,0,H);
-    gr.addColorStop(0,up?'rgba(0,230,118,.2)':'rgba(255,68,68,.2)');
-    gr.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-    ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
-    ctx.fillStyle=gr; ctx.fill();
-    ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-    ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
-    const pEl=document.getElementById(`pct-${id}`);
-    if(pEl){
-      pEl.style.color=col; 
-      pEl.innerText=`${up?'+':''}${d.pct.toFixed(2)}%`;
-      pEl.style.opacity = "1";
+    if(cvs){
+      const dpr = window.devicePixelRatio||1;
+      const W = 100, H=24;
+      cvs.width=W*dpr; cvs.height=H*dpr;
+      const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+      const mn=Math.min(...d.closes),mx=Math.max(...d.closes),rng=mx-mn||1;
+      const up=d.pct>=0, col=up?'#00e676':'#ff4444';
+      const pts=d.closes.map((v,i)=>({x:i/(d.closes.length-1)*W, y:H-2-(v-mn)/rng*(H-6)}));
+      const gr=ctx.createLinearGradient(0,0,0,H);
+      gr.addColorStop(0,up?'rgba(0,230,118,.2)':'rgba(255,68,68,.2)');
+      gr.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+      ctx.fillStyle=gr; ctx.fill();
+      ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
+      
+      // 2. Precio y Cambio
+      const pEl=document.getElementById(`pct-${id}`);
+      if(pEl){ pEl.style.color=col; pEl.innerText=`${up?'+':''}${d.pct.toFixed(2)}%`; pEl.style.opacity="1"; }
+      const prEl=document.getElementById(`price-${id}`);
+      if(prEl){ prEl.innerText = d.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); prEl.style.color = col; }
     }
-    const prEl=document.getElementById(`price-${id}`);
-    if(prEl && d.closes && d.closes.length > 0){
-      const lastPrice = d.closes[d.closes.length-1];
-      prEl.innerText = lastPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      prEl.style.color = col;
+
+    // 3. RSI
+    const rsiVal = document.getElementById(`rsi-val-${id}`);
+    const rsiLbl = document.getElementById(`rsi-lbl-${id}`);
+    if(rsiVal && d.rsi){
+      rsiVal.innerText = d.rsi.toFixed(1);
+      if(d.rsi > 70){ rsiVal.style.color="#ff007f"; rsiLbl.innerText="Sobrecompra"; rsiLbl.style.color="#ff007f"; }
+      else if(d.rsi < 30){ rsiVal.style.color="#00e676"; rsiLbl.innerText="Sobreventa"; rsiLbl.style.color="#00e676"; }
+      else { rsiVal.style.color="#fff"; rsiLbl.innerText="Neutral"; rsiLbl.style.color="rgba(255,255,255,0.3)"; }
     }
-  }catch(e){}
+
+    // 4. SMAs Proximidad
+    const smas = {sma20:d.sma20, sma50:d.sma50, sma100:d.sma100, sma200:d.sma200};
+    let nearSMA = false;
+    for(let key in smas){
+      const el = document.getElementById(`${key}-${id}`);
+      if(el && smas[key]){
+        const dist = Math.abs(d.price - smas[key]) / smas[key];
+        if(dist < 0.005){ el.style.color="#ff007f"; el.style.textDecoration="underline"; nearSMA=true; }
+        else if(d.price > smas[key]){ el.style.color="#00e676"; }
+        else { el.style.color="#ff4444"; }
+      }
+    }
+
+    // 5. Cruce 100/200
+    const crossEl = document.getElementById(`cross-${id}`);
+    if(crossEl && d.sma100 && d.sma200 && d.prev_sma100 && d.prev_sma200){
+      if(d.prev_sma100 < d.prev_sma200 && d.sma100 >= d.sma200){ crossEl.innerText="GOLDEN"; crossEl.style.color="#00e676"; }
+      else if(d.prev_sma100 > d.prev_sma200 && d.sma100 <= d.sma200){ crossEl.innerText="DEATH"; crossEl.style.color="#ff4444"; }
+      else { crossEl.innerText="--"; crossEl.style.color="rgba(255,255,255,0.2)"; }
+    }
+
+    // 6. Señal
+    const sigEl = document.getElementById(`signal-${id}`);
+    if(sigEl){
+      let signal = "ESPERAR", cls = "signal-tag";
+      if(d.rsi < 35 && nearSMA && d.price > d.sma200){ signal="ÓPTIMO"; cls+=" signal-optimo"; }
+      else if(d.rsi < 45 || nearSMA){ signal="INTERESANTE"; cls+=" signal-interesante"; }
+      else if(d.rsi > 65){ signal="EVITAR"; cls+=" signal-evitar"; }
+      sigEl.innerHTML = `<span class="${cls}">${signal}</span>`;
+    }
+
+  }catch(e){ console.error(e); }
 }
 
 function toggleFavs(){
@@ -510,6 +604,9 @@ async function checkWatchlist(){
       const isDup = alertsByTicker[t].some(x=>x.msg===a.msg && now-x.ts < 5*60*1000);
       if(!isDup) alertsByTicker[t].push({msg:a.msg, nivel:a.nivel, ts:now});
     });
+
+    // Guardar alertas en localStorage para persistencia
+    localStorage.setItem('etf_alerts', JSON.stringify(alertsByTicker));
 
     // Limpiar entradas > 7 días
     const week = 7*24*3600*1000;
