@@ -37,9 +37,9 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 /* ── MAIN LAYOUT: mobile=col, desktop=row ── */
 #main{display:flex;flex-direction:column;gap:10px;width:100%}
 @media(min-width:900px){
-  #main{flex-direction:row;align-items:flex-start}
-  #sidebar{width:170px;flex-shrink:0}
-  #chart-card{flex:1;min-width:0}
+  #main{display:grid;grid-template-columns:170px 1fr;align-items:flex-start}
+  #sidebar{width:170px}
+  #chart-card{width:100%;min-width:0}
 }
 
 /* ── SIDEBAR ── */
@@ -83,7 +83,8 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .alerta-item.info{background:rgba(255,0,127,.07);color:#ff69b4}
 
 /* ── CHART CARD ── */
-#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px}
+#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;width:100%}
+#chartArea{width:100%;margin:0 auto}
 
 /* Controles barra: indicadores */
 #ind-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -92,13 +93,13 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
   white-space:nowrap}
 .btn-ind.off{opacity:.25;filter:grayscale(.7)}
 
-/* Chart containers — altura dinámica */
-#plotDiv{width:100%;height:min(60vw,420px)}
+/* ── CHART HEIGHTS — misma config que Matrix Lab ── */
+#plotDiv{width:100%;height:min(120vw,600px)}
 #rsiWrap{display:block}
-#rsiDiv{width:100%;height:min(20vw,100px)}
+#rsiDiv{width:100%;height:min(30vw,150px)}
 @media(min-width:900px){
-  #plotDiv{height:420px}
-  #rsiDiv{height:100px}
+  #plotDiv{height:750px}
+  #rsiDiv{height:180px}
 }
 
 /* Loading — overlay sobre el gráfico */
@@ -109,32 +110,44 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
   border-top-color:#ff007f;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── FAVORITOS PANEL ── */
-#favs-panel{padding:12px}
+/* ── TABLA DE ACTIVOS ── */
+#favs-panel{padding:0;overflow:hidden}
 #favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;
   user-select:none;background:none;border:none;width:100%;color:inherit;
-  font-family:'Inter',sans-serif;padding:0}
+  font-family:'Inter',sans-serif;padding:14px 16px}
 .acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
 .acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
 .acc-body.open{max-height:5000px;opacity:1}
-#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
-  gap:7px;margin-top:10px}
 
-/* Tarjeta de activo */
-.fav-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
-  border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;
-  min-width:0;position:relative}
-.fav-card:hover{background:rgba(255,255,255,.04);border-color:rgba(255,0,127,.25)}
-.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.07)}
-.fav-star{position:absolute;top:5px;right:6px;font-size:11px;cursor:pointer;
-  user-select:none;transition:transform .15s;line-height:1;z-index:2}
+/* Tabla */
+#assetsTable{width:100%;border-collapse:collapse;min-width:750px}
+#assetsTable thead tr{border-bottom:1px solid rgba(255,255,255,.07)}
+#assetsTable thead th{
+  padding:8px 12px;
+  text-align:left;
+  font-size:10px;font-weight:700;
+  letter-spacing:.08em;color:rgba(255,255,255,.3);
+  text-transform:uppercase;white-space:nowrap;
+  background:#07070f;
+  position:sticky;top:0;z-index:2}
+#assetsTable thead th.right{text-align:right}
+#assetsTable thead th.center{text-align:center}
+
+.asset-row{border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s}
+.asset-row:hover{background:rgba(255,255,255,.03)!important}
+.asset-row.active-sym{background:rgba(255,0,127,.04)!important;border-left:3px solid #ff007f}
+.asset-row td{padding:9px 12px;white-space:nowrap;vertical-align:middle}
+
+/* Estrella vigilancia */
+.fav-star{font-size:13px;cursor:pointer;user-select:none;transition:transform .15s;line-height:1}
 .fav-star.watching{color:#ff007f;text-shadow:0 0 8px rgba(255,0,127,.6)}
 .fav-star.idle{color:rgba(255,255,255,.14)}
 .fav-star:hover{transform:scale(1.4)}
-.alert-badge{position:absolute;top:-3px;left:-3px;width:9px;height:9px;
-  border-radius:50%;background:#ff007f;box-shadow:0 0 7px rgba(255,0,127,.8);
-  animation:pulse 1.5s ease-in-out infinite;border:2px solid #07070f;z-index:3}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+/* Indicador SMA flecha */
+.sma-arrow{font-size:12px;font-weight:700}
+.sma-arrow.up{color:#00e676}
+.sma-arrow.dn{color:#ff4444}
 
 /* ── TOASTS ── */
 #toasts{position:fixed;top:12px;right:12px;z-index:9999;
@@ -146,9 +159,6 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .toast.info{background:rgba(255,0,127,.13);color:#ff69b4;border:1px solid rgba(255,0,127,.25)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 
-.sma-pill{font-size:11px;font-weight:700;color:rgba(255,255,255,.25)}
-.asset-row.active-sym td:first-child{border-left:3px solid #ff007f}
-.asset-row.active-sym{background:rgba(255,0,127,.04)!important}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 </style>
@@ -200,7 +210,8 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
       <!-- Alertas símbolo activo -->
       <div id="alertBox" class="card">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;
-          color:rgba(255,255,255,.2);font-weight:700;margin-bottom:6px">⚡ Alertas — <span id="alertSymLabel" style="color:#ff007f"></span></div>
+          color:rgba(255,255,255,.2);font-weight:700;margin-bottom:6px">
+          ⚡ Alertas — <span id="alertSymLabel" style="color:#ff007f"></span></div>
         <div id="alertList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto"></div>
       </div>
 
@@ -213,11 +224,9 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
           </div>
           <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
         </div>
-        <!-- Info cuando no hay watchlist -->
         <div id="watchEmpty" style="font-size:10px;line-height:1.6;color:rgba(255,255,255,.2)">
           Marca ★ en cualquier activo para añadirlo. Alertas cuando precio toca SMA o cruzan SMA100/SMA200.
         </div>
-        <!-- Lista de alertas semanales por ticker -->
         <div id="watch-alerts-list"></div>
         <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
       </div>
@@ -227,7 +236,7 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
     <!-- CHART CARD -->
     <div class="card" id="chart-card" style="position:relative">
 
-      <!-- Barra de indicadores -->
+      <!-- Barra de indicadores — igual que Matrix Lab con botones zoom -->
       <div id="ind-bar">
         <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;
           color:rgba(255,255,255,.18);font-weight:700;margin-right:2px">Ind:</span>
@@ -243,19 +252,28 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
         <button class="btn-ind" id="tog-sma200"
           style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"
           onclick="toggleInd('sma200')">SMA200</button>
-        <button class="btn-ind" id="tog-st"
+        <button class="btn-ind off" id="tog-st"
           style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"
           onclick="toggleInd('st')">SuperT</button>
-        <button class="btn-ind" id="tog-rsi"
+        <button class="btn-ind off" id="tog-rsi"
           style="background:rgba(255,0,127,.1);color:#ff69b4;border-color:rgba(255,0,127,.3)"
           onclick="toggleInd('rsi')">RSI</button>
-        <span style="font-size:9px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">
-          Arrastra · rueda zoom · doble clic reset
-        </span>
+        <!-- Botones zoom — igual que Matrix Lab -->
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <button class="btn-ind" onclick="zoomChart(1.2)"
+            style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">+</button>
+          <button class="btn-ind" onclick="zoomChart(0.8)"
+            style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">-</button>
+          <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap;margin-left:4px">
+            Doble clic reset
+          </span>
+        </div>
       </div>
 
       <!-- Loading -->
-      <div id="loadWrap" style="display:none">
+      <div id="loadWrap" style="display:none;position:absolute;inset:0;display:none;
+        align-items:center;justify-content:center;flex-direction:column;gap:12px;
+        color:rgba(255,255,255,.3);background:rgba(7,7,15,.75);z-index:10;border-radius:14px">
         <div class="spin"></div>
         <span style="font-size:12px">Cargando…</span>
       </div>
@@ -282,10 +300,8 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
   </div><!-- /main -->
 
   <!-- TABLA DE ACTIVOS -->
-  <div class="card" id="favs-panel" style="overflow:hidden">
-    <button id="favs-hdr" onclick="toggleFavs()" style="width:100%;display:flex;align-items:center;
-      justify-content:space-between;background:none;border:none;cursor:pointer;color:inherit;
-      font-family:inherit;padding:14px 16px">
+  <div class="card" id="favs-panel">
+    <button id="favs-hdr" onclick="toggleFavs()">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="color:#ff007f;font-size:14px">★</span>
         <span style="font-size:13px;font-weight:700">Todos los activos</span>
@@ -298,41 +314,22 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
           transition:transform .3s;display:inline-block;transform:rotate(-90deg)">▼</span>
       </div>
     </button>
+
     <div id="favBody" class="acc-body closed">
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table id="assetsTable" style="width:100%;border-collapse:collapse;min-width:700px">
+        <table id="assetsTable">
           <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.07)">
-              <th style="padding:8px 10px 8px 16px;text-align:left;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                ★ Activo</th>
-              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Precio</th>
-              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Cambio %</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                RSI 14</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA20</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA50</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA100</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA200</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Cruce 100/200</th>
-              <th style="padding:8px 16px 8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Tendencia</th>
+            <tr>
+              <th>★ Activo</th>
+              <th class="right">Precio</th>
+              <th class="right">Cambio %</th>
+              <th class="center">RSI 14</th>
+              <th class="center">SMA20</th>
+              <th class="center">SMA50</th>
+              <th class="center">SMA100</th>
+              <th class="center">SMA200</th>
+              <th class="center">Cruce 100/200</th>
+              <th class="center">Tendencia</th>
             </tr>
           </thead>
           <tbody id="favItems"></tbody>
@@ -349,59 +346,60 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 // CATÁLOGO
 // ═══════════════════════════════════════════════════════════
 const ALL_ASSETS = [
-  {name:'Bitcoin',    ticker:'BTC-USD',cat:'🪙'},
-  {name:'Ethereum',   ticker:'ETH-USD',cat:'🪙'},
-  {name:'S&P 500',    ticker:'^GSPC',  cat:'📊'},
-  {name:'Nasdaq 100', ticker:'^NDX',   cat:'📊'},
-  {name:'Dow Jones',  ticker:'^DJI',   cat:'📊'},
-  {name:'Russell 2K', ticker:'^RUT',   cat:'📊'},
-  {name:'SPY',   ticker:'SPY',  cat:'ETF'},
-  {name:'VOO',   ticker:'VOO',  cat:'ETF'},
-  {name:'VTI',   ticker:'VTI',  cat:'ETF'},
-  {name:'QQQ',   ticker:'QQQ',  cat:'ETF'},
-  {name:'QQQM',  ticker:'QQQM', cat:'ETF'},
-  {name:'SPMO',  ticker:'SPMO', cat:'ETF'},
-  {name:'JEPQ',  ticker:'JEPQ', cat:'ETF'},
-  {name:'ITOT',  ticker:'ITOT', cat:'ETF'},
-  {name:'SCHD',  ticker:'SCHD', cat:'ETF'},
-  {name:'SCHG',  ticker:'SCHG', cat:'ETF'},
-  {name:'VGT',   ticker:'VGT',  cat:'ETF'},
-  {name:'VHT',   ticker:'VHT',  cat:'ETF'},
-  {name:'VFH',   ticker:'VFH',  cat:'ETF'},
-  {name:'VEA',   ticker:'VEA',  cat:'ETF'},
-  {name:'VTV',   ticker:'VTV',  cat:'ETF'},
-  {name:'VTWO',  ticker:'VTWO', cat:'ETF'},
-  {name:'IWM',   ticker:'IWM',  cat:'ETF'},
-  {name:'XLE',   ticker:'XLE',  cat:'ETF'},
-  {name:'SMH',   ticker:'SMH',  cat:'ETF'},
-  {name:'RSP',   ticker:'RSP',  cat:'ETF'},
-  {name:'EEM',   ticker:'EEM',  cat:'ETF'},
-  {name:'ILF',   ticker:'ILF',  cat:'ETF'},
-  {name:'DIA',   ticker:'DIA',  cat:'ETF'},
-  {name:'IOO',   ticker:'IOO',  cat:'ETF'},
-  {name:'SPYM',  ticker:'SPYM', cat:'ETF'},
-  {name:'FEPI',  ticker:'FEPI', cat:'ETF'},
-  {name:'GLD',   ticker:'GLD',  cat:'🥇'},
-  {name:'IAU',   ticker:'IAU',  cat:'🥇'},
-  {name:'GDX',   ticker:'GDX',  cat:'🥇'},
-  {name:'UGL',   ticker:'UGL',  cat:'🥇'},
-  {name:'COPX',  ticker:'COPX', cat:'⛏️'},
-  {name:'REMX',  ticker:'REMX', cat:'⛏️'},
-  {name:'URNM',  ticker:'URNM', cat:'⚛️'},
-  {name:'URA',   ticker:'URA',  cat:'⚛️'},
-  {name:'Apple', ticker:'AAPL', cat:'💼'},
+  {name:'Bitcoin',    ticker:'BTC-USD', cat:'🪙'},
+  {name:'Ethereum',   ticker:'ETH-USD', cat:'🪙'},
+  {name:'S&P 500',    ticker:'^GSPC',   cat:'📊'},
+  {name:'Nasdaq 100', ticker:'^NDX',    cat:'📊'},
+  {name:'Dow Jones',  ticker:'^DJI',    cat:'📊'},
+  {name:'Russell 2K', ticker:'^RUT',    cat:'📊'},
+  {name:'SPY',        ticker:'SPY',     cat:'ETF'},
+  {name:'VOO',        ticker:'VOO',     cat:'ETF'},
+  {name:'VTI',        ticker:'VTI',     cat:'ETF'},
+  {name:'QQQ',        ticker:'QQQ',     cat:'ETF'},
+  {name:'QQQM',       ticker:'QQQM',    cat:'ETF'},
+  {name:'SPMO',       ticker:'SPMO',    cat:'ETF'},
+  {name:'JEPQ',       ticker:'JEPQ',    cat:'ETF'},
+  {name:'ITOT',       ticker:'ITOT',    cat:'ETF'},
+  {name:'SCHD',       ticker:'SCHD',    cat:'ETF'},
+  {name:'SCHG',       ticker:'SCHG',    cat:'ETF'},
+  {name:'VGT',        ticker:'VGT',     cat:'ETF'},
+  {name:'VHT',        ticker:'VHT',     cat:'ETF'},
+  {name:'VFH',        ticker:'VFH',     cat:'ETF'},
+  {name:'VEA',        ticker:'VEA',     cat:'ETF'},
+  {name:'VTV',        ticker:'VTV',     cat:'ETF'},
+  {name:'VTWO',       ticker:'VTWO',    cat:'ETF'},
+  {name:'IWM',        ticker:'IWM',     cat:'ETF'},
+  {name:'XLE',        ticker:'XLE',     cat:'ETF'},
+  {name:'SMH',        ticker:'SMH',     cat:'ETF'},
+  {name:'RSP',        ticker:'RSP',     cat:'ETF'},
+  {name:'EEM',        ticker:'EEM',     cat:'ETF'},
+  {name:'ILF',        ticker:'ILF',     cat:'ETF'},
+  {name:'DIA',        ticker:'DIA',     cat:'ETF'},
+  {name:'IOO',        ticker:'IOO',     cat:'ETF'},
+  {name:'SPYM',       ticker:'SPYM',    cat:'ETF'},
+  {name:'FEPI',       ticker:'FEPI',    cat:'ETF'},
+  {name:'GLD',        ticker:'GLD',     cat:'🥇'},
+  {name:'IAU',        ticker:'IAU',     cat:'🥇'},
+  {name:'GDX',        ticker:'GDX',     cat:'🥇'},
+  {name:'UGL',        ticker:'UGL',     cat:'🥇'},
+  {name:'COPX',       ticker:'COPX',    cat:'⛏️'},
+  {name:'REMX',       ticker:'REMX',    cat:'⛏️'},
+  {name:'URNM',       ticker:'URNM',    cat:'⚛️'},
+  {name:'URA',        ticker:'URA',     cat:'⚛️'},
+  {name:'Apple',      ticker:'AAPL',    cat:'💼'},
 ];
 
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-let currentSymbol = 'BTC-USD';
-let favsOpen      = false;
-let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
-let lastData      = null;
-let watchlist     = new Set();
-let alertsByTicker = {};   // { ticker: [{msg,nivel,ts},...] } — últimos 7 días
-let shownToasts   = new Set();
+let currentSymbol  = 'BTC-USD';
+let favsOpen       = false;
+// SuperT y RSI desactivados por defecto (igual que Matrix Lab)
+let indVisible     = {sma20:true, sma50:true, sma100:true, sma200:true, st:false, rsi:false};
+let lastData       = null;
+let watchlist      = new Set();
+let alertsByTicker = {};
+let shownToasts    = new Set();
 
 function saveWL(){ try{localStorage.setItem('etf_wl',JSON.stringify([...watchlist]))}catch(e){} }
 function loadWL(){ try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new Set(JSON.parse(s))}catch(e){} }
@@ -419,7 +417,7 @@ window.onload = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// GRID DE ACTIVOS
+// TABLA DE ACTIVOS
 // ═══════════════════════════════════════════════════════════
 function favId(t){ return 'f_'+t.replace(/[^a-z0-9]/gi,'_'); }
 
@@ -430,15 +428,13 @@ function buildFavGrid(){
     const id  = favId(f.ticker);
     const isW = watchlist.has(f.ticker);
     const tr  = document.createElement('tr');
-    tr.id = 'fc-'+id;
+    tr.id        = 'fc-'+id;
     tr.className = 'asset-row';
-    tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s';
-    tr.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
-    tr.onmouseenter = () => tr.style.background = 'rgba(255,255,255,.03)';
-    tr.onmouseleave = () => tr.style.background = '';
+    tr.onclick   = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
+
     tr.innerHTML = `
-      <td style="padding:9px 10px 9px 16px;white-space:nowrap">
-        <div style="display:flex;align-items:center;gap:7px">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
           <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}"
             onclick="toggleWatch('${f.ticker}',event)">★</span>
           <div>
@@ -447,32 +443,24 @@ function buildFavGrid(){
           </div>
         </div>
       </td>
-      <td style="padding:9px 10px;text-align:right;font-family:'JetBrains Mono',monospace">
-        <span id="tp-${id}" style="font-size:12px;font-weight:600;color:#fff">—</span>
+      <td style="text-align:right">
+        <span id="tp-${id}" class="mono" style="font-size:12px;font-weight:600;color:#fff">—</span>
       </td>
-      <td style="padding:9px 10px;text-align:right">
+      <td style="text-align:right">
         <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
       </td>
-      <td style="padding:9px 10px;text-align:center">
+      <td style="text-align:center">
         <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;
           border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
       </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts20-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts50-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts100-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts200-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
+      <td style="text-align:center"><span id="ts20-${id}"  class="sma-arrow">—</span></td>
+      <td style="text-align:center"><span id="ts50-${id}"  class="sma-arrow">—</span></td>
+      <td style="text-align:center"><span id="ts100-${id}" class="sma-arrow">—</span></td>
+      <td style="text-align:center"><span id="ts200-${id}" class="sma-arrow">—</span></td>
+      <td style="text-align:center">
         <span id="tcr-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
       </td>
-      <td style="padding:9px 16px 9px 10px;text-align:center">
+      <td style="text-align:center">
         <span id="tst-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
       </td>`;
     tbody.appendChild(tr);
@@ -482,10 +470,9 @@ function buildFavGrid(){
 function refreshStars(){
   ALL_ASSETS.forEach(f => {
     const star = document.getElementById('star-'+favId(f.ticker));
-    if(!star)return;
+    if(!star) return;
     const isW = watchlist.has(f.ticker);
     star.className = 'fav-star '+(isW?'watching':'idle');
-    star.title = isW ? 'Quitar vigilancia' : 'Añadir vigilancia';
   });
 }
 
@@ -514,13 +501,11 @@ async function loadRowData(ticker){
     if(d.error) return;
     const id = favId(ticker);
 
-    // Precio
     const priceEl = document.getElementById(`tp-${id}`);
     if(priceEl) priceEl.innerText = d.price > 100
-      ? d.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+      ? d.price.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})
       : d.price.toFixed(4);
 
-    // Cambio %
     const chEl = document.getElementById(`tc-${id}`);
     if(chEl){
       const up = d.change_pct >= 0;
@@ -528,111 +513,87 @@ async function loadRowData(ticker){
       chEl.style.color = up ? '#00e676' : '#ff4444';
     }
 
-    // RSI
     const rsiEl = document.getElementById(`tr-${id}`);
-    if(rsiEl){
-      const v = d.rsi;
-      rsiEl.innerText = isNaN(v) ? '—' : v.toFixed(1);
-      if(v < 30){ rsiEl.style.background='rgba(0,230,118,.15)'; rsiEl.style.color='#00e676'; }
-      else if(v > 70){ rsiEl.style.background='rgba(255,68,68,.15)'; rsiEl.style.color='#ff5252'; }
-      else{ rsiEl.style.background='rgba(255,255,255,.06)'; rsiEl.style.color='rgba(255,255,255,.5)'; }
+    if(rsiEl && d.rsi != null){
+      rsiEl.innerText = d.rsi.toFixed(1);
+      if(d.rsi < 30){ rsiEl.style.background='rgba(0,230,118,.15)'; rsiEl.style.color='#00e676'; }
+      else if(d.rsi > 70){ rsiEl.style.background='rgba(255,68,68,.15)'; rsiEl.style.color='#ff5252'; }
+      else { rsiEl.style.background='rgba(255,255,255,.06)'; rsiEl.style.color='rgba(255,255,255,.5)'; }
     }
 
-    // SMAs — muestra precio vs SMA con flecha
-    const smaCols = {20:'ts20',50:'ts50',100:'ts100',200:'ts200'};
-    Object.entries(smaCols).forEach(([period, prefix]) => {
-      const el = document.getElementById(`${prefix}-${id}`);
+    [['20','ts20'],['50','ts50'],['100','ts100'],['200','ts200']].forEach(([p,pfx])=>{
+      const el = document.getElementById(`${pfx}-${id}`);
       if(!el) return;
-      const sma = d[`sma${period}`];
+      const sma = d[`sma${p}`];
       if(!sma){ el.innerText='—'; return; }
       const above = d.price > sma;
-      el.innerHTML = above
-        ? `<span style="color:#00e676;font-size:10px;font-weight:700">▲</span>`
-        : `<span style="color:#ff4444;font-size:10px;font-weight:700">▼</span>`;
-      el.title = `SMA${period}: ${sma.toFixed(2)}`;
+      el.className = 'sma-arrow '+(above?'up':'dn');
+      el.innerHTML = above ? '▲' : '▼';
+      el.title = `SMA${p}: ${sma.toFixed(2)}`;
     });
 
-    // Cruce 100/200
     const crEl = document.getElementById(`tcr-${id}`);
-    if(crEl){
-      if(d.sma100 && d.sma200){
-        if(d.sma100 > d.sma200){
-          crEl.innerHTML = '<span style="color:#00e676;font-weight:800;font-size:11px">Golden</span>';
-        } else {
-          crEl.innerHTML = '<span style="color:#ff4444;font-weight:800;font-size:11px">Death</span>';
-        }
-      } else { crEl.innerText = '—'; }
+    if(crEl && d.sma100 && d.sma200){
+      crEl.innerHTML = d.sma100 > d.sma200
+        ? '<span style="color:#00e676;font-weight:800">Golden</span>'
+        : '<span style="color:#ff4444;font-weight:800">Death</span>';
     }
 
-    // Señal Tendencia (Supertrend dir)
     const stEl = document.getElementById(`tst-${id}`);
     if(stEl){
-      if(d.st_dir === 1){
-        stEl.innerHTML = '<span style="color:#00e676;font-size:13px">▲</span> <span style="color:#00e676;font-size:10px">Alcista</span>';
-      } else if(d.st_dir === -1){
-        stEl.innerHTML = '<span style="color:#ff4444;font-size:13px">▼</span> <span style="color:#ff4444;font-size:10px">Bajista</span>';
-      } else { stEl.innerText = '—'; }
+      if(d.st_dir === 1)
+        stEl.innerHTML = '<span style="color:#00e676">▲ Alcista</span>';
+      else if(d.st_dir === -1)
+        stEl.innerHTML = '<span style="color:#ff4444">▼ Bajista</span>';
+      else stEl.innerText = '—';
     }
 
-    // Badge alerta
-    applyAlertBadgeRow(ticker);
+    // Borde alerta si en watchlist
+    const row = document.getElementById('fc-'+id);
+    if(row){
+      const now=Date.now(), week=7*24*3600*1000;
+      const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
+      row.style.borderLeft = (watchlist.has(ticker)&&alerts.length)
+        ? '3px solid #ff007f' : '3px solid transparent';
+    }
   } catch(e){}
 }
 
-function applyAlertBadgeRow(ticker){
-  const tr = document.getElementById('fc-'+favId(ticker));
-  if(!tr) return;
-  const now=Date.now(), week=7*24*3600*1000;
-  const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
-  const hasAlert = watchlist.has(ticker) && alerts.length > 0;
-  // Color the row border if alert
-  tr.style.borderLeft = hasAlert ? '3px solid #ff007f' : '3px solid transparent';
-}
-
 function toggleFavs(){
-  favsOpen=!favsOpen;
+  favsOpen = !favsOpen;
   document.getElementById('favBody').classList.toggle('open',favsOpen);
   document.getElementById('favBody').classList.toggle('closed',!favsOpen);
-  document.getElementById('favChevron').style.transform=favsOpen?'rotate(0deg)':'rotate(-90deg)';
-  if(favsOpen) setTimeout(()=>ALL_ASSETS.forEach(f=>loadRowData(f.ticker)),120);
+  document.getElementById('favChevron').style.transform = favsOpen?'rotate(0deg)':'rotate(-90deg)';
+  if(favsOpen) setTimeout(()=>ALL_ASSETS.forEach(f=>loadRowData(f.ticker)), 120);
 }
 
 // ═══════════════════════════════════════════════════════════
-// VIGILANCIA — panel con alertas de la última semana
+// VIGILANCIA
 // ═══════════════════════════════════════════════════════════
 function startWatcher(){ checkWatchlist(); setInterval(checkWatchlist, 5*60*1000); }
 
 async function checkWatchlist(){
   if(watchlist.size===0){ setWatchStatus('idle'); renderWatchPanel(); return; }
-  const tickers=[...watchlist].join(',');
+  const tickers = [...watchlist].join(',');
   try {
-    const r=await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
-    const d=await r.json();
-
-    // Agrupar alertas por ticker; añadir timestamp "ahora" para filtrado semanal
+    const r = await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
+    const d = await r.json();
     const now = Date.now();
     (d.alertas||[]).forEach(a => {
       const m = a.msg.match(/^\[([^\]]+)\]/);
       const t = m?m[1]:'?';
       if(!alertsByTicker[t]) alertsByTicker[t]=[];
-      // Evitar duplicados
-      const isDup = alertsByTicker[t].some(x=>x.msg===a.msg && now-x.ts < 5*60*1000);
+      const isDup = alertsByTicker[t].some(x=>x.msg===a.msg && now-x.ts<5*60*1000);
       if(!isDup) alertsByTicker[t].push({msg:a.msg, nivel:a.nivel, ts:now});
     });
-
-    // Limpiar entradas > 7 días
-    const week = 7*24*3600*1000;
+    const week=7*24*3600*1000;
     Object.keys(alertsByTicker).forEach(t=>{
       alertsByTicker[t]=alertsByTicker[t].filter(x=>now-x.ts<week);
-      if(alertsByTicker[t].length===0) delete alertsByTicker[t];
+      if(!alertsByTicker[t].length) delete alertsByTicker[t];
     });
-
-    const total = Object.values(alertsByTicker).reduce((s,a)=>s+a.length,0);
+    const total=Object.values(alertsByTicker).reduce((s,a)=>s+a.length,0);
     setWatchStatus(total>0?'alert':'ok');
-    applyAlertBadges();
     renderWatchPanel();
-
-    // Toasts solo para alertas nuevas
     (d.alertas||[]).forEach(a=>{
       if(!shownToasts.has(a.msg)){
         shownToasts.add(a.msg);
@@ -640,86 +601,60 @@ async function checkWatchlist(){
         setTimeout(()=>shownToasts.delete(a.msg), 2*3600*1000);
       }
     });
-
-    // Si el símbolo activo está en watchlist, refrescar su panel de alertas
     if(watchlist.has(currentSymbol)) renderCurrentAlerts();
-  }catch(e){ setWatchStatus('err'); }
+  } catch(e){ setWatchStatus('err'); }
 }
 
 function setWatchStatus(s){
-  const dot=document.getElementById('watchDot'),lbl=document.getElementById('watchLabel');
+  const dot=document.getElementById('watchDot'), lbl=document.getElementById('watchLabel');
   const m={ok:['#00e676','Activa'],alert:['#ff007f','¡Alerta!'],err:['#555','Error'],idle:['rgba(255,255,255,.15)','En espera']};
   const[c,t]=m[s]||m.ok;
   dot.style.background=c; lbl.style.color=c; lbl.innerText=t;
 }
 
 function renderWatchPanel(){
-  const emptyEl   = document.getElementById('watchEmpty');
-  const listEl    = document.getElementById('watch-alerts-list');
-  const countEl   = document.getElementById('watchCount');
-
-  if(watchlist.size===0){
-    emptyEl.style.display='block';
-    listEl.innerHTML='';
-    countEl.innerText='';
-    return;
-  }
+  const emptyEl=document.getElementById('watchEmpty');
+  const listEl=document.getElementById('watch-alerts-list');
+  const countEl=document.getElementById('watchCount');
+  if(watchlist.size===0){ emptyEl.style.display='block'; listEl.innerHTML=''; countEl.innerText=''; return; }
   emptyEl.style.display='none';
-
-  // Construir lista agrupada por ticker con alertas de últimos 7 días
-  const now = Date.now();
-  const week = 7*24*3600*1000;
-  let html='';
-  let totalAlertas=0;
-
+  const now=Date.now(), week=7*24*3600*1000;
+  let html='', total=0;
   [...watchlist].forEach(ticker=>{
     const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
     if(!alerts.length) return;
-    totalAlertas+=alerts.length;
+    total+=alerts.length;
     html+=`<div style="margin-bottom:6px">
-      <div style="font-size:9px;font-weight:800;letter-spacing:.08em;
-        color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:3px;
-        display:flex;align-items:center;justify-content:space-between">
-        <span>${ticker}</span>
-        <span style="color:rgba(255,255,255,.2);font-weight:400">${alerts.length} alerta${alerts.length>1?'s':''}</span>
+      <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.35);
+        text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between">
+        <span>${ticker}</span><span style="color:rgba(255,255,255,.2);font-weight:400">${alerts.length} alerta${alerts.length>1?'s':''}</span>
       </div>`;
     alerts.slice().reverse().forEach(a=>{
-      const rel=relTime(a.ts);
       html+=`<div class="w-alerta ${a.nivel}" onclick="loadSymbol('${ticker}')">
         <span class="w-ticker">${ticker}</span>${a.msg.replace(/^\[[^\]]+\]\s*/,'')}
-        <span style="float:right;font-size:9px;opacity:.5;margin-left:4px">${rel}</span>
+        <span style="float:right;font-size:9px;opacity:.5;margin-left:4px">${relTime(a.ts)}</span>
       </div>`;
     });
     html+='</div>';
   });
-
-  if(!html){
-    html=`<div style="font-size:10px;color:rgba(255,255,255,.2);padding:4px 0">
-      Sin alertas en los últimos 7 días para los activos vigilados.</div>`;
-  }
+  if(!html) html=`<div style="font-size:10px;color:rgba(255,255,255,.2);padding:4px 0">Sin alertas en los últimos 7 días.</div>`;
   listEl.innerHTML=html;
-  countEl.innerText=totalAlertas>0
-    ? `${totalAlertas} alerta${totalAlertas>1?'s':''} esta semana`
+  countEl.innerText=total>0 ? `${total} alerta${total>1?'s':''} esta semana`
     : `${watchlist.size} activo${watchlist.size>1?'s':''} vigilados — sin alertas recientes`;
 }
 
 function relTime(ts){
-  const diff=Date.now()-ts;
-  if(diff<60000)return'ahora';
-  if(diff<3600000)return`${Math.floor(diff/60000)}m`;
-  if(diff<86400000)return`${Math.floor(diff/3600000)}h`;
-  return`${Math.floor(diff/86400000)}d`;
-}
-
-function applyAlertBadges(){
-  ALL_ASSETS.forEach(f=>applyAlertBadgeRow(f.ticker));
+  const d=Date.now()-ts;
+  if(d<60000)return'ahora';
+  if(d<3600000)return`${Math.floor(d/60000)}m`;
+  if(d<86400000)return`${Math.floor(d/3600000)}h`;
+  return`${Math.floor(d/86400000)}d`;
 }
 
 // ═══════════════════════════════════════════════════════════
-// FETCH — siempre máximo, velas diarias
+// FETCH
 // ═══════════════════════════════════════════════════════════
 async function fetchData(sym){
-  // Siempre max período con velas diarias (1d/max)
   const r=await fetch(`/api/chart/${encodeURIComponent(sym)}?interval=1d`);
   const d=await r.json();
   if(d.error) throw new Error(d.error);
@@ -727,9 +662,9 @@ async function fetchData(sym){
 }
 
 // ═══════════════════════════════════════════════════════════
-// PLOTLY RENDER
+// PLOTLY — configuración idéntica a Matrix Lab
 // ═══════════════════════════════════════════════════════════
-const BG='#07070f';
+const BG = '#07070f';
 
 function renderPlotly(apiData){
   const cd    = apiData.chart;
@@ -737,37 +672,35 @@ function renderPlotly(apiData){
   const closes= cd.candles.map(c=>c.c);
   const last  = closes[closes.length-1]||1;
   const yFmt  = last>500?',.0f':last>1?',.2f':',.4f';
-  const traces=[];
+  const traces= [];
 
-  // ── Precio: línea blanca + relleno blanco suave ──
+  // Precio línea
   traces.push({
     x:dates, y:closes,
     type:'scatter', mode:'lines', name:'Precio',
-    line:{color:'rgba(255,255,255,.92)',width:2,shape:'linear'},
-    fill:'tozeroy', fillcolor:'rgba(255,255,255,.06)',
+    line:{color:'rgba(255,255,255,1)',width:1,shape:'linear'},
+    fill:'tozeroy', fillcolor:'rgba(255,255,255,.08)',
     hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>',
   });
 
-  const xy=arr=>({xs:arr.map(p=>new Date(p.x)),ys:arr.map(p=>p.y)});
+  const xy = arr => ({xs:arr.map(p=>new Date(p.x)), ys:arr.map(p=>p.y)});
 
-  // ── SMAs ──
-  const smasCfg=[
-    {key:'sma20', data:cd.sma20, col:'rgba(0,255,255,.85)',  w:1.2,name:'SMA 20'},
-    {key:'sma50', data:cd.sma50, col:'rgba(255,255,0,.85)',  w:1.5,name:'SMA 50'},
-    {key:'sma100',data:cd.sma100,col:'rgba(255,200,100,.85)',w:1.8,name:'SMA 100'},
-    {key:'sma200',data:cd.sma200,col:'rgba(200,150,220,.9)', w:2.2,name:'SMA 200'},
-  ];
-  smasCfg.forEach(s=>{
-    if(!indVisible[s.key])return;
+  // SMAs
+  [{key:'sma20',data:cd.sma20,col:'rgba(0,255,255,.85)',  w:1.2,name:'SMA 20'},
+   {key:'sma50',data:cd.sma50,col:'rgba(255,255,0,.85)',  w:1.5,name:'SMA 50'},
+   {key:'sma100',data:cd.sma100,col:'rgba(255,200,100,.85)',w:1.8,name:'SMA 100'},
+   {key:'sma200',data:cd.sma200,col:'rgba(200,150,220,.9)', w:2.2,name:'SMA 200'},
+  ].forEach(s=>{
+    if(!indVisible[s.key]) return;
     const{xs,ys}=xy(s.data);
     traces.push({x:xs,y:ys,type:'scatter',mode:'lines',name:s.name,
       line:{color:s.col,width:s.w},
       hovertemplate:`<b>${s.name}</b>: $%{y:,.2f}<extra></extra>`});
   });
 
-  // ── Supertrend — puntos muy pequeños ──
+  // Supertrend
   if(indVisible.st){
-    const stB=xy(cd.st_buy),stS=xy(cd.st_sell);
+    const stB=xy(cd.st_buy), stS=xy(cd.st_sell);
     if(stB.xs.length) traces.push({x:stB.xs,y:stB.ys,type:'scatter',mode:'markers',name:'ST▲',
       marker:{color:'rgba(0,255,100,.8)',size:3,symbol:'circle'},
       hovertemplate:'ST▲: $%{y:,.2f}<extra></extra>'});
@@ -776,9 +709,9 @@ function renderPlotly(apiData){
       hovertemplate:'ST▼: $%{y:,.2f}<extra></extra>'});
   }
 
-  // ── RSI señales ──
+  // RSI señales
   if(indVisible.rsi){
-    const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
+    const ros=xy(cd.rsi_os), rob=xy(cd.rsi_ob);
     if(ros.xs.length) traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
       marker:{color:'#00e676',size:9,symbol:'triangle-up',line:{color:'#07070f',width:1.5}},
       hovertemplate:'🟢 Sobreventa<br>$%{y:,.2f}<extra></extra>'});
@@ -787,37 +720,59 @@ function renderPlotly(apiData){
       hovertemplate:'🔴 Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
   }
 
-  const layout={
-    paper_bgcolor:BG, plot_bgcolor:BG,
-    margin:{t:8,r:58,b:8,l:6},
+  // Layout — igual que Matrix Lab
+  const layout = {
+    paper_bgcolor: BG,
+    plot_bgcolor:  '#0a0a12',   // ← Matrix Lab usa este más oscuro
+    margin: {t:12, r:60, b:50, l:50},
     hovermode:'x unified',
     hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',
       font:{family:'JetBrains Mono,monospace',size:11,color:'#e0e0e0'}},
     showlegend:false,
-    xaxis:{type:'date',
-      gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickcolor:'rgba(255,255,255,.07)',tickfont:{color:'rgba(255,255,255,.28)',size:9},
+    xaxis:{
+      type:'date',
+      gridcolor:'rgba(255,255,255,.04)',
+      linecolor:'rgba(255,255,255,.07)',
+      tickcolor:'rgba(255,255,255,.2)',
+      tickfont:{color:'rgba(255,255,255,.45)',size:9},
       showspikes:true,spikecolor:'rgba(255,255,255,.1)',spikedash:'dot',spikethickness:1,
-      rangeslider:{visible:false}},
-    yaxis:{gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickfont:{color:'rgba(255,255,255,.28)',size:9},side:'right',tickformat:yFmt},
-    dragmode:'pan',font:{family:'Inter,sans-serif'}
+      rangeslider:{visible:false}
+    },
+    yaxis:{
+      gridcolor:'rgba(255,255,255,.04)',
+      linecolor:'rgba(255,255,255,.07)',
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},
+      side:'right', tickformat:yFmt
+    },
+    dragmode:'pan', font:{family:'Inter,sans-serif'}
   };
 
-  Plotly.react('plotDiv',traces,layout,
-    {responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
+  // Preservar rango actual o mostrar últimos 2 meses (igual que Matrix Lab)
+  const div = document.getElementById('plotDiv');
+  if(div && div.layout && div.layout.xaxis && div.layout.xaxis.range){
+    layout.xaxis.range = div.layout.xaxis.range;
+  } else {
+    const lastDate = dates[dates.length-1];
+    if(lastDate){
+      const twoMonthsAgo = new Date(lastDate.getTime() - 60*24*60*60*1000);
+      layout.xaxis.range = [twoMonthsAgo.toISOString(), lastDate.toISOString()];
+    }
+  }
 
-  // ── RSI panel ──
-  const rsiWrap=document.getElementById('rsiWrap');
+  Plotly.react('plotDiv', traces, layout,
+    {responsive:true, scrollZoom:true, displayModeBar:false, doubleClick:'reset'});
+
+  // Panel RSI
+  const rsiWrap = document.getElementById('rsiWrap');
   if(indVisible.rsi){
     rsiWrap.style.display='block';
-    renderRSIPanel(cd,dates);
+    renderRSIPanel(cd, dates);
   } else {
     rsiWrap.style.display='none';
   }
 }
 
-function renderRSIPanel(cd,dates){
+function renderRSIPanel(cd, dates){
   const d0=dates[0]||new Date(), dN=dates[dates.length-1]||new Date();
   const ros=cd.rsi_os.map(p=>new Date(p.x));
   const rob=cd.rsi_ob.map(p=>new Date(p.x));
@@ -834,17 +789,17 @@ function renderRSIPanel(cd,dates){
      hovertemplate:'🔴 Sobrecompra<extra></extra>'},
   ];
   const rl={
-    paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',
-    margin:{t:4,r:58,b:26,l:6},showlegend:false,
+    paper_bgcolor:BG, plot_bgcolor:'rgba(255,255,255,.01)',
+    margin:{t:8,r:60,b:40,l:50}, showlegend:false,
     xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',
-      tickfont:{color:'rgba(255,255,255,.2)',size:8},rangeslider:{visible:false}},
+      tickfont:{color:'rgba(255,255,255,.3)',size:9},tickformat:'%d %b',rangeslider:{visible:false}},
     yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',
       tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[30,50,70]},
     shapes:[
       {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:0,y1:30,fillcolor:'rgba(0,230,118,.04)',line:{width:0}},
       {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:70,y1:100,fillcolor:'rgba(255,0,127,.04)',line:{width:0}}
     ],
-    font:{family:'Inter,sans-serif'},dragmode:'pan'
+    font:{family:'Inter,sans-serif'}, dragmode:'pan'
   };
   Plotly.react('rsiDiv',rt,rl,{responsive:true,scrollZoom:false,displayModeBar:false});
 }
@@ -853,27 +808,41 @@ function renderRSIPanel(cd,dates){
 // CONTROLES
 // ═══════════════════════════════════════════════════════════
 function toggleInd(key){
-  indVisible[key]=!indVisible[key];
-  document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
+  indVisible[key] = !indVisible[key];
+  document.getElementById('tog-'+key).classList.toggle('off', !indVisible[key]);
   if(lastData) renderPlotly(lastData);
 }
 
+// Zoom — igual que Matrix Lab
+function zoomChart(factor){
+  const div = document.getElementById('plotDiv');
+  if(!div||!div.layout||!div.layout.xaxis) return;
+  const xRange = div.layout.xaxis.range;
+  if(!xRange||xRange.length<2) return;
+  const start  = new Date(xRange[0]).getTime();
+  const end    = new Date(xRange[1]).getTime();
+  const center = (start+end)/2;
+  const half   = ((end-start)/2)/factor;
+  Plotly.relayout('plotDiv',{'xaxis.range':[
+    new Date(center-half).toISOString(),
+    new Date(center+half).toISOString()
+  ]});
+}
+
 // ═══════════════════════════════════════════════════════════
-// CARGA
+// CARGA DE SÍMBOLO
 // ═══════════════════════════════════════════════════════════
 async function loadSymbol(sym){
-  currentSymbol=sym;
-  document.getElementById('symbolInput').value=sym;
-  document.querySelectorAll('.asset-row').forEach(c=>c.classList.remove('active-sym'));
-  const el=document.getElementById('fc-'+favId(sym));
+  currentSymbol = sym;
+  document.getElementById('symbolInput').value = sym;
+  document.querySelectorAll('.asset-row').forEach(r=>r.classList.remove('active-sym'));
+  const el = document.getElementById('fc-'+favId(sym));
   if(el) el.classList.add('active-sym');
 
-  // show spinner, keep chart visible underneath
   document.getElementById('loadWrap').style.display='flex';
-
   try {
-    const data=await fetchData(sym);
-    lastData=data;
+    const data = await fetchData(sym);
+    lastData = data;
     document.getElementById('loadWrap').style.display='none';
     renderPlotly(data);
     updateSidebar(data);
@@ -885,16 +854,14 @@ async function loadSymbol(sym){
 }
 
 function renderCurrentAlerts(){
-  // Muestra en el sidebar las alertas del símbolo actualmente en gráfico
-  const fromWatch = watchlist.has(currentSymbol) ? (alertsByTicker[currentSymbol]||[]) : [];
-  const fromData  = lastData ? (lastData.alertas||[]) : [];
-  // Unir, priorizar las de watchlist
+  const fromWatch = watchlist.has(currentSymbol)?(alertsByTicker[currentSymbol]||[]):[];
+  const fromData  = lastData?(lastData.alertas||[]):[];
   const all = fromWatch.length ? fromWatch.map(a=>({msg:a.msg,nivel:a.nivel})) : fromData;
   renderAlertas(all);
 }
 
 function doSearch(){
-  const s=document.getElementById('symbolInput').value.trim().toUpperCase();
+  const s = document.getElementById('symbolInput').value.trim().toUpperCase();
   if(s) loadSymbol(s);
 }
 
@@ -902,22 +869,22 @@ function doSearch(){
 // SIDEBAR
 // ═══════════════════════════════════════════════════════════
 function updateSidebar(data){
-  document.getElementById('dispSym').innerText=currentSymbol;
-  document.getElementById('dispPrice').innerText=
-    data.last_price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  const chEl=document.getElementById('dispChange');
-  const pre=data.change>=0?'+':'';
-  chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
-  chEl.style.color=data.change>=0?'#00e676':'#ff4444';
+  document.getElementById('dispSym').innerText = currentSymbol;
+  document.getElementById('dispPrice').innerText =
+    data.last_price.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const chEl = document.getElementById('dispChange');
+  const pre  = data.change>=0?'+':'';
+  chEl.innerText  = `${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
+  chEl.style.color = data.change>=0?'#00e676':'#ff4444';
   updateRSI(data.rsi_current);
-  document.getElementById('alertSymLabel').innerText=currentSymbol;
+  document.getElementById('alertSymLabel').innerText = currentSymbol;
 }
 
 function updateRSI(v){
-  v=parseFloat(v); if(isNaN(v))return;
-  document.getElementById('rsiVal').innerText=v.toFixed(1);
-  document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
-  const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
+  v = parseFloat(v); if(isNaN(v)) return;
+  document.getElementById('rsiVal').innerText = v.toFixed(1);
+  document.getElementById('rsiCursor').style.left = `calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
+  const lbl=document.getElementById('rsiLbl'), val=document.getElementById('rsiVal');
   if(v<30){
     lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';
     val.style.color='#00e676';
@@ -931,8 +898,8 @@ function updateRSI(v){
 }
 
 function renderAlertas(alertas){
-  const box=document.getElementById('alertBox'),list=document.getElementById('alertList');
-  if(!alertas||!alertas.length){box.style.display='none';return;}
+  const box=document.getElementById('alertBox'), list=document.getElementById('alertList');
+  if(!alertas||!alertas.length){ box.style.display='none'; return; }
   box.style.display='block';
   list.innerHTML=alertas.map(a=>`<div class="alerta-item ${a.nivel}">${a.msg.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join('');
 }
