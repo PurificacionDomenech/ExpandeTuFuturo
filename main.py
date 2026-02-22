@@ -1,948 +1,183 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Expande Tu Futuro</title>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>
-/* ── RESET & BASE ── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
-  min-height:100vh;overflow-x:hidden;width:100%}
-.mono{font-family:'JetBrains Mono',monospace}
-.card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px}
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-/* ── WRAPPER ── */
-#app{width:100%;max-width:1600px;margin:0 auto;
-  padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-/* ── HEADER ── */
-#hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-#hdr-logo{width:30px;height:30px;border-radius:9px;background:#ff007f;
-  box-shadow:0 0 14px rgba(255,0,127,.4);display:flex;align-items:center;
-  justify-content:center;flex-shrink:0}
-#hdr-title{font-size:14px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
-#hdr-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
-#symbolInput{flex:1;min-width:0;background:#111;border:1px solid rgba(255,255,255,.1);
-  border-radius:9px;padding:8px 12px;font-size:13px;color:#e0e0e0;
-  font-family:'Inter',sans-serif;transition:border-color .2s;width:100%}
-#symbolInput:focus{outline:none;border-color:rgba(255,0,127,.5)}
-#btnSearch{padding:8px 14px;border-radius:9px;background:#ff007f;color:#fff;
-  font-size:13px;font-weight:700;border:none;cursor:pointer;
-  font-family:'Inter',sans-serif;white-space:nowrap;flex-shrink:0}
-
-/* ── MAIN LAYOUT: mobile=col, desktop=row ── */
-#main{display:flex;flex-direction:column;gap:10px;width:100%}
-@media(min-width:900px){
-  #main{flex-direction:row;align-items:flex-start}
-  #sidebar{width:170px;flex-shrink:0}
-  #chart-card{flex:1;min-width:0}
+INTERVAL_MAP = {
+    "1d":  ("1d",  "max"),
+    "1wk": ("1wk", "max"),
+    "1mo": ("1mo", "max"),
 }
 
-/* ── SIDEBAR ── */
-#sidebar{display:flex;flex-direction:column;gap:8px;width:100%}
 
-/* Precio widget */
-#price-widget{padding:13px}
-#dispSym{font-size:10px;font-weight:800;letter-spacing:.12em;color:#ff007f;margin-bottom:2px}
-#dispPrice{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
-#dispChange{font-size:11px;margin-top:4px;font-weight:600}
-#rsiRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-#rsiBar{height:5px;border-radius:3px;position:relative;margin-top:5px;
-  background:linear-gradient(to right,
-    rgba(0,230,118,.4) 0%,rgba(0,230,118,.4) 30%,
-    rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,
-    rgba(255,68,68,.4) 70%,rgba(255,68,68,.4) 100%)}
-#rsiCursor{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;
-  background:#fff;box-shadow:0 0 5px rgba(255,255,255,.5);
-  transform:translate(-50%,-50%);transition:left .4s;left:50%}
+def clean_df(df):
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    return df
 
-/* Vigilancia panel */
-#watch-panel{padding:11px}
-#watch-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
-#watchDot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.15);
-  display:inline-block;flex-shrink:0}
-#watch-alerts-list{display:flex;flex-direction:column;gap:5px;
-  max-height:260px;overflow-y:auto}
-.w-alerta{padding:6px 9px;border-radius:8px;font-size:10px;font-weight:500;line-height:1.45;
-  cursor:pointer;transition:filter .15s}
-.w-alerta:hover{filter:brightness(1.3)}
-.w-alerta .w-ticker{font-weight:800;font-size:10px;margin-right:4px}
-.w-alerta.bullish{background:rgba(0,230,118,.07);color:#00e676}
-.w-alerta.bearish{background:rgba(255,68,68,.07);color:#ff5252}
-.w-alerta.info{background:rgba(255,0,127,.07);color:#ff69b4}
 
-/* Alertas símbolo activo */
-#alertBox{padding:11px;display:none}
-.alerta-item{padding:5px 9px;border-radius:7px;font-size:10px;font-weight:500;line-height:1.4}
-.alerta-item.bullish{background:rgba(0,230,118,.07);color:#00e676}
-.alerta-item.bearish{background:rgba(255,68,68,.07);color:#ff5252}
-.alerta-item.info{background:rgba(255,0,127,.07);color:#ff69b4}
+def calcular_indicadores(df):
+    df["SMA20"]  = df["Close"].rolling(20).mean()
+    df["SMA50"]  = df["Close"].rolling(50).mean()
+    df["SMA100"] = df["Close"].rolling(100).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
 
-/* ── CHART CARD ── */
-#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px}
+    delta = df["Close"].diff()
+    gain  = delta.where(delta > 0, 0).rolling(14).mean()
+    loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df["RSI"] = 100 - (100 / (1 + gain / loss))
 
-/* Controles barra: indicadores */
-#ind-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.btn-ind{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;
-  transition:all .15s;border:1px solid transparent;font-family:'Inter',sans-serif;
-  white-space:nowrap}
-.btn-ind.off{opacity:.25;filter:grayscale(.7)}
+    df["TR"] = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - df["Close"].shift()).abs(),
+        (df["Low"]  - df["Close"].shift()).abs()
+    ], axis=1).max(axis=1)
+    df["ATR"] = df["TR"].rolling(7).mean()
+    hl2 = (df["High"] + df["Low"]) / 2
+    df["UB"] = hl2 + 3.0 * df["ATR"]
+    df["LB"] = hl2 - 3.0 * df["ATR"]
+    df["ST"]  = np.nan
+    df["Dir"] = 0
 
-/* Chart containers — altura dinámica */
-#plotDiv{width:100%;height:min(60vw,420px)}
-#rsiWrap{display:block}
-#rsiDiv{width:100%;height:min(20vw,100px)}
-@media(min-width:900px){
-  #plotDiv{height:420px}
-  #rsiDiv{height:100px}
-}
+    for i in range(1, len(df)):
+        ps  = df.iloc[i-1]["ST"]
+        pd_ = df.iloc[i-1]["Dir"]
+        cl  = float(df.iloc[i]["LB"])
+        cu  = float(df.iloc[i]["UB"])
+        cc  = float(df.iloc[i]["Close"])
+        if np.isnan(ps):
+            df.iloc[i, df.columns.get_loc("ST")]  = cl
+            df.iloc[i, df.columns.get_loc("Dir")] = 1
+            continue
+        st = max(cl, ps) if pd_ == 1 else min(cu, ps)
+        df.iloc[i, df.columns.get_loc("ST")]  = st
+        df.iloc[i, df.columns.get_loc("Dir")] = 1 if cc > st else -1
 
-/* Loading — overlay sobre el gráfico */
-#loadWrap{display:none;position:absolute;inset:0;align-items:center;justify-content:center;
-  flex-direction:column;gap:12px;color:rgba(255,255,255,.3);
-  background:rgba(7,7,15,.75);z-index:10;border-radius:14px}
-.spin{width:32px;height:32px;border:3px solid rgba(255,0,127,.15);
-  border-top-color:#ff007f;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+    return df
 
-/* ── FAVORITOS PANEL ── */
-#favs-panel{padding:12px}
-#favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;
-  user-select:none;background:none;border:none;width:100%;color:inherit;
-  font-family:'Inter',sans-serif;padding:0}
-.acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
-.acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
-.acc-body.open{max-height:5000px;opacity:1}
-#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
-  gap:7px;margin-top:10px}
 
-/* Tarjeta de activo */
-.fav-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
-  border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;
-  min-width:0;position:relative}
-.fav-card:hover{background:rgba(255,255,255,.04);border-color:rgba(255,0,127,.25)}
-.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.07)}
-.fav-star{position:absolute;top:5px;right:6px;font-size:11px;cursor:pointer;
-  user-select:none;transition:transform .15s;line-height:1;z-index:2}
-.fav-star.watching{color:#ff007f;text-shadow:0 0 8px rgba(255,0,127,.6)}
-.fav-star.idle{color:rgba(255,255,255,.14)}
-.fav-star:hover{transform:scale(1.4)}
-.alert-badge{position:absolute;top:-3px;left:-3px;width:9px;height:9px;
-  border-radius:50%;background:#ff007f;box-shadow:0 0 7px rgba(255,0,127,.8);
-  animation:pulse 1.5s ease-in-out infinite;border:2px solid #07070f;z-index:3}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+def detectar_alertas(df, ticker=""):
+    alertas = []
+    n = len(df) - 1
+    if n < 2:
+        return alertas
 
-/* ── TOASTS ── */
-#toasts{position:fixed;top:12px;right:12px;z-index:9999;
-  display:flex;flex-direction:column;gap:7px;pointer-events:none;max-width:calc(100vw - 24px)}
-.toast{padding:9px 14px;border-radius:10px;font-size:12px;font-weight:500;
-  pointer-events:auto;animation:fadeIn .25s ease;line-height:1.45;word-break:break-word}
-.toast.bullish{background:rgba(0,230,118,.13);color:#00e676;border:1px solid rgba(0,230,118,.25)}
-.toast.bearish{background:rgba(255,68,68,.13);color:#ff5252;border:1px solid rgba(255,68,68,.25)}
-.toast.info{background:rgba(255,0,127,.13);color:#ff69b4;border:1px solid rgba(255,0,127,.25)}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+    precio_now  = float(df["Close"].iloc[n])
+    precio_prev = float(df["Close"].iloc[n - 1])
+    prefix = f"[{ticker}] " if ticker else ""
 
-.sma-pill{font-size:11px;font-weight:700;color:rgba(255,255,255,.25)}
-.asset-row.active-sym td:first-child{border-left:3px solid #ff007f}
-.asset-row.active-sym{background:rgba(255,0,127,.04)!important}
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-</style>
-</head>
-<body>
-<div id="app">
-
-  <!-- HEADER -->
-  <div id="hdr">
-    <div id="hdr-logo">
-      <svg width="15" height="15" fill="none" stroke="#fff" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-      </svg>
-    </div>
-    <span id="hdr-title">EXPANDE <span style="color:#ff007f">TU FUTURO</span></span>
-    <div id="hdr-search">
-      <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
-             autocomplete="off" autocorrect="off" autocapitalize="off"
-             onkeydown="if(event.key==='Enter')doSearch()">
-      <button id="btnSearch" onclick="doSearch()">Buscar</button>
-    </div>
-  </div>
-
-  <!-- MAIN -->
-  <div id="main">
-
-    <!-- SIDEBAR -->
-    <div id="sidebar">
-
-      <!-- Precio + RSI -->
-      <div class="card" id="price-widget">
-        <div id="dispSym">---</div>
-        <div id="dispPrice" class="mono">---</div>
-        <div id="dispChange">--</div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)">
-          <div id="rsiRow">
-            <span style="font-size:10px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.08em">RSI 14</span>
-            <div style="display:flex;align-items:center;gap:4px">
-              <span id="rsiVal" class="mono" style="font-size:13px;font-weight:700">--</span>
-              <span id="rsiLbl" style="font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;
-                background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">--</span>
-            </div>
-          </div>
-          <div id="rsiBar"><div id="rsiCursor"></div></div>
-        </div>
-      </div>
-
-      <!-- Alertas símbolo activo -->
-      <div id="alertBox" class="card">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;
-          color:rgba(255,255,255,.2);font-weight:700;margin-bottom:6px">⚡ Alertas — <span id="alertSymLabel" style="color:#ff007f"></span></div>
-        <div id="alertList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto"></div>
-      </div>
-
-      <!-- VIGILANCIA -->
-      <div class="card" id="watch-panel">
-        <div id="watch-hdr">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;font-weight:700">🔔 Vigilancia</span>
-            <span id="watchDot"></span>
-          </div>
-          <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
-        </div>
-        <!-- Info cuando no hay watchlist -->
-        <div id="watchEmpty" style="font-size:10px;line-height:1.6;color:rgba(255,255,255,.2)">
-          Marca ★ en cualquier activo para añadirlo. Alertas cuando precio toca SMA o cruzan SMA100/SMA200.
-        </div>
-        <!-- Lista de alertas semanales por ticker -->
-        <div id="watch-alerts-list"></div>
-        <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
-      </div>
-
-    </div><!-- /sidebar -->
-
-    <!-- CHART CARD -->
-    <div class="card" id="chart-card" style="position:relative">
-
-      <!-- Barra de indicadores -->
-      <div id="ind-bar">
-        <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;
-          color:rgba(255,255,255,.18);font-weight:700;margin-right:2px">Ind:</span>
-        <button class="btn-ind" id="tog-sma20"
-          style="background:rgba(0,255,255,.1);color:#00ffff;border-color:rgba(0,255,255,.3)"
-          onclick="toggleInd('sma20')">SMA20</button>
-        <button class="btn-ind" id="tog-sma50"
-          style="background:rgba(255,255,0,.1);color:#ffff00;border-color:rgba(255,255,0,.3)"
-          onclick="toggleInd('sma50')">SMA50</button>
-        <button class="btn-ind" id="tog-sma100"
-          style="background:rgba(255,200,100,.1);color:#ffc864;border-color:rgba(255,200,100,.3)"
-          onclick="toggleInd('sma100')">SMA100</button>
-        <button class="btn-ind" id="tog-sma200"
-          style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"
-          onclick="toggleInd('sma200')">SMA200</button>
-        <button class="btn-ind" id="tog-st"
-          style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"
-          onclick="toggleInd('st')">SuperT</button>
-        <button class="btn-ind" id="tog-rsi"
-          style="background:rgba(255,0,127,.1);color:#ff69b4;border-color:rgba(255,0,127,.3)"
-          onclick="toggleInd('rsi')">RSI</button>
-        <span style="font-size:9px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">
-          Arrastra · rueda zoom · doble clic reset
-        </span>
-      </div>
-
-      <!-- Loading -->
-      <div id="loadWrap" style="display:none">
-        <div class="spin"></div>
-        <span style="font-size:12px">Cargando…</span>
-      </div>
-
-      <!-- Gráficas -->
-      <div id="chartArea" style="display:flex;flex-direction:column">
-        <div id="plotDiv"></div>
-        <div id="rsiWrap">
-          <div style="padding:3px 60px 1px 8px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;
-              color:rgba(255,255,255,.18);font-weight:700">RSI señales extremas</span>
-            <span style="font-size:9px;color:rgba(255,255,255,.2)">
-              <span style="color:rgba(0,230,118,.8)">▲&lt;30</span>
-              &nbsp;
-              <span style="color:rgba(255,0,127,.8)">▼&gt;70</span>
-            </span>
-          </div>
-          <div id="rsiDiv"></div>
-        </div>
-      </div>
-
-    </div><!-- /chart-card -->
-
-  </div><!-- /main -->
-
-  <!-- TABLA DE ACTIVOS -->
-  <div class="card" id="favs-panel" style="overflow:hidden">
-    <button id="favs-hdr" onclick="toggleFavs()" style="width:100%;display:flex;align-items:center;
-      justify-content:space-between;background:none;border:none;cursor:pointer;color:inherit;
-      font-family:inherit;padding:14px 16px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="color:#ff007f;font-size:14px">★</span>
-        <span style="font-size:13px;font-weight:700">Todos los activos</span>
-        <span id="favCount" style="font-size:10px;color:rgba(255,255,255,.25)"></span>
-        <span id="watchingCount" style="font-size:10px;color:#ff007f;font-weight:700"></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:10px;color:rgba(255,255,255,.18)">★ vigilancia · clic fila = gráfico</span>
-        <span id="favChevron" style="color:rgba(255,255,255,.3);font-size:11px;
-          transition:transform .3s;display:inline-block;transform:rotate(-90deg)">▼</span>
-      </div>
-    </button>
-    <div id="favBody" class="acc-body closed">
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table id="assetsTable" style="width:100%;border-collapse:collapse;min-width:700px">
-          <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.07)">
-              <th style="padding:8px 10px 8px 16px;text-align:left;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                ★ Activo</th>
-              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Precio</th>
-              <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Cambio %</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                RSI 14</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA20</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA50</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA100</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                SMA200</th>
-              <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Cruce 100/200</th>
-              <th style="padding:8px 16px 8px 10px;text-align:center;font-size:10px;font-weight:700;
-                letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap">
-                Tendencia</th>
-            </tr>
-          </thead>
-          <tbody id="favItems"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /app -->
-<div id="toasts"></div>
-
-<script>
-// ═══════════════════════════════════════════════════════════
-// CATÁLOGO
-// ═══════════════════════════════════════════════════════════
-const ALL_ASSETS = [
-  {name:'Bitcoin',    ticker:'BTC-USD',cat:'🪙'},
-  {name:'Ethereum',   ticker:'ETH-USD',cat:'🪙'},
-  {name:'S&P 500',    ticker:'^GSPC',  cat:'📊'},
-  {name:'Nasdaq 100', ticker:'^NDX',   cat:'📊'},
-  {name:'Dow Jones',  ticker:'^DJI',   cat:'📊'},
-  {name:'Russell 2K', ticker:'^RUT',   cat:'📊'},
-  {name:'SPY',   ticker:'SPY',  cat:'ETF'},
-  {name:'VOO',   ticker:'VOO',  cat:'ETF'},
-  {name:'VTI',   ticker:'VTI',  cat:'ETF'},
-  {name:'QQQ',   ticker:'QQQ',  cat:'ETF'},
-  {name:'QQQM',  ticker:'QQQM', cat:'ETF'},
-  {name:'SPMO',  ticker:'SPMO', cat:'ETF'},
-  {name:'JEPQ',  ticker:'JEPQ', cat:'ETF'},
-  {name:'ITOT',  ticker:'ITOT', cat:'ETF'},
-  {name:'SCHD',  ticker:'SCHD', cat:'ETF'},
-  {name:'SCHG',  ticker:'SCHG', cat:'ETF'},
-  {name:'VGT',   ticker:'VGT',  cat:'ETF'},
-  {name:'VHT',   ticker:'VHT',  cat:'ETF'},
-  {name:'VFH',   ticker:'VFH',  cat:'ETF'},
-  {name:'VEA',   ticker:'VEA',  cat:'ETF'},
-  {name:'VTV',   ticker:'VTV',  cat:'ETF'},
-  {name:'VTWO',  ticker:'VTWO', cat:'ETF'},
-  {name:'IWM',   ticker:'IWM',  cat:'ETF'},
-  {name:'XLE',   ticker:'XLE',  cat:'ETF'},
-  {name:'SMH',   ticker:'SMH',  cat:'ETF'},
-  {name:'RSP',   ticker:'RSP',  cat:'ETF'},
-  {name:'EEM',   ticker:'EEM',  cat:'ETF'},
-  {name:'ILF',   ticker:'ILF',  cat:'ETF'},
-  {name:'DIA',   ticker:'DIA',  cat:'ETF'},
-  {name:'IOO',   ticker:'IOO',  cat:'ETF'},
-  {name:'SPYM',  ticker:'SPYM', cat:'ETF'},
-  {name:'FEPI',  ticker:'FEPI', cat:'ETF'},
-  {name:'GLD',   ticker:'GLD',  cat:'🥇'},
-  {name:'IAU',   ticker:'IAU',  cat:'🥇'},
-  {name:'GDX',   ticker:'GDX',  cat:'🥇'},
-  {name:'UGL',   ticker:'UGL',  cat:'🥇'},
-  {name:'COPX',  ticker:'COPX', cat:'⛏️'},
-  {name:'REMX',  ticker:'REMX', cat:'⛏️'},
-  {name:'URNM',  ticker:'URNM', cat:'⚛️'},
-  {name:'URA',   ticker:'URA',  cat:'⚛️'},
-  {name:'Apple', ticker:'AAPL', cat:'💼'},
-];
-
-// ═══════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════
-let currentSymbol = 'BTC-USD';
-let favsOpen      = false;
-let indVisible    = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
-let lastData      = null;
-let watchlist     = new Set();
-let alertsByTicker = {};   // { ticker: [{msg,nivel,ts},...] } — últimos 7 días
-let shownToasts   = new Set();
-
-function saveWL(){ try{localStorage.setItem('etf_wl',JSON.stringify([...watchlist]))}catch(e){} }
-function loadWL(){ try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new Set(JSON.parse(s))}catch(e){} }
-
-// ═══════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════
-window.onload = () => {
-  loadWL();
-  document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
-  buildFavGrid();
-  updateWatchingCount();
-  loadSymbol('BTC-USD');
-  startWatcher();
-};
-
-// ═══════════════════════════════════════════════════════════
-// GRID DE ACTIVOS
-// ═══════════════════════════════════════════════════════════
-function favId(t){ return 'f_'+t.replace(/[^a-z0-9]/gi,'_'); }
-
-function buildFavGrid(){
-  const tbody = document.getElementById('favItems');
-  tbody.innerHTML = '';
-  ALL_ASSETS.forEach(f => {
-    const id  = favId(f.ticker);
-    const isW = watchlist.has(f.ticker);
-    const tr  = document.createElement('tr');
-    tr.id = 'fc-'+id;
-    tr.className = 'asset-row';
-    tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s';
-    tr.onclick = e => { if(e.target.closest('.fav-star'))return; loadSymbol(f.ticker); };
-    tr.onmouseenter = () => tr.style.background = 'rgba(255,255,255,.03)';
-    tr.onmouseleave = () => tr.style.background = '';
-    tr.innerHTML = `
-      <td style="padding:9px 10px 9px 16px;white-space:nowrap">
-        <div style="display:flex;align-items:center;gap:7px">
-          <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}"
-            onclick="toggleWatch('${f.ticker}',event)">★</span>
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.3)">${f.cat} ${f.name}</div>
-          </div>
-        </div>
-      </td>
-      <td style="padding:9px 10px;text-align:right;font-family:'JetBrains Mono',monospace">
-        <span id="tp-${id}" style="font-size:12px;font-weight:600;color:#fff">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:right">
-        <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;
-          border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts20-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts50-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts100-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="ts200-${id}" class="sma-pill">—</span>
-      </td>
-      <td style="padding:9px 10px;text-align:center">
-        <span id="tcr-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
-      </td>
-      <td style="padding:9px 16px 9px 10px;text-align:center">
-        <span id="tst-${id}" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25)">—</span>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function refreshStars(){
-  ALL_ASSETS.forEach(f => {
-    const star = document.getElementById('star-'+favId(f.ticker));
-    if(!star)return;
-    const isW = watchlist.has(f.ticker);
-    star.className = 'fav-star '+(isW?'watching':'idle');
-    star.title = isW ? 'Quitar vigilancia' : 'Añadir vigilancia';
-  });
-}
-
-function toggleWatch(ticker, e){
-  e.stopPropagation();
-  if(watchlist.has(ticker)){
-    watchlist.delete(ticker);
-    showToast(`Eliminado de vigilancia: ${ticker}`, 'info', 2500);
-  } else {
-    watchlist.add(ticker);
-    showToast(`⭐ ${ticker} añadido a vigilancia`, 'info', 2500);
-  }
-  saveWL(); refreshStars(); updateWatchingCount(); renderWatchPanel();
-}
-
-function updateWatchingCount(){
-  const n = watchlist.size;
-  document.getElementById('watchingCount').innerText = n>0 ? `— ${n} ★` : '';
-  document.getElementById('watchCount').innerText    = n>0 ? `${n} activo${n>1?'s':''} en vigilancia` : '';
-}
-
-async function loadRowData(ticker){
-  try {
-    const r = await fetch(`/api/row/${encodeURIComponent(ticker)}`);
-    const d = await r.json();
-    if(d.error) return;
-    const id = favId(ticker);
-
-    // Precio
-    const priceEl = document.getElementById(`tp-${id}`);
-    if(priceEl) priceEl.innerText = d.price > 100
-      ? d.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
-      : d.price.toFixed(4);
-
-    // Cambio %
-    const chEl = document.getElementById(`tc-${id}`);
-    if(chEl){
-      const up = d.change_pct >= 0;
-      chEl.innerText = `${up?'+':''}${d.change_pct.toFixed(2)}%`;
-      chEl.style.color = up ? '#00e676' : '#ff4444';
+    smas = {
+        "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
+        "SMA50":  (df["SMA50"].iloc[n],  df["SMA50"].iloc[n-1]),
+        "SMA100": (df["SMA100"].iloc[n], df["SMA100"].iloc[n-1]),
+        "SMA200": (df["SMA200"].iloc[n], df["SMA200"].iloc[n-1]),
     }
 
-    // RSI
-    const rsiEl = document.getElementById(`tr-${id}`);
-    if(rsiEl){
-      const v = d.rsi;
-      rsiEl.innerText = isNaN(v) ? '—' : v.toFixed(1);
-      if(v < 30){ rsiEl.style.background='rgba(0,230,118,.15)'; rsiEl.style.color='#00e676'; }
-      else if(v > 70){ rsiEl.style.background='rgba(255,68,68,.15)'; rsiEl.style.color='#ff5252'; }
-      else{ rsiEl.style.background='rgba(255,255,255,.06)'; rsiEl.style.color='rgba(255,255,255,.5)'; }
-    }
+    for nombre, (sma_now, sma_prev) in smas.items():
+        if not (pd.notna(sma_now) and pd.notna(sma_prev)):
+            continue
+        if precio_prev < sma_prev and precio_now >= sma_now:
+            alertas.append({"nivel": "bullish",
+                "msg": f"Precio cruza {nombre} al alza [{prefix}] ${precio_now:,.2f}"})
+        elif precio_prev > sma_prev and precio_now <= sma_now:
+            alertas.append({"nivel": "bearish",
+                "msg": f"Precio cruza {nombre} a la baja [{prefix}] ${precio_now:,.2f}"})
+        elif abs(precio_now - sma_now) / sma_now * 100 <= 0.4:
+            alertas.append({"nivel": "info",
+                "msg": f"Precio tocando {nombre} [{prefix}] ${precio_now:,.2f}"})
 
-    // SMAs — muestra precio vs SMA con flecha
-    const smaCols = {20:'ts20',50:'ts50',100:'ts100',200:'ts200'};
-    Object.entries(smaCols).forEach(([period, prefix]) => {
-      const el = document.getElementById(`${prefix}-${id}`);
-      if(!el) return;
-      const sma = d[`sma${period}`];
-      if(!sma){ el.innerText='—'; return; }
-      const above = d.price > sma;
-      el.innerHTML = above
-        ? `<span style="color:#00e676;font-size:10px;font-weight:700">▲</span>`
-        : `<span style="color:#ff4444;font-size:10px;font-weight:700">▼</span>`;
-      el.title = `SMA${period}: ${sma.toFixed(2)}`;
-    });
+    s100_n, s100_p = smas["SMA100"]
+    s200_n, s200_p = smas["SMA200"]
+    if pd.notna(s100_n) and pd.notna(s200_n):
+        if s100_p < s200_p and s100_n >= s200_n:
+            alertas.append({"nivel": "bullish",
+                "msg": f"Golden Cross SMA100/SMA200 [{prefix}]"})
+        elif s100_p > s200_p and s100_n <= s200_n:
+            alertas.append({"nivel": "bearish",
+                "msg": f"Death Cross SMA100/SMA200 [{prefix}]"})
 
-    // Cruce 100/200
-    const crEl = document.getElementById(`tcr-${id}`);
-    if(crEl){
-      if(d.sma100 && d.sma200){
-        if(d.sma100 > d.sma200){
-          crEl.innerHTML = '<span style="color:#00e676;font-weight:800;font-size:11px">Golden</span>';
-        } else {
-          crEl.innerHTML = '<span style="color:#ff4444;font-weight:800;font-size:11px">Death</span>';
-        }
-      } else { crEl.innerText = '—'; }
-    }
+    s20_n, s20_p = smas["SMA20"]
+    s50_n, s50_p = smas["SMA50"]
+    if pd.notna(s20_n) and pd.notna(s50_n):
+        if s20_p < s50_p and s20_n >= s50_n:
+            alertas.append({"nivel": "bullish",
+                "msg": f"SMA20 cruza sobre SMA50 [{prefix}]"})
+        elif s20_p > s50_p and s20_n <= s50_n:
+            alertas.append({"nivel": "bearish",
+                "msg": f"SMA20 cruza bajo SMA50 [{prefix}]"})
 
-    // Señal Tendencia (Supertrend dir)
-    const stEl = document.getElementById(`tst-${id}`);
-    if(stEl){
-      if(d.st_dir === 1){
-        stEl.innerHTML = '<span style="color:#00e676;font-size:13px">▲</span> <span style="color:#00e676;font-size:10px">Alcista</span>';
-      } else if(d.st_dir === -1){
-        stEl.innerHTML = '<span style="color:#ff4444;font-size:13px">▼</span> <span style="color:#ff4444;font-size:10px">Bajista</span>';
-      } else { stEl.innerText = '—'; }
-    }
+    return alertas
 
-    // Badge alerta
-    applyAlertBadgeRow(ticker);
-  } catch(e){}
-}
 
-function applyAlertBadgeRow(ticker){
-  const tr = document.getElementById('fc-'+favId(ticker));
-  if(!tr) return;
-  const now=Date.now(), week=7*24*3600*1000;
-  const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
-  const hasAlert = watchlist.has(ticker) && alerts.length > 0;
-  // Color the row border if alert
-  tr.style.borderLeft = hasAlert ? '3px solid #ff007f' : '3px solid transparent';
-}
+def get_daily_df(ticker):
+    df = yf.download(ticker.upper(), period="max", interval="1d", progress=False)
+    if df.empty:
+        return None
+    df = clean_df(df)
+    df = calcular_indicadores(df)
+    return df
 
-function toggleFavs(){
-  favsOpen=!favsOpen;
-  document.getElementById('favBody').classList.toggle('open',favsOpen);
-  document.getElementById('favBody').classList.toggle('closed',!favsOpen);
-  document.getElementById('favChevron').style.transform=favsOpen?'rotate(0deg)':'rotate(-90deg)';
-  if(favsOpen) setTimeout(()=>ALL_ASSETS.forEach(f=>loadRowData(f.ticker)),120);
-}
 
-// ═══════════════════════════════════════════════════════════
-// VIGILANCIA — panel con alertas de la última semana
-// ═══════════════════════════════════════════════════════════
-function startWatcher(){ checkWatchlist(); setInterval(checkWatchlist, 5*60*1000); }
+def ts_ms(idx):
+    return [int(t.timestamp() * 1000) for t in idx]
 
-async function checkWatchlist(){
-  if(watchlist.size===0){ setWatchStatus('idle'); renderWatchPanel(); return; }
-  const tickers=[...watchlist].join(',');
-  try {
-    const r=await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
-    const d=await r.json();
 
-    // Agrupar alertas por ticker; añadir timestamp "ahora" para filtrado semanal
-    const now = Date.now();
-    (d.alertas||[]).forEach(a => {
-      const m = a.msg.match(/^\[([^\]]+)\]/);
-      const t = m?m[1]:'?';
-      if(!alertsByTicker[t]) alertsByTicker[t]=[];
-      // Evitar duplicados
-      const isDup = alertsByTicker[t].some(x=>x.msg===a.msg && now-x.ts < 5*60*1000);
-      if(!isDup) alertsByTicker[t].push({msg:a.msg, nivel:a.nivel, ts:now});
-    });
+def safe(v):
+    return float(v) if pd.notna(v) else None
 
-    // Limpiar entradas > 7 días
-    const week = 7*24*3600*1000;
-    Object.keys(alertsByTicker).forEach(t=>{
-      alertsByTicker[t]=alertsByTicker[t].filter(x=>now-x.ts<week);
-      if(alertsByTicker[t].length===0) delete alertsByTicker[t];
-    });
 
-    const total = Object.values(alertsByTicker).reduce((s,a)=>s+a.length,0);
-    setWatchStatus(total>0?'alert':'ok');
-    applyAlertBadges();
-    renderWatchPanel();
+@app.get("/")
+async def index():
+    return FileResponse("templates/index.html")
 
-    // Toasts solo para alertas nuevas
-    (d.alertas||[]).forEach(a=>{
-      if(!shownToasts.has(a.msg)){
-        shownToasts.add(a.msg);
-        showToast(a.msg, a.nivel);
-        setTimeout(()=>shownToasts.delete(a.msg), 2*3600*1000);
-      }
-    });
 
-    // Si el símbolo activo está en watchlist, refrescar su panel de alertas
-    if(watchlist.has(currentSymbol)) renderCurrentAlerts();
-  }catch(e){ setWatchStatus('err'); }
-}
+@app.get("/api/chart/{ticker}")
+async def get_chart(ticker: str, interval: str = "1d"):
+    try:
+        yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "max"))
 
-function setWatchStatus(s){
-  const dot=document.getElementById('watchDot'),lbl=document.getElementById('watchLabel');
-  const m={ok:['#00e676','Activa'],alert:['#ff007f','¡Alerta!'],err:['#555','Error'],idle:['rgba(255,255,255,.15)','En espera']};
-  const[c,t]=m[s]||m.ok;
-  dot.style.background=c; lbl.style.color=c; lbl.innerText=t;
-}
+        df_candles = yf.download(
+            ticker.upper(), period=yf_period,
+            interval=yf_interval, progress=False
+        )
+        if df_candles.empty:
+            return {"error": f"Simbolo no encontrado: {ticker}"}
+        df_candles = clean_df(df_candles)
 
-function renderWatchPanel(){
-  const emptyEl   = document.getElementById('watchEmpty');
-  const listEl    = document.getElementById('watch-alerts-list');
-  const countEl   = document.getElementById('watchCount');
+        df_daily = df_candles.copy()
+        df_daily = calcular_indicadores(df_daily)
 
-  if(watchlist.size===0){
-    emptyEl.style.display='block';
-    listEl.innerHTML='';
-    countEl.innerText='';
-    return;
-  }
-  emptyEl.style.display='none';
+        timestamps = ts_ms(df_candles.index)
+        candles = [
+            {
+                "x": timestamps[i],
+                "o": safe(df_candles["Open"].iloc[i]),
+                "h": safe(df_candles["High"].iloc[i]),
+                "l": safe(df_candles["Low"].iloc[i]),
+                "c": safe(df_candles["Close"].iloc[i]),
+            }
+            for i in range(len(df_candles))
+        ]
 
-  // Construir lista agrupada por ticker con alertas de últimos 7 días
-  const now = Date.now();
-  const week = 7*24*3600*1000;
-  let html='';
-  let totalAlertas=0;
+        def sma_series(col):
+            out = []
+            for i in range(len(df_daily)):
+                v = df_daily[col].iloc[i]
+                if pd.notna(v):
+                    out.append({
+                        "x": int(df_daily.index[i].timestamp() * 1000),
+                        "y": float(v),
+                    })
+            return out
 
-  [...watchlist].forEach(ticker=>{
-    const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
-    if(!alerts.length) return;
-    totalAlertas+=alerts.length;
-    html+=`<div style="margin-bottom:6px">
-      <div style="font-size:9px;font-weight:800;letter-spacing:.08em;
-        color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:3px;
-        display:flex;align-items:center;justify-content:space-between">
-        <span>${ticker}</span>
-        <span style="color:rgba(255,255,255,.2);font-weight:400">${alerts.length} alerta${alerts.length>1?'s':''}</span>
-      </div>`;
-    alerts.slice().reverse().forEach(a=>{
-      const rel=relTime(a.ts);
-      html+=`<div class="w-alerta ${a.nivel}" onclick="loadSymbol('${ticker}')">
-        <span class="w-ticker">${ticker}</span>${a.msg.replace(/^\[[^\]]+\]\s*/,'')}
-        <span style="float:right;font-size:9px;opacity:.5;margin-left:4px">${rel}</span>
-      </div>`;
-    });
-    html+='</div>';
-  });
+        rsi_vals   = df_daily["RSI"].values
+        close_vals = df_daily["Close"].values
+        daily_ts   = ts_ms(df_daily.index)
 
-  if(!html){
-    html=`<div style="font-size:10px;color:rgba(255,255,255,.2);padding:4px 0">
-      Sin alertas en los últimos 7 días para los activos vigilados.</div>`;
-  }
-  listEl.innerHTML=html;
-  countEl.innerText=totalAlertas>0
-    ? `${totalAlertas} alerta${totalAlertas>1?'s':''} esta semana`
-    : `${watchlist.size} activo${watchlist.size>1?'s':''} vigilados — sin alertas recientes`;
-}
-
-function relTime(ts){
-  const diff=Date.now()-ts;
-  if(diff<60000)return'ahora';
-  if(diff<3600000)return`${Math.floor(diff/60000)}m`;
-  if(diff<86400000)return`${Math.floor(diff/3600000)}h`;
-  return`${Math.floor(diff/86400000)}d`;
-}
-
-function applyAlertBadges(){
-  ALL_ASSETS.forEach(f=>applyAlertBadgeRow(f.ticker));
-}
-
-// ═══════════════════════════════════════════════════════════
-// FETCH — siempre máximo, velas diarias
-// ═══════════════════════════════════════════════════════════
-async function fetchData(sym){
-  // Siempre max período con velas diarias (1d/max)
-  const r=await fetch(`/api/chart/${encodeURIComponent(sym)}?interval=1d`);
-  const d=await r.json();
-  if(d.error) throw new Error(d.error);
-  return d;
-}
-
-// ═══════════════════════════════════════════════════════════
-// PLOTLY RENDER
-// ═══════════════════════════════════════════════════════════
-const BG='#07070f';
-
-function renderPlotly(apiData){
-  const cd    = apiData.chart;
-  const dates = cd.candles.map(c=>new Date(c.x));
-  const closes= cd.candles.map(c=>c.c);
-  const last  = closes[closes.length-1]||1;
-  const yFmt  = last>500?',.0f':last>1?',.2f':',.4f';
-  const traces=[];
-
-  // ── Precio: línea blanca + relleno blanco suave ──
-  traces.push({
-    x:dates, y:closes,
-    type:'scatter', mode:'lines', name:'Precio',
-    line:{color:'rgba(255,255,255,.92)',width:2,shape:'linear'},
-    fill:'tozeroy', fillcolor:'rgba(255,255,255,.06)',
-    hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>',
-  });
-
-  const xy=arr=>({xs:arr.map(p=>new Date(p.x)),ys:arr.map(p=>p.y)});
-
-  // ── SMAs ──
-  const smasCfg=[
-    {key:'sma20', data:cd.sma20, col:'rgba(0,255,255,.85)',  w:1.2,name:'SMA 20'},
-    {key:'sma50', data:cd.sma50, col:'rgba(255,255,0,.85)',  w:1.5,name:'SMA 50'},
-    {key:'sma100',data:cd.sma100,col:'rgba(255,200,100,.85)',w:1.8,name:'SMA 100'},
-    {key:'sma200',data:cd.sma200,col:'rgba(200,150,220,.9)', w:2.2,name:'SMA 200'},
-  ];
-  smasCfg.forEach(s=>{
-    if(!indVisible[s.key])return;
-    const{xs,ys}=xy(s.data);
-    traces.push({x:xs,y:ys,type:'scatter',mode:'lines',name:s.name,
-      line:{color:s.col,width:s.w},
-      hovertemplate:`<b>${s.name}</b>: $%{y:,.2f}<extra></extra>`});
-  });
-
-  // ── Supertrend — puntos muy pequeños ──
-  if(indVisible.st){
-    const stB=xy(cd.st_buy),stS=xy(cd.st_sell);
-    if(stB.xs.length) traces.push({x:stB.xs,y:stB.ys,type:'scatter',mode:'markers',name:'ST▲',
-      marker:{color:'rgba(0,255,100,.8)',size:3,symbol:'circle'},
-      hovertemplate:'ST▲: $%{y:,.2f}<extra></extra>'});
-    if(stS.xs.length) traces.push({x:stS.xs,y:stS.ys,type:'scatter',mode:'markers',name:'ST▼',
-      marker:{color:'rgba(255,50,50,.8)',size:3,symbol:'circle'},
-      hovertemplate:'ST▼: $%{y:,.2f}<extra></extra>'});
-  }
-
-  // ── RSI señales ──
-  if(indVisible.rsi){
-    const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
-    if(ros.xs.length) traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
-      marker:{color:'#00e676',size:9,symbol:'triangle-up',line:{color:'#07070f',width:1.5}},
-      hovertemplate:'🟢 Sobreventa<br>$%{y:,.2f}<extra></extra>'});
-    if(rob.xs.length) traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
-      marker:{color:'#ff007f',size:9,symbol:'triangle-down',line:{color:'#07070f',width:1.5}},
-      hovertemplate:'🔴 Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
-  }
-
-  const layout={
-    paper_bgcolor:BG, plot_bgcolor:BG,
-    margin:{t:8,r:58,b:8,l:6},
-    hovermode:'x unified',
-    hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',
-      font:{family:'JetBrains Mono,monospace',size:11,color:'#e0e0e0'}},
-    showlegend:false,
-    xaxis:{type:'date',
-      gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickcolor:'rgba(255,255,255,.07)',tickfont:{color:'rgba(255,255,255,.28)',size:9},
-      showspikes:true,spikecolor:'rgba(255,255,255,.1)',spikedash:'dot',spikethickness:1,
-      rangeslider:{visible:false}},
-    yaxis:{gridcolor:'rgba(255,255,255,.04)',linecolor:'rgba(255,255,255,.07)',
-      tickfont:{color:'rgba(255,255,255,.28)',size:9},side:'right',tickformat:yFmt},
-    dragmode:'pan',font:{family:'Inter,sans-serif'}
-  };
-
-  Plotly.react('plotDiv',traces,layout,
-    {responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
-
-  // ── RSI panel ──
-  const rsiWrap=document.getElementById('rsiWrap');
-  if(indVisible.rsi){
-    rsiWrap.style.display='block';
-    renderRSIPanel(cd,dates);
-  } else {
-    rsiWrap.style.display='none';
-  }
-}
-
-function renderRSIPanel(cd,dates){
-  const d0=dates[0]||new Date(), dN=dates[dates.length-1]||new Date();
-  const ros=cd.rsi_os.map(p=>new Date(p.x));
-  const rob=cd.rsi_ob.map(p=>new Date(p.x));
-  const rt=[
-    {x:[d0,dN],y:[30,30],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',
-     line:{color:'rgba(0,230,118,.3)',width:1,dash:'dot'}},
-    {x:[d0,dN],y:[70,70],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',
-     line:{color:'rgba(255,0,127,.3)',width:1,dash:'dot'}},
-    {x:ros,y:ros.map(()=>20),type:'scatter',mode:'markers',name:'SV',
-     marker:{color:'#00e676',size:6,symbol:'triangle-up',line:{color:'#07070f',width:1}},
-     hovertemplate:'🟢 Sobreventa<extra></extra>'},
-    {x:rob,y:rob.map(()=>80),type:'scatter',mode:'markers',name:'SC',
-     marker:{color:'#ff007f',size:6,symbol:'triangle-down',line:{color:'#07070f',width:1}},
-     hovertemplate:'🔴 Sobrecompra<extra></extra>'},
-  ];
-  const rl={
-    paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',
-    margin:{t:4,r:58,b:26,l:6},showlegend:false,
-    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',
-      tickfont:{color:'rgba(255,255,255,.2)',size:8},rangeslider:{visible:false}},
-    yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',
-      tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[30,50,70]},
-    shapes:[
-      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:0,y1:30,fillcolor:'rgba(0,230,118,.04)',line:{width:0}},
-      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:70,y1:100,fillcolor:'rgba(255,0,127,.04)',line:{width:0}}
-    ],
-    font:{family:'Inter,sans-serif'},dragmode:'pan'
-  };
-  Plotly.react('rsiDiv',rt,rl,{responsive:true,scrollZoom:false,displayModeBar:false});
-}
-
-// ═══════════════════════════════════════════════════════════
-// CONTROLES
-// ═══════════════════════════════════════════════════════════
-function toggleInd(key){
-  indVisible[key]=!indVisible[key];
-  document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
-  if(lastData) renderPlotly(lastData);
-}
-
-// ═══════════════════════════════════════════════════════════
-// CARGA
-// ═══════════════════════════════════════════════════════════
-async function loadSymbol(sym){
-  currentSymbol=sym;
-  document.getElementById('symbolInput').value=sym;
-  document.querySelectorAll('.asset-row').forEach(c=>c.classList.remove('active-sym'));
-  const el=document.getElementById('fc-'+favId(sym));
-  if(el) el.classList.add('active-sym');
-
-  // show spinner, keep chart visible underneath
-  document.getElementById('loadWrap').style.display='flex';
-
-  try {
-    const data=await fetchData(sym);
-    lastData=data;
-    document.getElementById('loadWrap').style.display='none';
-    renderPlotly(data);
-    updateSidebar(data);
-    renderCurrentAlerts();
-  } catch(e){
-    document.getElementById('loadWrap').style.display='none';
-    showToast('❌ '+e.message,'bearish');
-  }
-}
-
-function renderCurrentAlerts(){
-  // Muestra en el sidebar las alertas del símbolo actualmente en gráfico
-  const fromWatch = watchlist.has(currentSymbol) ? (alertsByTicker[currentSymbol]||[]) : [];
-  const fromData  = lastData ? (lastData.alertas||[]) : [];
-  // Unir, priorizar las de watchlist
-  const all = fromWatch.length ? fromWatch.map(a=>({msg:a.msg,nivel:a.nivel})) : fromData;
-  renderAlertas(all);
-}
-
-function doSearch(){
-  const s=document.getElementById('symbolInput').value.trim().toUpperCase();
-  if(s) loadSymbol(s);
-}
-
-// ═══════════════════════════════════════════════════════════
-// SIDEBAR
-// ═══════════════════════════════════════════════════════════
-function updateSidebar(data){
-  document.getElementById('dispSym').innerText=currentSymbol;
-  document.getElementById('dispPrice').innerText=
-    data.last_price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  const chEl=document.getElementById('dispChange');
-  const pre=data.change>=0?'+':'';
-  chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
-  chEl.style.color=data.change>=0?'#00e676':'#ff4444';
-  updateRSI(data.rsi_current);
-  document.getElementById('alertSymLabel').innerText=currentSymbol;
-}
-
-function updateRSI(v){
-  v=parseFloat(v); if(isNaN(v))return;
-  document.getElementById('rsiVal').innerText=v.toFixed(1);
-  document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
-  const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
-  if(v<30){
-    lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';
-    val.style.color='#00e676';
-  } else if(v>70){
-    lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';
-    val.style.color='#ff5252';
-  } else {
-    lbl.innerText='N';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700';
-    val.style.color='#fff';
-  }
-}
-
-function renderAlertas(alertas){
-  const box=document.getElementById('alertBox'),list=document.getElementById('alertList');
-  if(!alertas||!alertas.length){box.style.display='none';return;}
-  box.style.display='block';
-  list.innerHTML=alertas.map(a=>`<div class="alerta-item ${a.nivel}">${a.msg.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join('');
-}
-
-function showToast(msg,nivel,ms=6000){
-  const c=document.getElementById('toasts');
-  const t=document.createElement('div');
-  t.className=`toast ${nivel}`; t.innerText=msg;
-  c.appendChild(t); setTimeout(()=>t.remove(),ms);
-}
-</script>
-</body>
-</html>
+        rsi_os = [
+            {"x": daily_ts[i], "y
