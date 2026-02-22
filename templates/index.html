@@ -302,7 +302,7 @@ const ALL_ASSETS = [
   {name:'Apple',ticker:'AAPL',cat:'💼'},
 ];
 
-let currentSymbol  = 'BTC-USD';
+let currentSymbol  = '^NDX';
 let favsOpen       = false;
 let indVisible     = {sma20:true,sma50:true,sma100:true,sma200:true,st:false,rsi:false};
 let lastData       = null;
@@ -319,7 +319,7 @@ window.onload=()=>{
   document.getElementById('favCount').innerText=`— ${ALL_ASSETS.length} activos`;
   buildFavGrid();
   updateWatchingCount();
-  loadSymbol('BTC-USD');
+  loadSymbol('^NDX');
   startWatcher();
 };
 
