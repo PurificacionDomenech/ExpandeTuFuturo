@@ -713,15 +713,19 @@ function renderPlotly(apiData){
       marker:{color:'rgba(255,50,50,.8)',size:3,symbol:'circle'},hovertemplate:'ST▼: $%{y:,.2f}<extra></extra>'});
   }
 
-  if(indVisible.rsi){
-    const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
-    if(ros.xs.length)traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
-      marker:{color:'#00e676',size:9,symbol:'triangle-up',line:{color:'#07070f',width:1.5}},
-      hovertemplate:'🟢 Sobreventa<br>$%{y:,.2f}<extra></extra>'});
-    if(rob.xs.length)traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
-      marker:{color:'#ff007f',size:9,symbol:'triangle-down',line:{color:'#07070f',width:1.5}},
-      hovertemplate:'🔴 Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
-  }
+if(indVisible.rsi){
+    const ros=xy(cd.rsi_os), rob=xy(cd.rsi_ob);
+    if(ros.xs.length) traces.push({
+      x:ros.xs, y:ros.ys, type:'scatter', mode:'markers', name:'RSI<30',
+      marker:{color:'#00e676', size:12, symbol:'triangle-up', line:{color:'#07070f',width:1.5}},
+      hovertemplate:'🟢 Sobreventa RSI<30<br>$%{y:,.2f}<extra></extra>'
+    });
+    if(rob.xs.length) traces.push({
+      x:rob.xs, y:rob.ys, type:'scatter', mode:'markers', name:'RSI>70',
+      marker:{color:'#ff007f', size:12, symbol:'triangle-down', line:{color:'#07070f',width:1.5}},
+      hovertemplate:'🔴 Sobrecompra RSI>70<br>$%{y:,.2f}<extra></extra>'
+    });
+}
 
   const layout={
     paper_bgcolor:BG,plot_bgcolor:'#0a0a12',
@@ -764,9 +768,12 @@ function renderPlotly(apiData){
   };
   div.on('plotly_relayout',div._relayoutHandler);
 
-  const rsiWrap=document.getElementById('rsiWrap');
-  if(indVisible.rsi){rsiWrap.style.display='block';renderRSIPanel(cd,dates);}
-  else rsiWrap.style.display='none';
+ const rsiWrap=document.getElementById('rsiWrap');
+if(indVisible.rsi){
+  rsiWrap.style.display='block';
+  renderRSIPanel(cd,dates);
+} else {
+  rsiWrap.style.display='none';
 }
 function renderRSIPanel(cd, dates){
   // Construir serie RSI real a partir de los datos de velas
