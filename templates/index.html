@@ -176,22 +176,26 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;min-height:
           ⚡ Alertas — <span id="alertSymLabel" style="color:#ff007f"></span></div>
         <div id="alertList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto"></div>
       </div>
-
-      <div class="card" id="watch-panel">
-        <div id="watch-hdr">
+<div class="card" id="watch-panel">
+        <div id="watch-hdr" onclick="toggleWatch_panel()" style="cursor:pointer;user-select:none">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:11px;font-weight:700">🔔 Vigilancia</span>
             <span id="watchDot"></span>
           </div>
-          <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
+            <span id="watchChevron" style="color:rgba(255,255,255,.3);font-size:10px;transition:transform .3s;transform:rotate(-90deg)">▼</span>
+          </div>
         </div>
-        <div id="watchEmpty" style="font-size:10px;line-height:1.6;color:rgba(255,255,255,.2)">
-          Marca ★ en cualquier activo para añadirlo. Alertas cuando precio toca SMA o cruzan SMA100/SMA200.
+      <div id="watchBody" class="acc-body closed">
+          <div id="watchEmpty" style="font-size:10px;line-height:1.6;color:rgba(255,255,255,.2)">
+            Marca ★ en cualquier activo para añadirlo. Alertas cuando precio toca SMA o cruzan SMA100/SMA200.
+          </div>
+          <div id="watch-alerts-list"></div>
+          <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
         </div>
-        <div id="watch-alerts-list"></div>
-        <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
       </div>
-    </div>
+    
 
     <div class="card" id="chart-card">
       <div id="ind-bar">
@@ -578,6 +582,13 @@ function setWatchStatus(s){
   const m={ok:['#00e676','Activa'],alert:['#ff007f','¡Alerta!'],err:['#555','Error'],idle:['rgba(255,255,255,.15)','En espera']};
   const[c,t]=m[s]||m.ok; dot.style.background=c;lbl.style.color=c;lbl.innerText=t;
 }
+ let watchPanelOpen = false;
+function toggleWatch_panel(){
+  watchPanelOpen = !watchPanelOpen;
+  document.getElementById('watchBody').classList.toggle('open', watchPanelOpen);
+  document.getElementById('watchBody').classList.toggle('closed', !watchPanelOpen);
+  document.getElementById('watchChevron').style.transform = watchPanelOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+} 
 
 function renderWatchPanel(){
   const emptyEl=document.getElementById('watchEmpty'),listEl=document.getElementById('watch-alerts-list'),countEl=document.getElementById('watchCount');
