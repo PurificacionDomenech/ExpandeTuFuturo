@@ -118,15 +118,15 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;
 .acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
 .acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
 .acc-body.open{max-height:5000px;opacity:1}
-#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
-  gap:7px;margin-top:10px}
-
-/* Tarjeta de activo */
-.fav-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
-  border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;
-  min-width:0;position:relative}
-.fav-card:hover{background:rgba(255,255,255,.04);border-color:rgba(255,0,127,.25)}
-.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.07)}
+#favItems{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:10px;margin-top:12px}
+	
+	/* Tarjeta de activo */
+	.fav-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+	  border-radius:12px;padding:10px 12px;cursor:pointer;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);
+	  min-width:0;position:relative;display:flex;flex-direction:column;justify-content:space-between}
+	.fav-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,0,127,.3);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+	.fav-card.active-sym{border-color:rgba(255,0,127,.6);background:rgba(255,0,127,.08);box-shadow:0 0 15px rgba(255,0,127,0.1)}
 .fav-star{position:absolute;top:5px;right:6px;font-size:11px;cursor:pointer;
   user-select:none;transition:transform .15s;line-height:1;z-index:2}
 .fav-star.watching{color:#ff007f;text-shadow:0 0 8px rgba(255,0,127,.6)}
@@ -400,13 +400,15 @@ function buildFavGrid(){
         title="${isW?'Quitar vigilancia':'Añadir vigilancia'}"
         onclick="toggleWatch('${f.ticker}',event)">★</span>
       <div style="padding-right:12px">
-        <div style="font-size:11px;font-weight:700;overflow:hidden;
-          text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px">${f.name}</div>
-        <canvas id="spark-${id}" style="width:100%;height:24px;display:block"></canvas>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
-          <span style="font-size:9px;color:rgba(255,255,255,.2)">${f.cat} ${f.ticker}</span>
-          <span id="pct-${id}" style="font-size:9px;font-weight:700;color:rgba(255,255,255,.2)">…</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px">
+          <div style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff">${f.name}</div>
+          <div id="price-${id}" class="mono" style="font-size:11px;font-weight:700;color:#ff007f">---</div>
         </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:9px;color:rgba(255,255,255,.3);font-weight:600">${f.cat} ${f.ticker}</span>
+          <span id="pct-${id}" class="mono" style="font-size:10px;font-weight:800;color:rgba(255,255,255,.2)">--%</span>
+        </div>
+        <canvas id="spark-${id}" style="width:100%;height:28px;display:block;margin-top:2px;filter:drop-shadow(0 0 4px rgba(255,0,127,0.1))"></canvas>
       </div>`;
     c.appendChild(div);
   });
@@ -464,7 +466,17 @@ async function loadSparkline(ticker){
     ctx.beginPath(); pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
     ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
     const pEl=document.getElementById(`pct-${id}`);
-    if(pEl){pEl.style.color=col; pEl.innerText=`${up?'+':''}${d.pct.toFixed(2)}%`;}
+    if(pEl){
+      pEl.style.color=col; 
+      pEl.innerText=`${up?'+':''}${d.pct.toFixed(2)}%`;
+      pEl.style.opacity = "1";
+    }
+    const prEl=document.getElementById(`price-${id}`);
+    if(prEl && d.closes && d.closes.length > 0){
+      const lastPrice = d.closes[d.closes.length-1];
+      prEl.innerText = lastPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      prEl.style.color = col;
+    }
   }catch(e){}
 }
 
