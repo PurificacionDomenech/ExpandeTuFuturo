@@ -696,26 +696,91 @@ function renderPlotly(apiData){
   if(indVisible.rsi){rsiWrap.style.display='block';renderRSIPanel(cd,dates);}
   else rsiWrap.style.display='none';
 }
+function renderRSIPanel(cd, dates){
+  // Construir serie RSI real a partir de los datos de velas
+  // El backend no envía la serie RSI directamente, así que la calculamos en frontend
+  const closes = cd.candles.map(c => c.c).filter(v => v != null);
+  const rsiDates = cd.candles.map(c => new Date(c.x));
 
-function renderRSIPanel(cd,dates){
-  const d0=dates[0]||new Date(),dN=dates[dates.length-1]||new Date();
-  const ros=cd.rsi_os.map(p=>new Date(p.x)),rob=cd.rsi_ob.map(p=>new Date(p.x));
-  Plotly.react('rsiDiv',[
-    {x:[d0,dN],y:[30,30],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(0,230,118,.3)',width:1,dash:'dot'}},
-    {x:[d0,dN],y:[70,70],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(255,0,127,.3)',width:1,dash:'dot'}},
-    {x:ros,y:ros.map(()=>20),type:'scatter',mode:'markers',name:'SV',marker:{color:'#00e676',size:6,symbol:'triangle-up',line:{color:'#07070f',width:1}},hovertemplate:'🟢 Sobreventa<extra></extra>'},
-    {x:rob,y:rob.map(()=>80),type:'scatter',mode:'markers',name:'SC',marker:{color:'#ff007f',size:6,symbol:'triangle-down',line:{color:'#07070f',width:1}},hovertemplate:'🔴 Sobrecompra<extra></extra>'},
-  ],{
-    paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',
-    margin:{t:8,r:60,b:40,l:50},showlegend:false,
-    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',tickfont:{color:'rgba(255,255,255,.3)',size:9},tickformat:'%d %b',rangeslider:{visible:false}},
-    yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[30,50,70]},
+  // Cálculo RSI 14 en frontend
+  const period = 14;
+  const rsiVals = new Array(closes.length).fill(null);
+  if(closes.length > period){
+    let gains = 0, losses = 0;
+    for(let i = 1; i <= period; i++){
+      const diff = closes[i] - closes[i-1];
+      if(diff >= 0) gains += diff; else losses -= diff;
+    }
+    let avgGain = gains / period, avgLoss = losses / period;
+    rsiVals[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+    for(let i = period + 1; i < closes.length; i++){
+      const diff = closes[i] - closes[i-1];
+      avgGain = (avgGain * (period-1) + Math.max(diff, 0)) / period;
+      avgLoss = (avgLoss * (period-1) + Math.max(-diff, 0)) / period;
+      rsiVals[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+    }
+  }
+
+  // Separar en segmentos por color: normal / sobrecompra / sobreventa
+  const xNorm=[], yNorm=[], xOB=[], yOB=[], xOS=[], yOS=[];
+  rsiDates.forEach((d, i) => {
+    const v = rsiVals[i];
+    if(v == null) return;
+    xNorm.push(d); yNorm.push(v);
+    xOB.push(d);   yOB.push(v > 70 ? v : null);
+    xOS.push(d);   yOS.push(v < 30 ? v : null);
+  });
+
+  const d0 = rsiDates[0] || new Date();
+  const dN  = rsiDates[rsiDates.length-1] || new Date();
+
+  Plotly.react('rsiDiv', [
+    // Zona relleno sobreventa (<30)
+    {x: xNorm, y: yNorm.map(v => v != null && v < 30 ? v : null),
+     type:'scatter', mode:'lines', showlegend:false, hoverinfo:'skip',
+     line:{color:'transparent', width:0},
+     fill:'tozeroy', fillcolor:'rgba(0,230,118,.12)'},
+
+    // Zona relleno sobrecompra (>70)
+    {x: xNorm, y: yNorm.map(v => v != null && v > 70 ? v : null),
+     type:'scatter', mode:'lines', showlegend:false, hoverinfo:'skip',
+     fill:'toself', fillcolor:'rgba(255,0,127,.10)',
+     line:{color:'transparent', width:0}},
+
+    // Línea RSI principal
+    {x: xNorm, y: yNorm,
+     type:'scatter', mode:'lines', name:'RSI 14',
+     line:{color:'rgba(180,130,220,.9)', width:1.5},
+     hovertemplate:'<b>RSI</b>: %{y:.1f}<extra></extra>'},
+
+    // Línea 30
+    {x:[d0,dN], y:[30,30], type:'scatter', mode:'lines', showlegend:false, hoverinfo:'skip',
+     line:{color:'rgba(0,230,118,.5)', width:1, dash:'dot'}},
+
+    // Línea 70
+    {x:[d0,dN], y:[70,70], type:'scatter', mode:'lines', showlegend:false, hoverinfo:'skip',
+     line:{color:'rgba(255,0,127,.5)', width:1, dash:'dot'}},
+
+    // Línea 50
+    {x:[d0,dN], y:[50,50], type:'scatter', mode:'lines', showlegend:false, hoverinfo:'skip',
+     line:{color:'rgba(255,255,255,.1)', width:1, dash:'dot'}},
+
+  ], {
+    paper_bgcolor: BG, plot_bgcolor: 'rgba(255,255,255,.01)',
+    margin: {t:8, r:60, b:40, l:50}, showlegend: false,
+    xaxis:{type:'date', gridcolor:'rgba(255,255,255,.03)', linecolor:'rgba(255,255,255,.05)',
+      tickfont:{color:'rgba(255,255,255,.3)', size:9}, rangeslider:{visible:false}},
+    yaxis:{range:[0,100], gridcolor:'rgba(255,255,255,.03)',
+      tickfont:{color:'rgba(255,255,255,.2)', size:8}, side:'right',
+      tickvals:[0,30,50,70,100]},
     shapes:[
-      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:0,y1:30,fillcolor:'rgba(0,230,118,.04)',line:{width:0}},
-      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:70,y1:100,fillcolor:'rgba(255,0,127,.04)',line:{width:0}}
+      {type:'rect', xref:'paper', yref:'y', x0:0, x1:1, y0:0,  y1:30,
+       fillcolor:'rgba(0,230,118,.04)', line:{width:0}},
+      {type:'rect', xref:'paper', yref:'y', x0:0, x1:1, y0:70, y1:100,
+       fillcolor:'rgba(255,0,127,.04)', line:{width:0}}
     ],
-    font:{family:'Inter,sans-serif'},dragmode:'pan'
-  },{responsive:true,scrollZoom:false,displayModeBar:false});
+    font:{family:'Inter,sans-serif'}, dragmode:'pan'
+  }, {responsive:true, scrollZoom:false, displayModeBar:false});
 }
 
 function toggleInd(key){
