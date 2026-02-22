@@ -275,6 +275,50 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;min-height:
 <div id="toasts"></div>
 
 <script>
+const DISPLAY_NAMES = {
+  'BTC-USD': 'BTC · Bitcoin',
+  'ETH-USD': 'ETH · Ethereum',
+  '^GSPC':   'SPX · S&P 500',
+  '^NDX':    'NQ · Nasdaq 100',
+  '^DJI':    'YM · Dow Jones',
+  '^RUT':    'RTY · Russell 2000',
+  'SPY':     'SPY · S&P 500 ETF',
+  'VOO':     'VOO · Vanguard S&P',
+  'VTI':     'VTI · Mercado Total',
+  'QQQ':     'QQQ · Nasdaq ETF',
+  'QQQM':    'QQQM · Nasdaq Mini',
+  'SPMO':    'SPMO · Momentum SP',
+  'JEPQ':    'JEPQ · Income Nasdaq',
+  'ITOT':    'ITOT · iShares Total',
+  'SCHD':    'SCHD · Dividendos',
+  'SCHG':    'SCHG · Growth',
+  'VGT':     'VGT · Tecnología',
+  'VHT':     'VHT · Salud',
+  'VFH':     'VFH · Financiero',
+  'VEA':     'VEA · Europa Asia',
+  'VTV':     'VTV · Value',
+  'VTWO':    'VTWO · Russell 2K',
+  'IWM':     'IWM · Small Cap',
+  'XLE':     'XLE · Energía',
+  'SMH':     'SMH · Semiconductores',
+  'RSP':     'RSP · SP Equi-pond',
+  'EEM':     'EEM · Emergentes',
+  'ILF':     'ILF · Latinoamérica',
+  'DIA':     'DIA · Dow Jones ETF',
+  'IOO':     'IOO · Global 100',
+  'SPYM':    'SPYM · SP Apal. 1.5x',
+  'FEPI':    'FEPI · Tech Income',
+  'GLD':     'GLD · Oro ETF',
+  'IAU':     'IAU · Oro iShares',
+  'GDX':     'GDX · Mineras Oro',
+  'UGL':     'UGL · Oro 2x',
+  'COPX':    'COPX · Cobre ETF',
+  'REMX':    'REMX · Tierras Raras',
+  'URNM':    'URNM · Uranio ETF',
+  'URA':     'URA · Uranio Global',
+  'AAPL':    'AAPL · Apple',
+};
+  
 const ALL_ASSETS = [
   {name:'Bitcoin',    ticker:'BTC-USD',cat:'🪙'},
   {name:'Ethereum',   ticker:'ETH-USD',cat:'🪙'},
@@ -854,7 +898,7 @@ function renderCurrentAlerts(){
 function doSearch(){const s=document.getElementById('symbolInput').value.trim().toUpperCase();if(s)loadSymbol(s);}
 
 function updateSidebar(data){
-  document.getElementById('dispSym').innerText=currentSymbol;
+ document.getElementById('dispSym').innerText = DISPLAY_NAMES[currentSymbol] || currentSymbol;
   document.getElementById('dispPrice').innerText=data.last_price.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
   const chEl=document.getElementById('dispChange'),pre=data.change>=0?'+':'';
   chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
