@@ -214,6 +214,10 @@ body{font-family:'Inter',sans-serif;background:#07070f;color:#e0e0e0;min-height:
   style="background:rgba(41,98,255,.15);color:#2962ff;border-color:rgba(41,98,255,.4);padding:4px 10px;font-size:10px">
   📈 TradingView
 </button>
+<button class="btn-ind" onclick="window.open('https://es.tradingview.com/script/zQDMj0ly/','_blank')"
+  style="background:rgba(41,98,255,.08);color:#6b8fff;border-color:rgba(41,98,255,.25);padding:4px 10px;font-size:10px">
+  ★ Indicador ETF
+</button>
           <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap;margin-left:4px">Doble clic reset</span>
         </div>
       </div>
@@ -910,17 +914,41 @@ function renderCurrentAlerts(){
 
 function doSearch(){const s=document.getElementById('symbolInput').value.trim().toUpperCase();if(s)loadSymbol(s);}
 function abrirTradingView(){
-  // Convertir símbolo al formato que entiende TradingView
-  const map = {
+  const map={
+    // Índices
+    '^DJI':    'DJ:DJI',
+    '^NDX':    'NASDAQ:NDX',
+    '^GSPC':   'SP:SPX',
+    '^RUT':    'TVC:RUT',
+    // Futuros
+    'YM=F':    'CME_MINI:YM1!',
+    'NQ=F':    'CME_MINI:NQ1!',
+    'GC=F':    'TVC:GOLD',
+    'SI=F':    'TVC:SILVER',
+    'CL=F':    'TVC:USOIL',
+    // Forex
+    'USDJPY=X':'FX:USDJPY',
+    'GBPJPY=X':'FX:GBPJPY',
+    'EURUSD=X':'FX:EURUSD',
+    'AUDUSD=X':'FX:AUDUSD',
+    // Bonos / Dólar
+    '^TNX':    'TVC:US10Y',
+    '^TYX':    'TVC:US20Y',
+    'DX=F':    'TVC:DXY',
+    // Cripto
     'BTC-USD': 'BINANCE:BTCUSDT',
     'ETH-USD': 'BINANCE:ETHUSDT',
-    '^GSPC':   'SP:SPX',
-    '^NDX':    'NASDAQ:NDX',
-    '^DJI':    'DJ:DJI',
-    '^RUT':    'TVC:RUT',
+    // ETFs
+    'SPY':'AMEX:SPY','VOO':'AMEX:VOO','VTI':'AMEX:VTI',
+    'QQQ':'NASDAQ:QQQ','QQQM':'NASDAQ:QQQM',
+    'GLD':'AMEX:GLD','IAU':'AMEX:IAU','GDX':'AMEX:GDX',
+    'IWM':'AMEX:IWM','SMH':'NASDAQ:SMH','XLE':'AMEX:XLE',
+    'SCHD':'NASDAQ:SCHD','SCHG':'NASDAQ:SCHG','VGT':'AMEX:VGT',
+    'EEM':'AMEX:EEM','DIA':'AMEX:DIA',
+    'AAPL':'NASDAQ:AAPL',
   };
-  const tv = map[currentSymbol] || currentSymbol.replace('-USD','USDT').replace('^','');
-  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tv)}`, '_blank');
+  const sym = map[currentSymbol] || currentSymbol;
+  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(sym)}`, '_blank');
 }
 function updateSidebar(data){
  document.getElementById('dispSym').innerText = DISPLAY_NAMES[currentSymbol] || currentSymbol;
