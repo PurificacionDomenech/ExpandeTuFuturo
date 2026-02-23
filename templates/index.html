@@ -522,19 +522,25 @@ async function loadRowData(ticker){
     const smaCell=document.getElementById(`tsma-${id}`);
     if(smaCell){
       const THRESH=0.6;
-      const defs=[{v:d.sma20,label:'SMA20'},{v:d.sma50,label:'SMA50'},{v:d.sma100,label:'SMA100'},{v:d.sma200,label:'SMA200'}];
-      const near=defs.filter(s=>s.v&&Math.abs(d.price-s.v)/s.v*100<=THRESH);
-      if(!near.length){
-        smaCell.innerHTML='<span style="font-size:10px;color:rgba(255,255,255,.12)">—</span>';
-      }else{
-        smaCell.innerHTML=near.map(s=>{
-          const pct=((d.price-s.v)/s.v*100).toFixed(2);
-          const touching=Math.abs(parseFloat(pct))<=0.15;
-          const col=touching?'#ff9800':'#ffa500';
-          const bg=touching?'rgba(255,152,0,.28)':'rgba(255,165,0,.11)';
-          return `<span class="sma-pill" style="background:${bg};color:${col}" title="${s.label}: $${s.v.toFixed(2)} (${pct}%)">${touching?'●':'~'} ${s.label}</span>`;
-        }).join('');
-      }
+  const SMA_COLORS={
+  'SMA20': {hex:'#00ffff', rgb:'0,255,255'},
+  'SMA50': {hex:'#ffff00', rgb:'255,255,0'},
+  'SMA100':{hex:'#ffc864', rgb:'255,200,100'},
+  'SMA200':{hex:'#c896dc', rgb:'200,150,220'},
+};
+const defs=[{v:d.sma20,label:'SMA20'},{v:d.sma50,label:'SMA50'},{v:d.sma100,label:'SMA100'},{v:d.sma200,label:'SMA200'}];
+const near=defs.filter(s=>s.v&&Math.abs(d.price-s.v)/s.v*100<=THRESH);
+if(!near.length){
+  smaCell.innerHTML='<span style="font-size:10px;color:rgba(255,255,255,.12)">—</span>';
+}else{
+  smaCell.innerHTML=near.map(s=>{
+    const pct=((d.price-s.v)/s.v*100).toFixed(2);
+    const touching=Math.abs(parseFloat(pct))<=0.15;
+    const {hex,rgb}=SMA_COLORS[s.label];
+    const bg=touching?`rgba(${rgb},.28)`:`rgba(${rgb},.10)`;
+    return `<span class="sma-pill" style="background:${bg};color:${hex}" title="${s.label}: $${s.v.toFixed(2)} (${pct}%)">${touching?'●':'~'} ${s.label}</span>`;
+  }).join('');
+}
     }
 
     // Cruce 100/200
