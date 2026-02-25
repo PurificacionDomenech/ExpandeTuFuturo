@@ -1067,11 +1067,34 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   setTimeout(loadNotifPrefs, 500);
 }
 
+function toggleChart(){
+  const b=document.getElementById('chartBody'),btn=document.getElementById('btnToggleChart');
+  if(b.style.display==='none'){
+    b.style.display='block';
+    btn.innerText='▲ Cerrar gráfico';
+    if(!chartLoaded)loadChart();
+  }else{
+    b.style.display='none';
+    btn.innerText='▼ Abrir gráfico';
+  }
+}
+
+function toggleFavs(){
+  const b=document.getElementById('favBody'),c=document.getElementById('favChevron');
+  if(b.classList.contains('closed')){
+    b.classList.remove('closed');b.classList.add('open');
+    c.style.transform='rotate(0deg)';
+  }else{
+    b.classList.remove('open');b.classList.add('closed');
+    c.style.transform='rotate(-90deg)';
+  }
+}
+
 let isVip = false;
 
 async function loadNotifPrefs(){
   try{
-    const userId = getUserId();
+    const userId = getNotifUserId();
     const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
     const p=await r.json();
     isVip = !!p.is_vip;
@@ -1142,7 +1165,7 @@ async function redeemVipCode() {
     
     showToast("Verificando código...", "info");
     try {
-        const userId = getUserId();
+        const userId = getNotifUserId();
         const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
