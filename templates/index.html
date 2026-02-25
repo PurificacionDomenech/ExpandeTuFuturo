@@ -1271,10 +1271,10 @@ async function redeemVipCode(explicitCode) {
     showToast("Verificando código...", "info");
     try {
         const userId = getNotifUserId();
-        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
+        const r = await fetch(`/api/notifications/redeem?user_id=${encodeURIComponent(userId)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, user_id: userId })
         });
         const d = await r.json();
         if(d.ok) {
