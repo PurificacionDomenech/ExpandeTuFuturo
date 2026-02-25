@@ -1,235 +1,263 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Expande Tu Futuro | Market Scanner</title>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{--gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--bg:#060810;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.08)}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-height:100vh;overflow-x:hidden}
-.mono{font-family:'Space Mono',monospace}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px}
-#app{width:100%;max-width:1600px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
-#hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#hdr-logo{width:34px;height:34px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-#hdr-title{font-size:16px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
-#hdr-badge{font-size:10px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);border:1px solid var(--border);font-weight:700}
-#hdr-search{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}
-#symbolInput{flex:1;background:#111;border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:#fff}
-#btnSearch{padding:10px 18px;border-radius:10px;background:var(--gold);color:#000;font-size:14px;font-weight:700;border:none;cursor:pointer}
-#main{display:flex;flex-direction:column;gap:12px}
-@media(min-width:900px){#main{display:grid;grid-template-columns:200px 1fr;align-items:flex-start}}
-#sidebar{display:flex;flex-direction:column;gap:10px}
-#price-widget{padding:16px}
-#dispSym{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px;letter-spacing:1px}
-#dispPrice{font-size:24px;font-weight:700;color:#fff}
-#chart-card{padding:16px;position:relative;min-height:400px}
-#tv-bar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
-#ind-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.btn-ind{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all 0.2s}
-.btn-ind.off{opacity:0.3;filter:grayscale(1)}
-#plotDiv{width:100%;height:500px}
-@media(min-width:900px){#plotDiv{height:600px}}
-#favs-panel{overflow:hidden}
-#favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:none;border:none;width:100%;color:inherit;padding:16px;font-family:inherit}
-#assetsTable{width:100%;border-collapse:collapse}
-#assetsTable th{padding:12px;font-size:11px;color:var(--gold);text-align:left;border-bottom:1px solid var(--border)}
-#assetsTable td{padding:12px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.02)}
-.asset-row:hover{background:rgba(255,255,255,0.02);cursor:pointer}
-#notifBtn{padding:8px 14px;border-radius:8px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer}
-#alertBox{padding:12px;margin-top:10px}
-.alerta-item{padding:8px;border-radius:6px;font-size:11px;margin-bottom:4px}
-.alerta-item.bullish{background:rgba(0,230,118,0.1);color:#00e676}
-.alerta-item.bearish{background:rgba(255,68,68,0.1);color:#ff5252}
-</style>
-</head>
-<body>
-<div id="app">
-  <div id="hdr">
-    <div id="hdr-logo"><img src="/static/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"></div>
-    <span id="hdr-title">EXPANDE TU FUTURO</span>
-    <span id="hdr-badge">PRO v1.2</span>
-    <button id="notifBtn" onclick="openUpgrade()">💎 PLAN PRO</button>
-    <div id="hdr-search">
-      <input id="symbolInput" type="text" placeholder="AAPL, BTC-USD..." onkeydown="if(event.key==='Enter')doSearch()">
-      <button id="btnSearch" onclick="doSearch()">BUSCAR</button>
+  <html lang="es">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Expande Tu Futuro | Market Scanner</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+  :root{--gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--bg:#060810;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.08);--bullish:#00e676;--bearish:#ff5252}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-height:100vh;overflow-x:hidden}
+  .mono{font-family:'Space Mono',monospace}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+  #app{width:100%;max-width:1600px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+  #hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  #hdr-logo{width:34px;height:34px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  #hdr-title{font-size:16px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
+  #hdr-badge{font-size:10px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);border:1px solid var(--border);font-weight:700}
+  #hdr-search{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}
+  #symbolInput{flex:1;background:#111;border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:#fff}
+  #btnSearch{padding:10px 18px;border-radius:10px;background:var(--gold);color:#000;font-size:14px;font-weight:700;border:none;cursor:pointer}
+  #main{display:flex;flex-direction:column;gap:12px}
+  @media(min-width:900px){#main{display:grid;grid-template-columns:220px 1fr;align-items:flex-start}}
+  #sidebar{display:flex;flex-direction:column;gap:10px}
+  #price-widget{padding:16px}
+  #dispSym{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px;letter-spacing:1px}
+  #dispPrice{font-size:24px;font-weight:700;color:#fff}
+  #chart-card{padding:16px;position:relative}
+  #tv-bar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+  #ind-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .btn-ind{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all 0.2s}
+  .btn-ind.off{opacity:0.3;filter:grayscale(1)}
+  #plotDiv{width:100%;height:500px}
+  @media(min-width:900px){#plotDiv{height:650px}}
+  #favs-panel{overflow:hidden}
+  #favs-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px;background:rgba(255,255,255,0.02)}
+  #assetsTable{width:100%;border-collapse:collapse}
+  #assetsTable th{padding:12px;font-size:10px;color:var(--gold);text-align:left;border-bottom:1px solid var(--border);text-transform:uppercase}
+  #assetsTable td{padding:12px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.02);vertical-align:middle}
+  .asset-row:hover{background:rgba(255,255,255,0.02);cursor:pointer}
+  .badge{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
+  .badge.bullish{background:rgba(0,230,118,0.15);color:var(--bullish)}
+  .badge.bearish{background:rgba(255,68,68,0.15);color:var(--bearish)}
+  .table-alert{font-size:10px;padding:2px 6px;border-radius:4px;margin-top:2px;display:block}
+  .table-alert.bullish{color:var(--bullish);background:rgba(0,230,118,0.05)}
+  .table-alert.bearish{color:var(--bearish);background:rgba(255,68,68,0.05)}
+  #notifBtn{padding:8px 14px;border-radius:8px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer}
+  #alertBox{padding:12px}
+  .alerta-item{padding:8px;border-radius:6px;font-size:11px;margin-bottom:4px}
+  .alerta-item.bullish{background:rgba(0,230,118,0.1);color:var(--bullish)}
+  .alerta-item.bearish{background:rgba(255,68,68,0.1);color:var(--bearish)}
+  </style>
+  </head>
+  <body>
+  <div id="app">
+    <div id="hdr">
+      <div id="hdr-logo"><img src="/static/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"></div>
+      <span id="hdr-title">EXPANDE TU FUTURO</span>
+      <span id="hdr-badge">PRO v1.2</span>
+      <button id="notifBtn" onclick="openUpgrade()">💎 PLAN PRO</button>
+      <div id="hdr-search">
+        <input id="symbolInput" type="text" placeholder="AAPL, BTC-USD..." onkeydown="if(event.key==='Enter')doSearch()">
+        <button id="btnSearch" onclick="doSearch()">BUSCAR</button>
+      </div>
+    </div>
+    <div id="main">
+      <div id="sidebar">
+        <div class="card" id="price-widget">
+          <div id="dispSym">---</div>
+          <div id="dispPrice" class="mono">---</div>
+        </div>
+        <div id="alertBox" class="card" style="display:none">
+          <div style="font-size:10px;color:var(--gold);font-weight:800;margin-bottom:8px">⚡ ALERTAS ACTIVAS</div>
+          <div id="alertList"></div>
+        </div>
+      </div>
+      <div class="card" id="chart-card">
+        <div id="tv-bar">
+          <span style="font-size:12px;font-weight:700">GRÁFICO TIEMPO REAL</span>
+          <span id="chartStatus" style="font-size:10px;color:var(--gold)">Cargando...</span>
+        </div>
+        <div id="ind-bar">
+          <button class="btn-ind" id="tog-sma20" style="background:rgba(0,255,255,0.1);color:#00ffff;border-color:rgba(0,255,255,0.3)" onclick="toggleInd('sma20')">SMA20</button>
+          <button class="btn-ind" id="tog-sma50" style="background:rgba(255,255,0,0.1);color:#ffff00;border-color:rgba(255,255,0,0.3)" onclick="toggleInd('sma50')">SMA50</button>
+          <button class="btn-ind" id="tog-sma100" style="background:rgba(255,165,0,0.1);color:#ffa500;border-color:rgba(255,165,0,0.3)" onclick="toggleInd('sma100')">SMA100</button>
+          <button class="btn-ind" id="tog-sma200" style="background:rgba(255,0,255,0.1);color:#ff00ff;border-color:rgba(255,0,255,0.3)" onclick="toggleInd('sma200')">SMA200</button>
+          <button class="btn-ind" id="tog-st" style="background:rgba(0,230,118,0.1);color:#00e676;border-color:rgba(0,230,118,0.3)" onclick="toggleInd('st')">SUPERTREND</button>
+        </div>
+        <div id="plotDiv"></div>
+      </div>
+    </div>
+    <div class="card" id="favs-panel">
+      <div id="favs-hdr">
+        <span style="font-weight:700">TODOS LOS ACTIVOS</span>
+        <span style="font-size:11px;opacity:0.5">Alertas automáticas en tabla</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="assetsTable">
+          <thead>
+            <tr>
+              <th>ACTIVO</th>
+              <th>PRECIO</th>
+              <th>CAMBIO</th>
+              <th>ESTADO</th>
+              <th>ÚLTIMAS ALERTAS</th>
+            </tr>
+          </thead>
+          <tbody id="favItems"></tbody>
+        </table>
+      </div>
     </div>
   </div>
-  <div id="main">
-    <div id="sidebar">
-      <div class="card" id="price-widget">
-        <div id="dispSym">---</div>
-        <div id="dispPrice" class="mono">---</div>
-      </div>
-      <div id="alertBox" class="card" style="display:none">
-        <div style="font-size:10px;color:var(--gold);font-weight:800;margin-bottom:8px">⚡ ALERTAS ACTIVAS</div>
-        <div id="alertList"></div>
-      </div>
-    </div>
-    <div class="card" id="chart-card">
-      <div id="tv-bar">
-        <span style="font-size:12px;font-weight:700">GRÁFICO TIEMPO REAL</span>
-        <span id="chartStatus" style="font-size:10px;color:var(--gold)">Cargando...</span>
-      </div>
-      <div id="ind-bar">
-        <button class="btn-ind" id="tog-sma20" style="background:rgba(0,255,255,0.1);color:#00ffff;border-color:rgba(0,255,255,0.3)" onclick="toggleInd('sma20')">SMA20</button>
-        <button class="btn-ind" id="tog-sma50" style="background:rgba(255,255,0,0.1);color:#ffff00;border-color:rgba(255,255,0,0.3)" onclick="toggleInd('sma50')">SMA50</button>
-        <button class="btn-ind" id="tog-sma100" style="background:rgba(255,165,0,0.1);color:#ffa500;border-color:rgba(255,165,0,0.3)" onclick="toggleInd('sma100')">SMA100</button>
-        <button class="btn-ind" id="tog-sma200" style="background:rgba(255,0,255,0.1);color:#ff00ff;border-color:rgba(255,0,255,0.3)" onclick="toggleInd('sma200')">SMA200</button>
-        <button class="btn-ind" id="tog-st" style="background:rgba(0,230,118,0.1);color:#00e676;border-color:rgba(0,230,118,0.3)" onclick="toggleInd('st')">SUPERTREND</button>
-      </div>
-      <div id="plotDiv"></div>
-    </div>
-  </div>
-  <div class="card" id="favs-panel">
-    <div id="favs-hdr">
-      <span style="font-weight:700">MERCADOS PRINCIPALES</span>
-      <span style="font-size:11px;opacity:0.5">Haz clic para ver gráfico</span>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="assetsTable">
-        <thead>
-          <tr><th>ACTIVO</th><th>PRECIO</th><th>CAMBIO</th><th>ESTADO</th></tr>
-        </thead>
-        <tbody id="favItems"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<script>
-const SYMBOLS = ['BTC-USD','ETH-USD','^GSPC','^NDX','AAPL','TSLA','SPY'];
-let currentSym = 'BTC-USD';
-let currentData = null;
-let inds = { sma20:true, sma50:true, sma100:true, sma200:true, st:true };
+  <script>
+  const SYMBOLS = ['BTC-USD','ETH-USD','^GSPC','^NDX','AAPL','TSLA','SPY','MSFT','GOOGL','AMZN'];
+  let currentSym = 'BTC-USD';
+  let currentData = null;
+  let inds = { sma20:true, sma50:true, sma100:true, sma200:true, st:true };
 
-async function loadTable() {
-    const list = document.getElementById('favItems');
-    list.innerHTML = '';
-    for(const s of SYMBOLS) {
-        try {
-            const r = await fetch('/api/row/' + s);
-            const d = await r.json();
-            const tr = document.createElement('tr');
-            tr.className = 'asset-row';
-            tr.onclick = () => loadSymbol(s);
-            tr.innerHTML = '<td><b>' + s + '</b></td>' +
-                '<td class="mono">$' + (d.price || 0) + '</td>' +
-                '<td class="mono" style="color:' + (d.change_pct >= 0 ? '#00e676' : '#ff5252') + '">' + (d.change_pct || 0) + '%</td>' +
-                '<td><span style="color:#00e676">ACTIVO</span></td>';
-            list.appendChild(tr);
-        } catch(e) {}
-    }
-}
+  async function loadTable() {
+      const list = document.getElementById('favItems');
+      list.innerHTML = '';
+      for(const s of SYMBOLS) {
+          try {
+              const r = await fetch('/api/chart/' + s);
+              const d = await r.json();
+              const tr = document.createElement('tr');
+              tr.className = 'asset-row';
+              tr.onclick = () => loadSymbol(s);
+              
+              let alertHtml = '';
+              if(d.alertas && d.alertas.length > 0) {
+                  d.alertas.slice(0,2).forEach(a => {
+                      alertHtml += '<span class="table-alert ' + a.nivel + '">' + a.msg.split(']')[1] + '</span>';
+                  });
+              } else {
+                  alertHtml = '<span style="opacity:0.3">Sin alertas</span>';
+              }
 
-async function loadSymbol(sym) {
-    currentSym = sym;
-    document.getElementById('dispSym').innerText = sym;
-    document.getElementById('chartStatus').innerText = 'Actualizando...';
-    try {
-        const r = await fetch('/api/chart/' + sym);
-        const d = await r.json();
-        currentData = d;
-        if(d.chart) {
-            renderChart();
-            document.getElementById('dispPrice').innerText = '$' + d.last_price;
-            const ab = document.getElementById('alertBox');
-            const al = document.getElementById('alertList');
-            al.innerHTML = '';
-            if(d.alertas && d.alertas.length > 0) {
-                ab.style.display = 'block';
-                d.alertas.forEach(a => {
-                    const i = document.createElement('div');
-                    i.className = 'alerta-item ' + a.nivel;
-                    i.innerText = a.msg;
-                    al.appendChild(i);
-                });
-            } else { ab.style.display = 'none'; }
-        }
-        document.getElementById('chartStatus').innerText = 'En vivo';
-    } catch(e) { document.getElementById('chartStatus').innerText = 'Error'; }
-}
+              const changeColor = (d.last_price && d.chart && d.chart.candles) ? (d.last_price >= d.chart.candles[0].o ? '#00e676' : '#ff5252') : '#fff';
+              const changePct = (d.last_price && d.chart && d.chart.candles) ? (((d.last_price - d.chart.candles[0].o)/d.chart.candles[0].o)*100).toFixed(2) : '0';
 
-function renderChart() {
-    if(!currentData || !currentData.chart) return;
-    const d = currentData;
-    const x = d.chart.candles.map(c => new Date(c.x));
-    
-    const traces = [{
-        x: x,
-        open: d.chart.candles.map(c => c.o),
-        high: d.chart.candles.map(c => c.h),
-        low: d.chart.candles.map(c => c.l),
-        close: d.chart.candles.map(c => c.c),
-        type: 'candlestick',
-        name: currentSym
-    }];
-    
-    if(d.indicadores) {
-        if(inds.sma20 && d.indicadores.SMA20) traces.push({x:x, y:d.indicadores.SMA20, type:'scatter', mode:'lines', name:'SMA20', line:{color:'#00ffff', width:1}});
-        if(inds.sma50 && d.indicadores.SMA50) traces.push({x:x, y:d.indicadores.SMA50, type:'scatter', mode:'lines', name:'SMA50', line:{color:'#ffff00', width:1}});
-        if(inds.sma100 && d.indicadores.SMA100) traces.push({x:x, y:d.indicadores.SMA100, type:'scatter', mode:'lines', name:'SMA100', line:{color:'#ffa500', width:1}});
-        if(inds.sma200 && d.indicadores.SMA200) traces.push({x:x, y:d.indicadores.SMA200, type:'scatter', mode:'lines', name:'SMA200', line:{color:'#ff00ff', width:1}});
-        if(inds.st && d.indicadores.ST) traces.push({x:x, y:d.indicadores.ST, type:'scatter', mode:'lines', name:'SuperTrend', line:{color:'#00e676', width:1.5}});
-    }
+              tr.innerHTML = '<td><b>' + s + '</b></td>' +
+                  '<td class="mono">$' + (d.last_price || 0) + '</td>' +
+                  '<td class="mono" style="color:' + changeColor + '">' + changePct + '%</td>' +
+                  '<td><span class="badge ' + (changePct >= 0 ? 'bullish' : 'bearish') + '">' + (changePct >= 0 ? 'ALZA' : 'BAJA') + '</span></td>' +
+                  '<td>' + alertHtml + '</td>';
+              list.appendChild(tr);
+          } catch(e) { console.error(e); }
+      }
+  }
 
-    Plotly.newPlot('plotDiv', traces, {
-        margin: {t:10,r:10,b:30,l:50},
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: {color:'#fff'},
-        xaxis: {rangeslider:{visible:false}, gridcolor:'rgba(255,255,255,0.05)'},
-        yaxis: {gridcolor:'rgba(255,255,255,0.05)'},
-        legend: {orientation:'h', y:1.1}
-    });
-}
+  async function loadSymbol(sym) {
+      currentSym = sym;
+      document.getElementById('dispSym').innerText = sym;
+      document.getElementById('chartStatus').innerText = 'Actualizando...';
+      try {
+          const r = await fetch('/api/chart/' + sym);
+          const d = await r.json();
+          currentData = d;
+          if(d.chart) {
+              renderChart();
+              document.getElementById('dispPrice').innerText = '$' + d.last_price;
+              const ab = document.getElementById('alertBox');
+              const al = document.getElementById('alertList');
+              al.innerHTML = '';
+              if(d.alertas && d.alertas.length > 0) {
+                  ab.style.display = 'block';
+                  d.alertas.forEach(a => {
+                      const i = document.createElement('div');
+                      i.className = 'alerta-item ' + a.nivel;
+                      i.innerText = a.msg;
+                      al.appendChild(i);
+                  });
+              } else { ab.style.display = 'none'; }
+          }
+          document.getElementById('chartStatus').innerText = 'En vivo';
+      } catch(e) { document.getElementById('chartStatus').innerText = 'Error'; }
+  }
 
-function toggleInd(id) {
-    inds[id] = !inds[id];
-    const btn = document.getElementById('tog-' + id);
-    if(inds[id]) btn.classList.remove('off');
-    else btn.classList.add('off');
-    renderChart();
-}
+  function renderChart() {
+      if(!currentData || !currentData.chart) return;
+      const d = currentData;
+      const x = d.chart.candles.map(c => new Date(c.x));
+      
+      const traces = [{
+          x: x,
+          open: d.chart.candles.map(c => c.o),
+          high: d.chart.candles.map(c => c.h),
+          low: d.chart.candles.map(c => c.l),
+          close: d.chart.candles.map(c => c.c),
+          type: 'candlestick',
+          name: currentSym
+      }];
+      
+      if(d.indicadores) {
+          if(inds.sma20 && d.indicadores.SMA20) traces.push({x:x, y:d.indicadores.SMA20, type:'scatter', mode:'lines', name:'SMA20', line:{color:'#00ffff', width:1}});
+          if(inds.sma50 && d.indicadores.SMA50) traces.push({x:x, y:d.indicadores.SMA50, type:'scatter', mode:'lines', name:'SMA50', line:{color:'#ffff00', width:1}});
+          if(inds.sma100 && d.indicadores.SMA100) traces.push({x:x, y:d.indicadores.SMA100, type:'scatter', mode:'lines', name:'SMA100', line:{color:'#ffa500', width:1}});
+          if(inds.sma200 && d.indicadores.SMA200) traces.push({x:x, y:d.indicadores.SMA200, type:'scatter', mode:'lines', name:'SMA200', line:{color:'#ff00ff', width:1}});
+          if(inds.st && d.indicadores.ST) traces.push({x:x, y:d.indicadores.ST, type:'scatter', mode:'lines', name:'SuperTrend', line:{color:'#00e676', width:1.5}});
+      }
 
-function doSearch() {
-    const s = document.getElementById('symbolInput').value.trim().toUpperCase();
-    if(s) loadSymbol(s);
-}
+      Plotly.newPlot('plotDiv', traces, {
+          margin: {t:10,r:10,b:30,l:50},
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: {color:'#fff'},
+          xaxis: {rangeslider:{visible:false}, gridcolor:'rgba(255,255,255,0.05)'},
+          yaxis: {gridcolor:'rgba(255,255,255,0.05)'},
+          legend: {orientation:'h', y:1.1}
+      });
+  }
 
-function openUpgrade() {
-    const m = document.createElement('div');
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(10px)';
-    m.innerHTML = '<div class="card" style="padding:40px;text-align:center;max-width:400px;background:#0a0a15;border-color:var(--gold)">' +
-        '<div style="font-size:50px">💎</div>' +
-        '<h2 style="margin:20px 0;color:var(--gold)">EXPANDE TU FUTURO PRO</h2>' +
-        '<p style="font-size:14px;opacity:0.7;margin-bottom:30px">Accede a indicadores premium y alertas personalizadas.</p>' +
-        '<input id="vipIn" type="text" placeholder="Código VIP" style="width:100%;padding:12px;margin-bottom:12px;background:#000;border:1px solid var(--gold);color:#fff;text-align:center">' +
-        '<button onclick="activateVIP()" style="width:100%;padding:12px;background:var(--gold);border:none;font-weight:800;cursor:pointer">ACTIVAR</button>' +
-        '<button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;background:none;border:none;color:#555;cursor:pointer">Cerrar</button>' +
-        '</div>';
-    document.body.appendChild(m);
-}
+  function toggleInd(id) {
+      inds[id] = !inds[id];
+      const btn = document.getElementById('tog-' + id);
+      if(inds[id]) btn.classList.remove('off');
+      else btn.classList.add('off');
+      renderChart();
+  }
 
-async function activateVIP() {
-    const c = document.getElementById('vipIn').value;
-    if(!c) return;
-    const r = await fetch('/api/notifications/redeem', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({code: c, user_id: localStorage.getItem('etf_user_id') || 'anon'})
-    });
-    const d = await r.json();
-    alert(d.msg || d.error);
-    if(d.ok) location.reload();
-}
+  function doSearch() {
+      const s = document.getElementById('symbolInput').value.trim().toUpperCase();
+      if(s) loadSymbol(s);
+  }
 
-window.onload = () => {
-    loadTable();
-    loadSymbol('BTC-USD');
-};
-</script>
-</body>
-</html>
+  function openUpgrade() {
+      const m = document.createElement('div');
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(10px)';
+      m.innerHTML = '<div class="card" style="padding:40px;text-align:center;max-width:400px;background:#0a0a15;border-color:var(--gold)">' +
+          '<div style="font-size:50px">💎</div>' +
+          '<h2 style="margin:20px 0;color:var(--gold)">EXPANDE TU FUTURO PRO</h2>' +
+          '<p style="font-size:14px;opacity:0.7;margin-bottom:30px">Accede a indicadores premium y alertas personalizadas.</p>' +
+          '<input id="vipIn" type="text" placeholder="Código VIP" style="width:100%;padding:12px;margin-bottom:12px;background:#000;border:1px solid var(--gold);color:#fff;text-align:center">' +
+          '<button onclick="activateVIP()" style="width:100%;padding:12px;background:var(--gold);border:none;font-weight:800;cursor:pointer">ACTIVAR</button>' +
+          '<button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;background:none;border:none;color:#555;cursor:pointer">Cerrar</button>' +
+          '</div>';
+      document.body.appendChild(m);
+  }
+
+  async function activateVIP() {
+      const c = document.getElementById('vipIn').value;
+      if(!c) return;
+      const r = await fetch('/api/notifications/redeem', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({code: c, user_id: localStorage.getItem('etf_user_id') || 'anon'})
+      });
+      const d = await r.json();
+      alert(d.msg || d.error);
+      if(d.ok) location.reload();
+  }
+
+  window.onload = () => {
+      loadTable();
+      loadSymbol('BTC-USD');
+  };
+  </script>
+  </body>
+  </html>
+  EOF
+  
