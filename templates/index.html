@@ -184,7 +184,7 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
       </div>
 
       <div id="alertBox" class="card">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.2);font-weight:700;margin-bottom:6px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(232,228,217,0.6);font-weight:700;margin-bottom:6px">
           ⚡ Alertas — <span id="alertSymLabel" style="color:#c9a84c"></span>
         </div>
         <div id="alertList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto"></div>
@@ -217,10 +217,10 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
       <!-- TV-BAR: siempre visible -->
       <div id="tv-bar">
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em">Gráfico 1D</span>
+          <span style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Gráfico 1D</span>
           <button onclick="toggleChart()" id="btnToggleChart"
-            style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.12);
-            background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);cursor:pointer;font-family:'DM Sans',sans-serif">
+            style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid var(--gold-dim);
+            background:var(--gold-dim);color:var(--gold2);cursor:pointer;font-family:'DM Sans',sans-serif">
             ▼ Abrir gráfico
           </button>
         </div>
@@ -244,8 +244,8 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
           <button class="btn-ind" id="tog-sma50"  style="background:rgba(255,255,0,.1);color:#ffff00;border-color:rgba(255,255,0,.3)"      onclick="toggleInd('sma50')">SMA50</button>
           <button class="btn-ind" id="tog-sma100" style="background:rgba(255,200,100,.1);color:#ffc864;border-color:rgba(255,200,100,.3)"  onclick="toggleInd('sma100')">SMA100</button>
           <button class="btn-ind" id="tog-sma200" style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"  onclick="toggleInd('sma200')">SMA200</button>
-          <button class="btn-ind off" id="tog-st" style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"      onclick="toggleInd('st')">SuperT</button>
-          <button class="btn-ind off" id="tog-rsi"style="background:rgba(255,0,127,.1);color:#e8c96d;border-color:rgba(255,0,127,.3)"      onclick="toggleInd('rsi')">RSI</button>
+          <button class="btn-ind" id="tog-st" style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"      onclick="toggleInd('st')">SuperT</button>
+          <button class="btn-ind" id="tog-rsi"style="background:rgba(255,0,127,.1);color:#e8c96d;border-color:rgba(255,0,127,.3)"      onclick="toggleInd('rsi')">RSI</button>
           <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
             <button class="btn-ind" onclick="zoomChart(1.2)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">+</button>
             <button class="btn-ind" onclick="zoomChart(0.8)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">-</button>
@@ -366,7 +366,7 @@ const ALL_ASSETS = [
 ───────────────────────────────────────────── */
 let currentSymbol  = '^NDX';
 let favsOpen       = true;
-let indVisible     = {sma20:true,sma50:true,sma100:true,sma200:true,st:false,rsi:false};
+let indVisible     = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
 let lastData       = null;
 let watchlist      = new Set();
 let alertsByTicker = {};
