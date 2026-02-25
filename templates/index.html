@@ -1065,7 +1065,12 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   if (emIn) emIn.onchange = saveNotifPrefs;
   
   // Forzar carga inicial
-  setTimeout(loadNotifPrefs, 500);
+  setTimeout(() => {
+    loadNotifPrefs();
+    const defaultSym = ALL_ASSETS && ALL_ASSETS.length ? ALL_ASSETS[0].ticker : 'BTC-USD';
+    loadSymbol(defaultSym);
+  }, 500);
+}
 
 function favId(t){return 'f_'+t.replace(/[^a-z0-9]/gi,'_');}
 function formatPrice(p){
