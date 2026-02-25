@@ -339,8 +339,9 @@ async def redeem_code(request: Request, user_id: str = "default"):
                     print(f"DEBUG: Código '{code}' ya está marcado como usado")
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                # Marcar código como usado
-                cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
+                # Marcar código como usado (excepto para el código maestro VIP333)
+                if code != "VIP333":
+                    cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
                 # ACTUALIZACIÓN DIRECTA DE VIP
                 cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
