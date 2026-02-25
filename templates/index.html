@@ -433,24 +433,17 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
     if(m) m.style.display = 'none';
   };
 
-  window.redeemVipCode = async function(passedCode) {
-  const input = document.getElementById('vipCodeInputUpgrade');
-  const btn = document.getElementById('btnRedeemUpgrade');
-  if(!input || !btn) return;
-  const code = (passedCode || input.value || '').trim().toUpperCase();
-  if(!code) return;
+  window.redeemVipCode = async function() {
     const input = document.getElementById('vipCodeInputUpgrade');
     const btn = document.getElementById('btnRedeemUpgrade');
     if(!input || !btn) return;
     const code = input.value.trim().toUpperCase();
-    if(!code) return;
-    
+    if(!code) { showToast('Introduce un código', 'bearish'); return; }
     btn.disabled = true;
     btn.innerText = 'PROCESANDO...';
-    
     try {
       const uid = getNotifUserId();
-      const r = await fetch(`/api/notifications/redeem?user_id=${uid}`, {
+      const r = await fetch('/api/notifications/redeem?user_id=' + uid, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ code: code, user_id: uid })
@@ -460,7 +453,7 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
         showToast('💎 ¡ACCESO VIP ACTIVADO!', 'bullish');
         setTimeout(() => location.reload(), 1500);
       } else {
-        showToast(d.error || 'Error al validar código', 'bearish');
+        showToast(d.error || 'Código inválido', 'bearish');
         btn.disabled = false;
         btn.innerText = 'ACTIVAR';
       }
