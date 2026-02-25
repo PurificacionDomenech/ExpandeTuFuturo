@@ -3,29 +3,13 @@ import pandas as pd
 import numpy as np
 import asyncio
 import os
-import traceback
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    print(f"GLOBAL ERROR: {exc}")
-    traceback.print_exc()
-    return JSONResponse(
-        status_code=500,
-        content={"ok": False, "error": "Internal Server Error", "details": str(exc)}
-    )
-
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc):
-    if request.url.path.startswith("/api/"):
-        return JSONResponse(status_code=404, content={"ok": False, "error": "Endpoint not found"})
-    return FileResponse("templates/splash.html")
 
 INTERVAL_MAP = {
     "1d":  ("1d",  "max"),
@@ -34,81 +18,104 @@ INTERVAL_MAP = {
 }
 
 def clean_df(df):
-    try:
-        if df is None or df.empty:
-            return pd.DataFrame()
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        return df
-    except:
-        return pd.DataFrame()
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    return df
 
 def calcular_indicadores(df):
-    if df is None or df.empty or len(df) < 20:
-        return df
-    try:
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        if 'Close' not in df.columns:
-            return df
-        df["SMA20"]  = df["Close"].rolling(20).mean()
-        df["SMA50"]  = df["Close"].rolling(50).mean()
-        df["SMA100"] = df["Close"].rolling(100).mean()
-        df["SMA200"] = df["Close"].rolling(200).mean()
-        delta = df["Close"].diff()
-        gain  = delta.where(delta > 0, 0).rolling(14).mean()
-        loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        df["RSI"] = 100 - (100 / (1 + (gain / (loss + 1e-9))))
-        df["TR"] = pd.concat([
-            df["High"] - df["Low"],
-            (df["High"] - df["Close"].shift()).abs(),
-            (df["Low"]  - df["Close"].shift()).abs()
-        ], axis=1).max(axis=1)
-        df["ATR"] = df["TR"].rolling(7).mean()
-        hl2 = (df["High"] + df["Low"]) / 2
-        df["UB"] = hl2 + 3.0 * df["ATR"]
-        df["LB"] = hl2 - 3.0 * df["ATR"]
-        df["ST"]  = np.nan
-        df["Dir"] = 0
-        for i in range(1, len(df)):
-            ps  = df.iloc[i-1]["ST"]
-            pd_ = df.iloc[i-1]["Dir"]
-            cl  = float(df.iloc[i]["LB"])
-            cu  = float(df.iloc[i]["UB"])
-            cc  = float(df.iloc[i]["Close"])
-            if np.isnan(ps):
-                df.iloc[i, df.columns.get_loc("ST")]  = cl
-                df.iloc[i, df.columns.get_loc("Dir")] = 1
-                continue
-            st = max(cl, ps) if pd_ == 1 else min(cu, ps)
-            df.iloc[i, df.columns.get_loc("ST")]  = st
-            df.iloc[i, df.columns.get_loc("Dir")] = 1 if cc > st else -1
-    except Exception as e:
-        print(f"Error in indicators: {e}")
+    df["SMA20"]  = df["Close"].rolling(20).mean()
+    df["SMA50"]  = df["Close"].rolling(50).mean()
+    df["SMA100"] = df["Close"].rolling(100).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
+
+    delta = df["Close"].diff()
+    gain  = delta.where(delta > 0, 0).rolling(14).mean()
+    loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df["RSI"] = 100 - (100 / (1 + gain / loss))
+
+    df["TR"] = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - df["Close"].shift()).abs(),
+        (df["Low"]  - df["Close"].shift()).abs()
+    ], axis=1).max(axis=1)
+    df["ATR"] = df["TR"].rolling(7).mean()
+    hl2 = (df["High"] + df["Low"]) / 2
+    df["UB"] = hl2 + 3.0 * df["ATR"]
+    df["LB"] = hl2 - 3.0 * df["ATR"]
+    df["ST"]  = np.nan
+    df["Dir"] = 0
+
+    for i in range(1, len(df)):
+        ps  = df.iloc[i-1]["ST"]
+        pd_ = df.iloc[i-1]["Dir"]
+        cl  = float(df.iloc[i]["LB"])
+        cu  = float(df.iloc[i]["UB"])
+        cc  = float(df.iloc[i]["Close"])
+        if np.isnan(ps):
+            df.iloc[i, df.columns.get_loc("ST")]  = cl
+            df.iloc[i, df.columns.get_loc("Dir")] = 1
+            continue
+        st = max(cl, ps) if pd_ == 1 else min(cu, ps)
+        df.iloc[i, df.columns.get_loc("ST")]  = st
+        df.iloc[i, df.columns.get_loc("Dir")] = 1 if cc > st else -1
+
     return df
 
 def detectar_alertas(df, ticker=""):
     alertas = []
-    if len(df) < 2:
+    n = len(df) - 1
+    if n < 2:
         return alertas
-    try:
-        n = len(df) - 1
-        p_now  = float(df["Close"].iloc[n])
-        p_prev = float(df["Close"].iloc[n - 1])
-        prefix = f"[{ticker.upper()}] " if ticker else ""
-        smas = {"SMA20": "SMA20", "SMA50": "SMA50", "SMA100": "SMA100", "SMA200": "SMA200"}
-        for k, v in smas.items():
-            if v in df.columns:
-                now = df[v].iloc[n]
-                prev = df[v].iloc[n-1]
-                if pd.notna(now) and pd.notna(prev):
-                    if p_prev < prev and p_now >= now:
-                        alertas.append({"nivel": "bullish", "msg": f"{prefix}Precio cruza {k} al alza $" + str(round(p_now, 2))})
-                    elif p_prev > prev and p_now <= now:
-                        alertas.append({"nivel": "bearish", "msg": f"{prefix}Precio cruza {k} a la baja $" + str(round(p_now, 2))})
-    except:
-        pass
+
+    precio_now  = float(df["Close"].iloc[n])
+    precio_prev = float(df["Close"].iloc[n - 1])
+    
+    ticker_clean = str(ticker).upper().strip()
+    prefix = f"[{ticker_clean}] " if ticker_clean else ""
+
+    smas = {
+        "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
+        "SMA50":  (df["SMA50"].iloc[n],  df["SMA50"].iloc[n-1]),
+        "SMA100": (df["SMA100"].iloc[n], df["SMA100"].iloc[n-1]),
+        "SMA200": (df["SMA200"].iloc[n], df["SMA200"].iloc[n-1]),
+    }
+
+    for nombre, (sma_now, sma_prev) in smas.items():
+        if not (pd.notna(sma_now) and pd.notna(sma_prev)):
+            continue
+        if precio_prev < sma_prev and precio_now >= sma_now:
+            alertas.append({"nivel": "bullish",
+                "msg": prefix + "Precio cruza " + nombre + " al alza $" + str(round(precio_now, 2))})
+        elif precio_prev > sma_prev and precio_now <= sma_now:
+            alertas.append({"nivel": "bearish",
+                "msg": prefix + "Precio cruza " + nombre + " a la baja $" + str(round(precio_now, 2))})
+        elif sma_now > 0 and abs(precio_now - sma_now) / sma_now * 100 <= 0.4:
+            alertas.append({"nivel": "info",
+                "msg": prefix + "Precio tocando " + nombre + " $" + str(round(precio_now, 2))})
+
+    s100_n, s100_p = smas["SMA100"]
+    s200_n, s200_p = smas["SMA200"]
+    if pd.notna(s100_n) and pd.notna(s200_n) and pd.notna(s100_p) and pd.notna(s200_p):
+        if s100_p < s200_p and s100_n >= s200_n:
+            alertas.append({"nivel": "bullish", "msg": prefix + "Golden Cross SMA100/200"})
+        elif s100_p > s200_p and s100_n <= s200_n:
+            alertas.append({"nivel": "bearish", "msg": prefix + "Death Cross SMA100/200"})
+
+    s20_n, s20_p = smas["SMA20"]
+    s50_n, s50_p = smas["SMA50"]
+    if pd.notna(s20_n) and pd.notna(s50_n) and pd.notna(s20_p) and pd.notna(s50_p):
+        if s20_p < s50_p and s20_n >= s50_n:
+            alertas.append({"nivel": "bullish", "msg": prefix + "SMA20 cruza sobre SMA50"})
+        elif s20_p > s50_p and s20_n <= s50_n:
+            alertas.append({"nivel": "bearish", "msg": prefix + "SMA20 cruza bajo SMA50"})
+
     return alertas
+
+def safe(v):
+    return float(v) if pd.notna(v) else None
+
+def ts_ms(idx):
+    return [int(t.timestamp() * 1000) for t in idx]
 
 @app.get("/")
 async def splash():
@@ -118,152 +125,335 @@ async def splash():
 async def index():
     return FileResponse("templates/index.html")
 
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
-
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, interval: str = "1d"):
     try:
-        yf_i, yf_p = INTERVAL_MAP.get(interval, ("1d", "max"))
-        df = yf.download(ticker.upper(), period=yf_p, interval=yf_i, progress=False)
-        df = clean_df(df)
+        yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "max"))
+        df = yf.download(ticker.upper(), period=yf_period, interval=yf_interval, progress=False)
         if df.empty:
-            return {"error": "No data available for " + ticker}
+            return {"error": "Simbolo no encontrado: " + ticker}
+        df = clean_df(df)
         df = calcular_indicadores(df)
-        ts = [int(t.timestamp() * 1000) for t in df.index]
+
+        timestamps = ts_ms(df.index)
         candles = []
         for i in range(len(df)):
             candles.append({
-                "x": ts[i],
-                "o": float(df["Open"].iloc[i]),
-                "h": float(df["High"].iloc[i]),
-                "l": float(df["Low"].iloc[i]),
-                "c": float(df["Close"].iloc[i]),
+                "x": timestamps[i],
+                "o": safe(df["Open"].iloc[i]),
+                "h": safe(df["High"].iloc[i]),
+                "l": safe(df["Low"].iloc[i]),
+                "c": safe(df["Close"].iloc[i]),
             })
-        
-        # Preparar indicadores para el frontend
-        indicadores = {}
-        for col in ["SMA20", "SMA50", "SMA100", "SMA200", "RSI", "ST"]:
-            if col in df.columns:
-                # Convertir a lista de floats manejando NaNs
-                indicadores[col] = [float(x) if pd.notna(x) else None for x in df[col].tolist()]
-        
-        last_price = float(df["Close"].iloc[-1])
-        alertas = detectar_alertas(df, ticker)
+
+        def sma_series(col):
+            out = []
+            for i in range(len(df)):
+                v = df[col].iloc[i]
+                if pd.notna(v):
+                    out.append({"x": timestamps[i], "y": float(v)})
+            return out
+
+        rsi_vals  = df["RSI"].values
+        close_vals = df["Close"].values
+
+        rsi_os = []
+        rsi_ob = []
+        for i in range(len(df)):
+            if pd.notna(rsi_vals[i]):
+                if rsi_vals[i] < 30:
+                    rsi_os.append({"x": timestamps[i], "y": float(close_vals[i])})
+                elif rsi_vals[i] > 70:
+                    rsi_ob.append({"x": timestamps[i], "y": float(close_vals[i])})
+
+        st_buy  = []
+        st_sell = []
+        for i in range(len(df)):
+            st_v = df["ST"].iloc[i]
+            dr_v = df["Dir"].iloc[i]
+            if pd.notna(st_v):
+                if dr_v == 1:
+                    st_buy.append({"x": timestamps[i], "y": float(st_v)})
+                elif dr_v == -1:
+                    st_sell.append({"x": timestamps[i], "y": float(st_v)})
+
+        last  = float(df["Close"].iloc[-1])
+        first = float(df["Close"].iloc[0])
+        rsi_series = df["RSI"].dropna()
+        rsi_c = float(rsi_series.iloc[-1]) if not rsi_series.empty else 50
+
+        alertas = detectar_alertas(df)
+
         return {
-            "chart": {"candles": candles},
-            "indicadores": indicadores,
-            "last_price": last_price,
-            "alertas": alertas
+            "chart": {
+                "candles":  candles,
+                "sma20":    sma_series("SMA20"),
+                "sma50":    sma_series("SMA50"),
+                "sma100":   sma_series("SMA100"),
+                "sma200":   sma_series("SMA200"),
+                "rsi_os":   rsi_os,
+                "rsi_ob":   rsi_ob,
+                "st_buy":   st_buy,
+                "st_sell":  st_sell,
+            },
+            "last_price":  last,
+            "change":      last - first,
+            "change_pct":  (last - first) / first * 100,
+            "rsi_current": rsi_c,
+            "alertas":     alertas,
         }
+
     except Exception as e:
         return {"error": str(e)}
-
-@app.get("/api/sparkline/{ticker}")
-async def get_sparkline(ticker: str):
-    try:
-        df = yf.download(ticker.upper(), period="7d", interval="1h", progress=False)
-        df = clean_df(df)
-        if df.empty: return {"ticker": ticker.upper(), "points": []}
-        points = [float(c) for c in df["Close"].tolist() if pd.notna(c)]
-        return {"ticker": ticker.upper(), "points": points}
-    except Exception as e:
-        return {"ticker": ticker.upper(), "points": [], "error": str(e)}
 
 @app.get("/api/row/{ticker}")
 async def get_row(ticker: str):
     try:
-        ticker_clean = ticker.upper().strip()
-        df = yf.download(ticker_clean, period="1mo", interval="1d", progress=False)
-        df = clean_df(df)
+        df = yf.download(ticker.upper(), period="1y", interval="1d", progress=False)
         if df.empty:
-            return {"ticker": ticker_clean, "error": "No data"}
+            return {"error": "not found"}
+        df = clean_df(df)
         df = calcular_indicadores(df)
-        try:
-            last = float(df["Close"].iloc[-1])
-            first = float(df["Close"].iloc[0])
-        except:
-            return {"ticker": ticker_clean, "price": 0, "change_pct": 0, "error": "Insufficient data"}
+
+        last  = float(df["Close"].iloc[-1])
+        first = float(df["Close"].iloc[0])
+
+        def last_val(col):
+            s = df[col].dropna()
+            return float(s.iloc[-1]) if not s.empty else None
+
+        rsi_s = df["RSI"].dropna()
+        rsi   = float(rsi_s.iloc[-1]) if not rsi_s.empty else None
+
+        dir_s  = df["Dir"].dropna()
+        st_dir = int(dir_s.iloc[-1]) if not dir_s.empty else 0
+
         return {
-            "ticker": ticker_clean,
-            "price": round(last, 2),
-            "change_pct": round((last - first) / first * 100, 2) if first != 0 else 0
+            "ticker":     ticker.upper(),
+            "price":      last,
+            "change_pct": round((last - first) / first * 100, 2),
+            "rsi":        round(rsi, 1) if rsi is not None else None,
+            "sma20":      last_val("SMA20"),
+            "sma50":      last_val("SMA50"),
+            "sma100":     last_val("SMA100"),
+            "sma200":     last_val("SMA200"),
+            "st_dir":     st_dir,
         }
+
     except Exception as e:
-        return {"ticker": ticker.upper(), "error": str(e)}
+        return {"error": str(e)}
 
 @app.get("/api/watch")
 async def watch_favorites(tickers: str = ""):
     all_alertas = []
-    if not tickers: return {"alertas": []}
     for t in tickers.split(","):
         t = t.strip()
-        if not t: continue
+        if not t:
+            continue
         try:
-            df = yf.download(t.upper(), period="5d", interval="1d", progress=False)
-            df = clean_df(df)
+            df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
             if not df.empty:
+                df = clean_df(df)
                 df = calcular_indicadores(df)
                 all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
-        except: pass
+        except Exception:
+            pass
     return {"alertas": all_alertas}
+
+@app.post("/api/admin/set-vip")
+async def set_vip_status(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id")
+    is_vip = body.get("is_vip", True)
+    if not user_id:
+        return {"ok": False, "error": "Falta user_id"}
+    
+    prefs = load_prefs(user_id)
+    prefs["is_vip"] = is_vip
+    save_prefs(prefs, user_id)
+    return {"ok": True, "user_id": user_id, "is_vip": is_vip}
+
+@app.post("/api/admin/generate-code")
+async def generate_code():
+    import secrets
+    import string
+    code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO access_codes (code) VALUES (%s)", (code,))
+            conn.commit()
+        return {"ok": True, "code": code}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request):
     try:
-        uid = request.query_params.get("user_id")
-        try:
-            body = await request.json()
-        except:
-            body = {}
-        if not uid:
-            uid = body.get("user_id", "default")
+        user_id = request.query_params.get("user_id")
+        body = await request.json()
+        if not user_id:
+            user_id = body.get("user_id", "default")
+        
         code = body.get("code", "").upper().strip()
         if not code:
             return {"ok": False, "error": "Código vacío"}
+        
+        print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
+        
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                 row = cur.fetchone()
                 if not row:
-                    if code == "VIP333":
-                        cur.execute("INSERT INTO access_codes (code, is_used) VALUES ('VIP333', FALSE)")
-                        row = (False,)
-                    else:
-                        return {"ok": False, "error": "Código inválido"}
-                if row[0] and code != "VIP333":
+                    print(f"DEBUG: Código '{code}' no encontrado en BD")
+                    return {"ok": False, "error": "Código inválido"}
+                if row[0]:
+                    print(f"DEBUG: Código '{code}' ya está marcado como usado")
                     return {"ok": False, "error": "Código ya utilizado"}
+                
                 if code != "VIP333":
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
-                cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW()) ON CONFLICT (user_id) DO UPDATE SET is_vip = TRUE, updated_at = NOW()", (uid,))
+                
+                cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
+                if not cur.fetchone():
+                    cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
+                else:
+                    cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
+                
             conn.commit()
-        return {"ok": True, "msg": "¡VIP Activado!"}
+        print(f"DEBUG: Canje exitoso para {user_id}")
+        return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
     except Exception as e:
+        print(f"DEBUG: Error en redeem: {e}")
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/notifications/prefs")
-async def get_prefs(user_id: str = "default"):
-    return load_prefs(user_id)
+async def get_notification_prefs(user_id: str = "default"):
+    prefs = load_prefs(user_id)
+    if not prefs.get("is_vip"):
+        prefs["telegram_enabled"] = False
+        prefs["email_enabled"] = False
+    return prefs
 
 @app.post("/api/notifications/prefs")
-async def set_prefs(request: Request, user_id: str = "default"):
+async def set_notification_prefs(request: Request, user_id: str = "default"):
+    body = await request.json()
+    prefs = load_prefs(user_id)
+    if not prefs.get("is_vip"):
+        body["telegram_enabled"] = False
+        body["email_enabled"] = False
+    prefs.update(body)
+    save_prefs(prefs, user_id)
+    return {"ok": True}
+
+@app.post("/api/notifications/test")
+async def test_notification(request: Request, user_id: str = "default"):
+    body = await request.json()
+    channel = body.get("channel", "all")
+    prefs = load_prefs(user_id)
+    test_alertas = [
+        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $185.20"},
+        {"nivel": "bearish", "msg": "[BTC-USD] Death Cross SMA100/200 detectado"},
+        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $182.50"},
+    ]
+    test_prefs = dict(prefs)
+    if channel != "all":
+        for ch in ["telegram", "whatsapp", "email"]:
+            if ch != channel:
+                test_prefs[f"{ch}_enabled"] = False
+    results = await dispatch_notifications(test_prefs, test_alertas)
+    return {"ok": True, "results": results}
+
+@app.post("/api/notifications/send")
+async def send_alerts_now(request: Request, user_id: str = "default"):
+    body = await request.json()
+    tickers_str = body.get("tickers", "")
+    prefs = load_prefs(user_id)
+    all_alertas = []
+    for t in tickers_str.split(","):
+        t = t.strip()
+        if not t:
+            continue
+        try:
+            df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+            if not df.empty:
+                df = clean_df(df)
+                df = calcular_indicadores(df)
+                all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
+        except Exception:
+            pass
+    if all_alertas:
+        results = await dispatch_notifications(prefs, all_alertas)
+        return {"ok": True, "alertas_count": len(all_alertas), "results": results}
+    return {"ok": True, "alertas_count": 0, "msg": "Sin alertas activas para enviar"}
+
+@app.get("/api/notifications/status")
+async def notification_status():
+    has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
+    has_twilio   = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
+    has_smtp     = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    return {
+        "telegram_configured":  has_telegram,
+        "whatsapp_configured":  has_twilio,
+        "email_configured":     has_smtp,
+    }
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    import httpx
     try:
-        body = await request.json()
-        p = load_prefs(user_id)
-        p.update(body)
-        save_prefs(p, user_id)
+        data = await request.json()
+        message = data.get("message") or data.get("edited_message")
+        if not message:
+            return {"ok": True}
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        first_name = message["from"].get("first_name", "")
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if not token:
+            return {"ok": False}
+        if text.startswith("/start") or text.startswith("/chatid"):
+            reply = (
+                f"¡Hola {first_name}! 👋\n\n"
+                f"✅ Tu <b>Chat ID</b> es:\n"
+                f"<code>{chat_id}</code>\n\n"
+                f"Copia ese número y pégalo en el panel de Alertas del <b>ETF Market Scanner</b> "
+                f"para recibir notificaciones de mercado aquí."
+            )
+        else:
+            reply = (
+                f"Tu <b>Chat ID</b> es: <code>{chat_id}</code>\n\n"
+                f"Usa /start para ver las instrucciones completas."
+            )
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"}
+            )
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-@app.get("/api/notifications/status")
-async def status():
-    return {
-        "telegram": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
-        "email": bool(os.environ.get("SMTP_USER"))
-    }
+@app.get("/api/telegram/setup-webhook")
+async def setup_telegram_webhook(request: Request):
+    import httpx
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        return {"ok": False, "error": "TELEGRAM_BOT_TOKEN no configurado"}
+    domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+    if not domain:
+        return {"ok": False, "error": "Dominio no detectado"}
+    webhook_url = f"https://{domain}/api/telegram/webhook"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            json={"url": webhook_url, "allowed_updates": ["message"]}
+        )
+        result = r.json()
+    return {"ok": result.get("ok"), "webhook_url": webhook_url, "telegram_response": result}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
