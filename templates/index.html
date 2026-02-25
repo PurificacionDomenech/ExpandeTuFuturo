@@ -1442,7 +1442,12 @@ function openUpgradeModal() {
                 </div>
             </div>
 
-            <p style="color:var(--muted);font-size:12px;margin-top:20px;margin-bottom:20px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
+            <p style="color:var(--muted);font-size:12px;margin-top:20px;margin-bottom:10px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin-bottom:20px;text-align:left">
+                <p style="color:var(--muted);font-size:10px;line-height:1.4;margin:0">
+                    <strong>Descargo de responsabilidad:</strong> Los análisis y alertas proporcionados por esta plataforma son meramente informativos y basados en indicadores técnicos. No constituyen asesoramiento financiero ni recomendaciones de inversión. Usted es el único responsable de sus decisiones financieras y del riesgo asumido en sus operaciones. El rendimiento pasado no garantiza resultados futuros.
+                </p>
+            </div>
             <div style="display:flex;gap:10px">
                 <button onclick="this.closest('#upgradeModal').remove()" style="flex:1;padding:12px;border-radius:8px;border:1px solid #333;background:none;color:#fff;cursor:pointer">Cerrar</button>
                 <a href="https://t.me/LC_MarketScanner_bot" target="_blank" style="flex:1;padding:12px;border-radius:8px;background:var(--gold);color:#000;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center">Soporte</a>
@@ -1504,5 +1509,10 @@ async function sendAlertsNow(){
   }catch(e){showToast('❌ Error enviando alertas','bearish');}
 }
 </script>
+<footer style="margin-top:20px;padding:20px 12px;border-top:1px solid rgba(255,255,255,0.05);text-align:center">
+  <p style="color:rgba(255,255,255,0.15);font-size:10px;line-height:1.6;max-width:900px;margin:0 auto;font-family:sans-serif">
+    <strong>Aviso Legal:</strong> LC Market Scanner / Expande Tu Futuro es una herramienta de análisis técnico automatizado. Los datos y alertas mostrados son meramente informativos y representan momentos que identificamos como técnicamente favorables según nuestros algoritmos. No somos asesores financieros ni recomendamos inversiones específicas. Usted es el único responsable de sus decisiones de inversión y del riesgo asumido. Invertir en mercados financieros conlleva riesgo de pérdida de capital.
+  </p>
+</footer>
 </body>
 </html>
