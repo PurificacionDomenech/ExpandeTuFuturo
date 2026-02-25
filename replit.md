@@ -1,48 +1,48 @@
 # Expande Tu Futuro — LC Market Scanner
 
-A financial market scanner web application built with FastAPI and Python.
+Aplicación web de escaneo de mercados financieros construida con FastAPI y Python.
 
-## Overview
+## Descripción
 
-This app provides technical analysis for stocks, ETFs, and crypto assets including:
-- Candlestick charts with SMA 20/50/100/200 indicators
-- RSI (Relative Strength Index) with extreme signal markers
-- SuperTrend indicator
-- Automatic alerts for SMA crossovers and price touches
-- Watchlist / watchdog panel
-- Splash/landing page with Supabase authentication
+Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, incluyendo:
+- Gráficos de velas con indicadores SMA 20/50/100/200
+- RSI (Índice de Fuerza Relativa) con señales de zonas extremas
+- Indicador SuperTrend
+- Alertas automáticas por cruces de SMAs y toques de precio
+- Panel de vigilancia (watchlist)
+- Página de inicio (splash) con autenticación vía Supabase
 
-## Architecture
+## Arquitectura
 
-- **Backend**: FastAPI (Python) served via Uvicorn
-- **Frontend**: Vanilla HTML/CSS/JS templates (Jinja2 via FileResponse)
-- **Data**: yfinance for real-time market data
-- **Auth**: Supabase (client-side, in splash.html)
-- **Port**: 5000
+- **Backend**: FastAPI (Python) servido con Uvicorn
+- **Frontend**: Plantillas HTML/CSS/JS vanilla (Jinja2 vía FileResponse)
+- **Datos**: yfinance para datos de mercado en tiempo real
+- **Auth**: Supabase (del lado del cliente, en splash.html)
+- **Puerto**: 5000
 
-## Key Files
+## Archivos principales
 
-- `main.py` — FastAPI app with all API routes and chart data logic
-- `app.py` — Legacy tkinter desktop UI (not used in web version)
-- `templates/splash.html` — Landing/login page
-- `templates/index.html` — Main dashboard
-- `static/` — Static assets (logo, etc.)
-- `graficos/chart_tv.py` — Legacy chart module (for tkinter)
-- `indicadores/etf.py` — ETF indicator helpers
+- `main.py` — App FastAPI con todas las rutas API y lógica de datos de gráficos
+- `app.py` — Interfaz de escritorio legacy con tkinter (no se usa en la versión web)
+- `templates/splash.html` — Página de inicio / login
+- `templates/index.html` — Dashboard principal
+- `static/` — Recursos estáticos (logo, etc.)
+- `graficos/chart_tv.py` — Módulo de gráficos legacy (para tkinter)
+- `indicadores/etf.py` — Helpers de indicadores ETF
 
-## API Endpoints
+## Endpoints de la API
 
-- `GET /` — Splash/landing page
-- `GET /app` — Main dashboard
-- `GET /api/chart/{ticker}?interval=1d` — Chart data (candles, SMAs, RSI, SuperTrend, alerts)
-- `GET /api/row/{ticker}` — Summary row data for asset table
-- `GET /api/watch?tickers=X,Y,Z` — Watchlist alerts
-- `GET /api/sparkline/{ticker}` — Sparkline data (1 month closes)
+- `GET /` — Página de inicio (splash)
+- `GET /app` — Dashboard principal
+- `GET /api/chart/{ticker}?interval=1d` — Datos del gráfico (velas, SMAs, RSI, SuperTrend, alertas)
+- `GET /api/row/{ticker}` — Datos resumidos por activo para la tabla
+- `GET /api/watch?tickers=X,Y,Z` — Alertas de la watchlist
+- `GET /api/sparkline/{ticker}` — Datos de sparkline (cierres de 1 mes)
 
 ## Workflow
 
 - **Start application**: `uvicorn main:app --host 0.0.0.0 --port 5000`
 
-## Deployment
+## Despliegue
 
-Configured for autoscale deployment using gunicorn with uvicorn workers.
+Configurado para despliegue autoscale usando gunicorn con workers de uvicorn.
