@@ -103,8 +103,8 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
 .acc-body.open{max-height:9999px;opacity:1}
 #assetsTable{width:100%;border-collapse:collapse;min-width:780px}
 #assetsTable thead th{padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:.07em;
-  color:rgba(255,255,255,.3);text-transform:uppercase;white-space:nowrap;
-  background:#060810;border-bottom:1px solid rgba(255,255,255,.07);text-align:left}
+  color:var(--gold);text-transform:uppercase;white-space:nowrap;
+  background:#060810;border-bottom:1px solid var(--gold-dim);text-align:left}
 #assetsTable thead th.r{text-align:right}
 #assetsTable thead th.c{text-align:center}
 .asset-row{border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s;
@@ -281,14 +281,14 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
   <div class="card" id="favs-panel">
     <button id="favs-hdr" onclick="toggleFavs()">
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="color:#c9a84c;font-size:14px">★</span>
-        <span style="font-size:13px;font-weight:700">Todos los activos</span>
-        <span id="favCount" style="font-size:10px;color:rgba(255,255,255,.25)"></span>
-        <span id="watchingCount" style="font-size:10px;color:#c9a84c;font-weight:700"></span>
+        <span style="color:var(--gold);font-size:14px">★</span>
+        <span style="font-size:13px;font-weight:700;color:var(--gold2)">Todos los activos</span>
+        <span id="favCount" style="font-size:10px;color:var(--muted)"></span>
+        <span id="watchingCount" style="font-size:10px;color:var(--gold);font-weight:700"></span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:10px;color:rgba(255,255,255,.18)">★ vigilancia · clic fila = gráfico</span>
-        <span id="favChevron" style="color:rgba(255,255,255,.3);font-size:11px;transition:transform .3s">▼</span>
+        <span style="font-size:10px;color:var(--muted)">★ vigilancia · clic fila = gráfico</span>
+        <span id="favChevron" style="color:var(--gold);font-size:11px;transition:transform .3s">▼</span>
       </div>
     </button>
     <!-- clase "open" directamente → abierta sin JS al cargar -->
@@ -426,7 +426,7 @@ function buildFavGrid(){
           <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}" onclick="toggleWatch('${f.ticker}',event)">★</span>
           <div>
             <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.3)">${f.cat} ${f.name}</div>
+            <div style="font-size:10px;color:var(--muted)">${f.cat} ${f.name}</div>
             <canvas id="spark-${id}" width="80" height="22" style="display:block;margin-top:3px;max-width:60px"></canvas>
           </div>
         </div>
