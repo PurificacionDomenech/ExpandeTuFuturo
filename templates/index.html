@@ -1241,9 +1241,9 @@ async function loadNotifPrefs(){
   }catch(e){ console.error("Error loading prefs:", e); }
 }
 
-async function redeemVipCode() {
+async function redeemVipCode(explicitCode) {
     const codeInput = document.getElementById('vipCodeInput');
-    const code = codeInput ? codeInput.value.trim() : '';
+    let code = explicitCode || (codeInput ? codeInput.value.trim() : '');
     if(!code) return;
     
     showToast("Verificando código...", "info");
@@ -1341,6 +1341,13 @@ function openUpgradeModal() {
                         <li>✅ Todos los Activos</li>
                         <li>✅ Ahorro 60€</li>
                     </ul>
+                </div>
+                <div style="padding-top:15px;border-top:1px solid rgba(255,255,255,0.1)">
+                    <p style="color:#fff;font-size:12px;margin-bottom:10px;font-weight:600">¿Ya tienes un código VIP?</p>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce código" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
+                        <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
+                    </div>
                 </div>
             </div>
             <p style="color:var(--muted);font-size:12px;margin-bottom:20px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
