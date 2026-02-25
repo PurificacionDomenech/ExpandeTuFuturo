@@ -286,15 +286,42 @@ async def sparkline(ticker: str):
         return {"closes": [], "pct": 0}
 
 
+@app.post("/api/admin/set-vip")
+async def set_vip_status(request: Request):
+    # Endpoint simple para que el admin dé acceso VIP
+    body = await request.json()
+    user_id = body.get("user_id")
+    is_vip = body.get("is_vip", True)
+    if not user_id:
+        return {"ok": False, "error": "Falta user_id"}
+    
+    prefs = load_prefs(user_id)
+    prefs["is_vip"] = is_vip
+    save_prefs(prefs, user_id)
+    return {"ok": True, "user_id": user_id, "is_vip": is_vip}
+
+
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
-    return load_prefs(user_id)
+    prefs = load_prefs(user_id)
+    # Si no es VIP, forzar canales desactivados para la lógica de envío
+    # y ocultar datos sensibles en el front si se prefiere
+    if not prefs.get("is_vip"):
+        prefs["telegram_enabled"] = False
+        prefs["email_enabled"] = False
+    return prefs
 
 
 @app.post("/api/notifications/prefs")
 async def set_notification_prefs(request: Request, user_id: str = "default"):
     body = await request.json()
     prefs = load_prefs(user_id)
+    
+    # Impedir que un no-vip active notificaciones vía API
+    if not prefs.get("is_vip"):
+        body["telegram_enabled"] = False
+        body["email_enabled"] = False
+        
     prefs.update(body)
     save_prefs(prefs, user_id)
     return {"ok": True}

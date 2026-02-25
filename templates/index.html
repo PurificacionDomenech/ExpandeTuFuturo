@@ -1063,23 +1063,84 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   const emIn = document.getElementById('emAddress');
   if (emIn) emIn.onchange = saveNotifPrefs;
 
+let isVip = false;
+
 async function loadNotifPrefs(){
   try{
     const r=await fetch(notifUrl('/api/notifications/prefs'));
     const p=await r.json();
-    document.getElementById('tgEnabled').checked=!!p.telegram_enabled;
-    document.getElementById('tgChatId').value=p.telegram_chat_id||'';
-    document.getElementById('tgFields').style.display=p.telegram_enabled?'block':'none';
-    const waEnabledEl = document.getElementById('waEnabled');
-    if (waEnabledEl) waEnabledEl.checked = !!p.whatsapp_enabled;
-    const waNumberEl = document.getElementById('waNumber');
-    if (waNumberEl) waNumberEl.value = p.whatsapp_number || '';
-    const waFieldsEl = document.getElementById('waFields');
-    if (waFieldsEl) waFieldsEl.style.display = p.whatsapp_enabled ? 'block' : 'none';
-    document.getElementById('emEnabled').checked=!!p.email_enabled;
-    document.getElementById('emAddress').value=p.email_address||'';
-    document.getElementById('emFields').style.display=p.email_enabled?'block':'none';
+    isVip = !!p.is_vip;
+    
+    // UI VIP Status
+    const btn = document.getElementById('notifBtn');
+    if(isVip) {
+        btn.innerHTML = '💎 Acceso VIP';
+        btn.style.borderColor = '#c9a84c';
+    } else {
+        btn.innerHTML = '🔔 Alertas (Free)';
+    }
+
+    const tgEn = document.getElementById('tgEnabled');
+    if(tgEn) tgEn.checked=!!p.telegram_enabled;
+    const tgId = document.getElementById('tgChatId');
+    if(tgId) tgId.value=p.telegram_chat_id||'';
+    const tgF = document.getElementById('tgFields');
+    if(tgF) tgF.style.display=p.telegram_enabled?'block':'none';
+    
+    const emEn = document.getElementById('emEnabled');
+    if(emEn) emEn.checked=!!p.email_enabled;
+    const emAd = document.getElementById('emAddress');
+    if(emAd) emAd.value=p.email_address||'';
+    const emF = document.getElementById('emFields');
+    if(emF) emF.style.display=p.email_enabled?'block':'none';
+
+    // Bloqueo visual si no es VIP
+    if(!isVip) {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+        });
+        const statusBox = document.getElementById('notifStatus');
+        if(statusBox) {
+            statusBox.innerHTML = '<div style="color:#e8c96d;padding:10px;text-align:center">👑 Pásate a PRO para activar alertas en Telegram y Email</div>';
+        }
+    }
   }catch(e){}
+}
+
+function updateWatchlistUI() {
+    const list = document.getElementById('watch-alerts-list');
+    const empty = document.getElementById('watchEmpty');
+    const count = document.getElementById('watchCount');
+    
+    if (watchlist.size === 0) {
+        if(empty) empty.style.display = 'block';
+        if(list) list.style.display = 'none';
+        if(count) count.innerText = '';
+    } else {
+        if(empty) empty.style.display = 'none';
+        if(list) list.style.display = 'flex';
+        
+        // LIMITAR A 3 SI NO ES VIP
+        if(!isVip && watchlist.size > 3) {
+            if(count) count.innerHTML = `⚠️ Plan Free: Límite 3 activos. <br> <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="openUpgradeModal()">Actualizar a PRO</span>`;
+        } else {
+            if(count) count.innerText = `${watchlist.size} activos vigilados`;
+        }
+    }
+}
+
+function abrirTradingView() {
+    if(!isVip) {
+        openUpgradeModal();
+        return;
+    }
+    const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+    window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+}
+
+function openUpgradeModal() {
+    showToast("🌟 Plan PRO: 10€/mes. Contacta con soporte para activar VIP.", "info", 8000);
 }
 
 function saveNotifPrefs(){

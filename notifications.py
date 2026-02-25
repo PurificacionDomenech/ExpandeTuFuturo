@@ -23,10 +23,13 @@ def load_prefs(user_id: str = "default") -> dict:
                 )
                 row = cur.fetchone()
                 if row:
-                    return dict(row)
+                    d = dict(row)
+                    # Convertimos is_vip a booleano explícito
+                    d["is_vip"] = bool(d.get("is_vip", False))
+                    return d
     except Exception:
         pass
-    return {}
+    return {"is_vip": False}
 
 
 def save_prefs(prefs: dict, user_id: str = "default"):
@@ -36,27 +39,24 @@ def save_prefs(prefs: dict, user_id: str = "default"):
                 cur.execute("""
                     INSERT INTO notification_prefs
                         (user_id, telegram_enabled, telegram_chat_id,
-                         whatsapp_enabled, whatsapp_number,
-                         email_enabled, email_address, watchlist, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                         email_enabled, email_address, watchlist, is_vip, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
                     ON CONFLICT (user_id) DO UPDATE SET
                         telegram_enabled = EXCLUDED.telegram_enabled,
                         telegram_chat_id = EXCLUDED.telegram_chat_id,
-                        whatsapp_enabled = EXCLUDED.whatsapp_enabled,
-                        whatsapp_number  = EXCLUDED.whatsapp_number,
                         email_enabled    = EXCLUDED.email_enabled,
                         email_address    = EXCLUDED.email_address,
                         watchlist        = EXCLUDED.watchlist,
+                        is_vip           = COALESCE(notification_prefs.is_vip, EXCLUDED.is_vip),
                         updated_at       = NOW()
                 """, (
                     user_id,
                     prefs.get("telegram_enabled", False),
                     prefs.get("telegram_chat_id", ""),
-                    prefs.get("whatsapp_enabled", False),
-                    prefs.get("whatsapp_number", ""),
                     prefs.get("email_enabled", False),
                     prefs.get("email_address", ""),
                     prefs.get("watchlist", ""),
+                    prefs.get("is_vip", False),
                 ))
             conn.commit()
     except Exception as e:
