@@ -399,6 +399,73 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
 <div id="toasts"></div>
 
 <script>
+  /* ─────────────────────────────────────────────
+     FUNCIONES DE NAVEGACIÓN (FIX)
+     ───────────────────────────────────────────── */
+  window.toggleChart = function() {
+    const body = document.getElementById('chartBody');
+    const btn = document.getElementById('btnToggleChart');
+    if(!body || !btn) return;
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    btn.innerText = isHidden ? '▲ Cerrar gráfico' : '▼ Abrir gráfico';
+    if(isHidden && typeof renderPlotly === 'function' && lastData) renderPlotly(lastData);
+  };
+
+  window.toggleFavs = function() {
+    favsOpen = !favsOpen;
+    const body = document.getElementById('favBody');
+    const chev = document.getElementById('favChevron');
+    if(body) {
+      body.classList.toggle('open', favsOpen);
+      body.classList.toggle('closed', !favsOpen);
+    }
+    if(chev) chev.style.transform = favsOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+  };
+
+  window.openUpgradeModal = function() {
+    const m = document.getElementById('upgradeModal');
+    if(m) m.style.display = 'flex';
+  };
+
+  window.closeUpgradeModal = function() {
+    const m = document.getElementById('upgradeModal');
+    if(m) m.style.display = 'none';
+  };
+
+  window.redeemVipCode = async function() {
+    const input = document.getElementById('vipCodeInputUpgrade');
+    const btn = document.getElementById('btnRedeemUpgrade');
+    if(!input || !btn) return;
+    const code = input.value.trim().toUpperCase();
+    if(!code) return;
+    
+    btn.disabled = true;
+    btn.innerText = 'PROCESANDO...';
+    
+    try {
+      const uid = getNotifUserId();
+      const r = await fetch(`/api/notifications/redeem?user_id=${uid}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ code: code, user_id: uid })
+      });
+      const d = await r.json();
+      if(d.ok) {
+        showToast('💎 ¡ACCESO VIP ACTIVADO!', 'bullish');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(d.error || 'Error al validar código', 'bearish');
+        btn.disabled = false;
+        btn.innerText = 'ACTIVAR';
+      }
+    } catch(e) {
+      showToast('Error de conexión', 'bearish');
+      btn.disabled = false;
+      btn.innerText = 'ACTIVAR';
+    }
+  };
+  
 /* ─────────────────────────────────────────────
    DATOS
 ───────────────────────────────────────────── */
@@ -462,7 +529,7 @@ function loadWL(){try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new 
 /* ─────────────────────────────────────────────
    INIT
 ───────────────────────────────────────────── */
-window.onload=()=>{
+window.onload = async () => {
   initNotifListeners();
   loadWL();
   document.getElementById('favCount').innerText=`— ${ALL_ASSETS.length} activos`;
