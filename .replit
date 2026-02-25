@@ -37,3 +37,12 @@ externalPort = 80
 [deployment]
 deploymentTarget = "autoscale"
 run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--worker-class=uvicorn.workers.UvicornWorker", "main:app"]
+
+[userenv]
+
+[userenv.shared]
+SMTP_PASS = "tnlq fnrl ftsl acsb"
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = "587"
+TELEGRAM_BOT_TOKEN = "8521103663:AAEj8VIQuXMli27QKrhAYKXqPE-kPwycSAA"
+SMTP_USER = "pury.santana@gmail.com"
