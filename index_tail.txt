@@ -1,0 +1,300 @@
+    'USDJPY=X':'FX:USDJPY','GBPJPY=X':'FX:GBPJPY','EURUSD=X':'FX:EURUSD','AUDUSD=X':'FX:AUDUSD',
+    '^TNX':'TVC:US10Y','^TYX':'TVC:US20Y','DX=F':'TVC:DXY',
+    'BTC-USD':'BINANCE:BTCUSDT','ETH-USD':'BINANCE:ETHUSDT',
+    'SPY':'AMEX:SPY','VOO':'AMEX:VOO','VTI':'AMEX:VTI','QQQ':'NASDAQ:QQQ','QQQM':'NASDAQ:QQQM',
+    'GLD':'AMEX:GLD','IAU':'AMEX:IAU','GDX':'AMEX:GDX','IWM':'AMEX:IWM','SMH':'NASDAQ:SMH',
+    'XLE':'AMEX:XLE','SCHD':'NASDAQ:SCHD','SCHG':'NASDAQ:SCHG','VGT':'AMEX:VGT',
+    'EEM':'AMEX:EEM','DIA':'AMEX:DIA','AAPL':'NASDAQ:AAPL',
+  };
+  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(map[currentSymbol]||currentSymbol)}`,'_blank');
+}
+
+function updateSidebar(data){
+  document.getElementById('dispSym').innerText=DISPLAY_NAMES[currentSymbol]||currentSymbol;
+  document.getElementById('dispPrice').innerText=formatPrice(data.last_price);
+  const chEl=document.getElementById('dispChange'),pre=data.change>=0?'+':'';
+  chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
+  chEl.style.color=data.change>=0?'#00e676':'#ff4444';
+  updateRSI(data.rsi_current);
+  document.getElementById('alertSymLabel').innerText=currentSymbol;
+}
+
+function updateRSI(v){
+  v=parseFloat(v);if(isNaN(v))return;
+  document.getElementById('rsiVal').innerText=v.toFixed(1);
+  document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
+  const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
+  if(v<30){lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';val.style.color='#00e676';}
+  else if(v>70){lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';val.style.color='#ff5252';}
+  else{lbl.innerText='N';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700';val.style.color='#fff';}
+}
+
+function renderAlertas(alertas){
+  const box=document.getElementById('alertBox'),list=document.getElementById('alertList');
+  if(!alertas||!alertas.length){box.style.display='none';return;}
+  box.style.display='block';
+  list.innerHTML=alertas.map(a=>`<div class="alerta-item ${a.nivel}">${a.msg.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join('');
+}
+
+function showToast(msg,nivel,ms=6000){
+  const c=document.getElementById('toasts'),t=document.createElement('div');
+  t.className=`toast ${nivel}`;t.innerText=msg;c.appendChild(t);setTimeout(()=>t.remove(),ms);
+}
+
+/* ─────────────────────────────────────────────
+   NOTIFICACIONES
+───────────────────────────────────────────── */
+
+/* Obtiene/genera un user_id persistente en localStorage.
+   Si el usuario está autenticado con Supabase, se usará su email. */
+function getNotifUserId(){
+  let uid = localStorage.getItem('etf_user_id');
+  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
+  return uid;
+}
+function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
+
+function openNotifModal(){
+  const m=document.getElementById('notifModal');
+  m.style.display='flex';
+  loadNotifPrefs();
+  loadNotifStatus();
+}
+function closeNotifModal(){
+  document.getElementById('notifModal').style.display='none';
+}
+document.getElementById('notifModal').addEventListener('click',function(e){
+  if(e.target===this)closeNotifModal();
+});
+
+  const tgEnabledEl = document.getElementById('tgEnabled');
+  if (tgEnabledEl) {
+    tgEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('tgFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  const emEnabledEl = document.getElementById('emEnabled');
+  if (emEnabledEl) {
+    emEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('emFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  
+  const tgIn = document.getElementById('tgChatId');
+  if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
+  const emIn = document.getElementById('emAddress');
+  if (emIn) emIn.onchange = saveNotifPrefs;
+  
+  // Forzar carga inicial
+  setTimeout(loadNotifPrefs, 500);
+}
+
+function toggleChart(){
+  const b=document.getElementById('chartBody'),btn=document.getElementById('btnToggleChart');
+  if(b.style.display==='none'){
+    b.style.display='block';
+    btn.innerText='▲ Cerrar gráfico';
+    if(!chartLoaded)loadChart();
+  }else{
+    b.style.display='none';
+    btn.innerText='▼ Abrir gráfico';
+  }
+}
+
+function toggleFavs(){
+  const b=document.getElementById('favBody'),c=document.getElementById('favChevron');
+  if(b.classList.contains('closed')){
+    b.classList.remove('closed');b.classList.add('open');
+    c.style.transform='rotate(0deg)';
+  }else{
+    b.classList.remove('open');b.classList.add('closed');
+    c.style.transform='rotate(-90deg)';
+  }
+}
+
+let isVip = false;
+
+async function loadNotifPrefs(){
+  try{
+    const userId = getNotifUserId();
+    const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
+    const p=await r.json();
+    isVip = !!p.is_vip;
+    console.log("VIP Status loaded:", isVip, "for user:", userId);
+    
+    // UI VIP Status
+    const btn = document.getElementById('notifBtn');
+    if(btn) {
+        if(isVip) {
+            btn.innerHTML = '💎 Acceso VIP';
+            btn.style.borderColor = '#c9a84c';
+            btn.style.color = '#c9a84c';
+        } else {
+            btn.innerHTML = '🔔 Alertas (Free)';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }
+    }
+
+    const tgEn = document.getElementById('tgEnabled');
+    if(tgEn) tgEn.checked=!!p.telegram_enabled;
+    const tgId = document.getElementById('tgChatId');
+    if(tgId) tgId.value=p.telegram_chat_id||'';
+    const tgF = document.getElementById('tgFields');
+    if(tgF) tgF.style.display=p.telegram_enabled?'block':'none';
+    
+    const emEn = document.getElementById('emEnabled');
+    if(emEn) emEn.checked=!!p.email_enabled;
+    const emAd = document.getElementById('emAddress');
+    if(emAd) emAd.value=p.email_address||'';
+    const emF = document.getElementById('emFields');
+    if(emF) emF.style.display=p.email_enabled?'block':'none';
+
+    // Bloqueo visual si no es VIP
+    const statusBox = document.getElementById('notifStatus');
+    if(!isVip) {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+        });
+        if(statusBox) {
+            statusBox.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
+                    <div style="color:#e8c96d;text-align:center;font-weight:700">👑 Pásate a PRO para activar alertas</div>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="vipCodeInput" placeholder="Introduce código VIP" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
+                        <button onclick="redeemVipCode()" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+        if(statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+        loadNotifStatus(); 
+    }
+    updateWatchlistUI();
+  }catch(e){ console.error("Error loading prefs:", e); }
+}
+
+async function redeemVipCode() {
+    const codeInput = document.getElementById('vipCodeInput');
+    const code = codeInput ? codeInput.value.trim() : '';
+    if(!code) return;
+    
+    showToast("Verificando código...", "info");
+    try {
+        const userId = getNotifUserId();
+        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const d = await r.json();
+        if(d.ok) {
+            showToast(d.msg, "bullish");
+            setTimeout(() => location.reload(), 1000); 
+        } else {
+            showToast(d.error || "Código inválido", "bearish");
+        }
+    } catch(e) {
+        showToast("Error al conectar con el servidor", "bearish");
+    }
+}
+
+function updateWatchlistUI() {
+    const list = document.getElementById('watch-alerts-list');
+    const empty = document.getElementById('watchEmpty');
+    const count = document.getElementById('watchCount');
+    
+    if (watchlist.size === 0) {
+        if(empty) empty.style.display = 'block';
+        if(list) list.style.display = 'none';
+        if(count) count.innerText = '';
+    } else {
+        if(empty) empty.style.display = 'none';
+        if(list) list.style.display = 'flex';
+        
+        // LIMITAR A 3 SI NO ES VIP
+        if(!isVip && watchlist.size > 3) {
+            if(count) count.innerHTML = `⚠️ Plan Free: Límite 3 activos. <br> <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="openUpgradeModal()">Actualizar a PRO</span>`;
+        } else {
+            if(count) count.innerText = `${watchlist.size} activos vigilados`;
+        }
+    }
+}
+
+function abrirTradingView() {
+    if(!isVip) {
+        openUpgradeModal();
+        return;
+    }
+    const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+    window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+}
+
+function openUpgradeModal() {
+    showToast("🌟 Plan PRO: 10€/mes. Contacta con soporte para activar VIP.", "info", 8000);
+}
+
+function saveNotifPrefs(){
+  const prefs={
+    telegram_enabled:document.getElementById('tgEnabled').checked,
+    telegram_chat_id:document.getElementById('tgChatId').value.trim(),
+    email_enabled:document.getElementById('emEnabled').checked,
+    email_address:document.getElementById('emAddress').value.trim(),
+    watchlist:[...watchlist].join(','),
+  };
+  try{
+    fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    showToast('✅ Preferencias guardadas','bullish',2000);
+  }catch(e){showToast('❌ Error guardando preferencias','bearish');}
+}
+
+async function loadNotifStatus(){
+  try{
+    const r=await fetch('/api/notifications/status');
+    const s=await r.json();
+    const chk=(ok,label)=>`${ok?'<span style="color:#2dd47e">✅</span>':'<span style="color:#f05858">⚠️</span>'} <span style="color:var(--text)">${label}</span>`;
+    document.getElementById('notifStatus').innerHTML=
+      '<div style="display:flex;flex-direction:column;gap:5px">'+
+      '<div style="font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-mono)">Estado del servidor</div>'+
+      `<div>${chk(s.telegram_configured,'Telegram Bot')}</div>`+
+      `<div>${chk(s.whatsapp_configured,'WhatsApp · Twilio')}</div>`+
+      `<div>${chk(s.email_configured,'Email · SMTP')}</div>`+
+      '</div>';
+  }catch(e){}
+}
+
+async function testChannel(channel){
+  showToast('Enviando prueba de '+channel+'...','info',3000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const d=await r.json();
+    const res=d.results[channel];
+    if(res&&res.ok)showToast('✅ Prueba '+channel+' enviada correctamente','bullish');
+    else showToast('❌ '+(res?.error||'No se pudo enviar. Revisa la configuración del servidor.'),'bearish',8000);
+  }catch(e){showToast('❌ Error de conexión','bearish');}
+}
+
+async function sendAlertsNow(){
+  const tickers=[...watchlist].join(',');
+  if(!tickers){showToast('Añade activos a vigilancia (★) primero','info');return;}
+  showToast('Analizando '+watchlist.size+' activos...','info',4000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/send'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
+    const d=await r.json();
+    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas por los canales activos`,'bullish');
+    else showToast('Sin alertas activas en tus activos vigilados ahora','info');
+  }catch(e){showToast('❌ Error enviando alertas','bearish');}
+}
+</script>
+</body>
+</html>

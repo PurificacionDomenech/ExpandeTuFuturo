@@ -1072,7 +1072,7 @@ function toggleChart(){
   if(b.style.display==='none'){
     b.style.display='block';
     btn.innerText='▲ Cerrar gráfico';
-    if(!chartLoaded)loadChart();
+    if(typeof chartLoaded !== 'undefined' && !chartLoaded) loadChart();
   }else{
     b.style.display='none';
     btn.innerText='▼ Abrir gráfico';
@@ -1083,10 +1083,10 @@ function toggleFavs(){
   const b=document.getElementById('favBody'),c=document.getElementById('favChevron');
   if(b.classList.contains('closed')){
     b.classList.remove('closed');b.classList.add('open');
-    c.style.transform='rotate(0deg)';
+    if(c) c.style.transform='rotate(0deg)';
   }else{
     b.classList.remove('open');b.classList.add('closed');
-    c.style.transform='rotate(-90deg)';
+    if(c) c.style.transform='rotate(-90deg)';
   }
 }
 
