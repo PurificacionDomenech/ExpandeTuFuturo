@@ -948,10 +948,22 @@ async function loadSymbol(sym){
   const el=document.getElementById('fc-'+favId(sym));if(el)el.classList.add('active-sym');
   document.getElementById('loadWrap').style.display='flex';
   try{
-    const data=await fetchData(sym);
-    lastData=data;
+    if(data.error){
+      document.getElementById('loadWrap').style.display='none';
+      showToast('❌ '+data.error,'bearish');
+      return;
+    }
     document.getElementById('loadWrap').style.display='none';
-    if(document.getElementById('chartBody').style.display!=='none')renderPlotly(data);
+    
+    // Asegurar que el cuerpo del gráfico esté visible si es la carga inicial o búsqueda
+    const chartBody = document.getElementById('chartBody');
+    if(chartBody.style.display==='none'){
+        chartBody.style.display='block';
+        const btn = document.getElementById('btnToggleChart');
+        if(btn) btn.innerText='▲ Cerrar gráfico';
+    }
+    
+    renderPlotly(data);
     updateSidebar(data);
     renderCurrentAlerts();
   }catch(e){
