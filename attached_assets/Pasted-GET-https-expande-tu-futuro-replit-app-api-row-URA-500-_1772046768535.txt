@@ -1,0 +1,55 @@
+GET https://expande-tu-futuro.replit.app/api/row/URA 500 (Internal Server Error)
+loadRowData @ app:573
+(anonymous) @ app:472
+window.onload @ app:472
+app:1274   POST https://expande-tu-futuro.replit.app/api/notifications/redeem?user_id=anon_1htd2v21 500 (Internal Server Error)
+redeemVipCode @ app:1274
+onclick @ app:1
+app:1274   POST https://expande-tu-futuro.replit.app/api/notifications/redeem?user_id=anon_1htd2v21 500 (Internal Server Error)
+redeemVipCode @ app:1274
+onclick @ app:1
+app:573   GET https://expande-tu-futuro.replit.app/api/row/IAU 500 (Internal Server Error)
+loadRowData @ app:573
+(anonymous) @ app:472
+window.onload @ app:472
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/SPYM 500 (Internal Server Error)
+loadRowData @ app:574
+(anonymous) @ app:472
+window.onload @ app:472
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/IAU 500 (Internal Server Error)
+loadRowData @ app:574
+(anonymous) @ app:472
+window.onload @ app:472
+app:759   GET https://expande-tu-futuro.replit.app/api/chart/%5ENDX?interval=1d 500 (Internal Server Error)
+fetchData @ app:759
+loadSymbol @ app:953
+window.onload @ app:473
+app:573   GET https://expande-tu-futuro.replit.app/api/row/COPX 500 (Internal Server Error)
+loadRowData @ app:573
+(anonymous) @ app:472
+window.onload @ app:472
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/URNM 500 (Internal Server Error)
+loadRowData @ app:574
+(anonymous) @ app:472
+window.onload @ app:472
+app:573   GET https://expande-tu-futuro.replit.app/api/row/SPYM 500 (Internal Server Error)
+loadRowData @ app:573
+(anonymous) @ app:472
+window.onload @ app:472
+app:573   GET https://expande-tu-futuro.replit.app/api/row/UGL 500 (Internal Server Error)
+loadRowData @ app:573
+(anonymous) @ app:472
+window.onload @ app:472
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/UGL 500 (Internal Server Error)
+loadRowData @ app:574
+(anonymous) @ app:472
+window.onload @ app:472
+app:684   GET https://expande-tu-futuro.replit.app/api/watch?tickers=%5EGSPC%2CBTC-USD%2CETH-USD 500 (Internal Server Error)
+checkWatchlist @ app:684
+startWatcher @ app:678
+window.onload @ app:474
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/AAPL 500 (Internal Server Error)
+loadRowData @ app:574
+(anonymous) @ app:472
+window.onload @ app:472
+app:574   GET https://expande-tu-futuro.replit.app/api/sparkline/REMX 500 (Internal Server Error)

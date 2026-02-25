@@ -677,7 +677,7 @@ function drawSparkline(id,spk){
 ───────────────────────────────────────────── */
 function startWatcher(){checkWatchlist();setInterval(checkWatchlist,5*60*1000);}
 
-async function checkWatchlist(){
+async async function checkWatchlist(){
   if(watchlist.size===0){setWatchStatus('idle');renderWatchPanel();return;}
   const tickers=[...watchlist].join(',');
   try{
@@ -755,7 +755,7 @@ function relTime(ts){
 /* ─────────────────────────────────────────────
    GRÁFICO PLOTLY
 ───────────────────────────────────────────── */
-async function fetchData(sym){
+async async function fetchData(sym){
   const r=await fetch(`/api/chart/${encodeURIComponent(sym)}?interval=1d`);
   const d=await r.json();if(d.error)throw new Error(d.error);return d;
 }
@@ -943,7 +943,7 @@ function resetZoom2m(){
 /* ─────────────────────────────────────────────
    CARGA SÍMBOLO
 ───────────────────────────────────────────── */
-async function loadSymbol(sym){
+async async function loadSymbol(sym){
   currentSymbol=sym;savedXRange=null;
   document.getElementById('symbolInput').value=sym;
   document.querySelectorAll('.asset-row').forEach(r=>r.classList.remove('active-sym'));
@@ -1183,7 +1183,7 @@ function toggleFavs(){
 
 let isVip = false;
 
-async function loadNotifPrefs(){
+async async function loadNotifPrefs(){
   try{
     const userId = getNotifUserId();
     const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
@@ -1451,7 +1451,7 @@ function openUpgradeModal() {
           }
       };
   }
-  async function loadNotifStatus(){
+  async async function loadNotifStatus(){
   try{
     const r=await fetch('/api/notifications/status');
     const s=await r.json();
@@ -1496,13 +1496,15 @@ async function sendAlertsNow(){
 </footer>
 
   <script>
-  console.log("ETF Market Scanner: Modal and VIP Logic Initialized");
-  window.addEventListener('click', function(e) {
+(async function() {
+    console.log("ETF Market Scanner: Modal and VIP Logic Initialized");
+    window.addEventListener('click', function(e) {
       if (e.target && e.target.innerText === 'ACTIVAR' && e.target.closest('#upgradeModal')) {
           const input = document.getElementById('vipCodeInputUpgrade');
           console.log("ACTIVAR clicked. Input value:", input ? input.value : "not found");
       }
-  });
-  </script>
-  </body>
+      });
+})();
+</script>
+</body>
 </html>

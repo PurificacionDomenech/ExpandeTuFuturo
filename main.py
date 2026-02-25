@@ -145,6 +145,17 @@ async def get_chart(ticker: str, interval: str = "1d"):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/sparkline/{ticker}")
+async def get_sparkline(ticker: str):
+    try:
+        df = yf.download(ticker.upper(), period="7d", interval="1h", progress=False)
+        df = clean_df(df)
+        if df.empty: return {"ticker": ticker.upper(), "points": []}
+        points = [float(c) for c in df["Close"].tolist() if pd.notna(c)]
+        return {"ticker": ticker.upper(), "points": points}
+    except Exception as e:
+        return {"ticker": ticker.upper(), "points": [], "error": str(e)}
+
 @app.get("/api/row/{ticker}")
 async def get_row(ticker: str):
     try:
@@ -166,6 +177,22 @@ async def get_row(ticker: str):
         }
     except Exception as e:
         return {"ticker": ticker.upper(), "error": str(e)}
+
+@app.get("/api/watch")
+async def watch_favorites(tickers: str = ""):
+    all_alertas = []
+    if not tickers: return {"alertas": []}
+    for t in tickers.split(","):
+        t = t.strip()
+        if not t: continue
+        try:
+            df = yf.download(t.upper(), period="5d", interval="1d", progress=False)
+            df = clean_df(df)
+            if not df.empty:
+                df = calcular_indicadores(df)
+                all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
+        except: pass
+    return {"alertas": all_alertas}
 
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request):
