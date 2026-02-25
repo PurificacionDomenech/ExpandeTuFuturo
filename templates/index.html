@@ -1262,31 +1262,121 @@ async function loadNotifPrefs(){
   }catch(e){ console.error("Error loading prefs:", e); }
 }
 
-async function redeemVipCode(explicitCode) {
-    const codeInput = document.getElementById('vipCodeInput');
-    const codeInputUpgrade = document.getElementById('vipCodeInputUpgrade');
-    let code = explicitCode || (codeInput ? codeInput.value.trim() : '') || (codeInputUpgrade ? codeInputUpgrade.value.trim() : '');
-    if(!code) return;
-    
-    showToast("Verificando código...", "info");
-    try {
-        const userId = getNotifUserId();
-        const r = await fetch(`/api/notifications/redeem?user_id=${encodeURIComponent(userId)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, user_id: userId })
-        });
-        const d = await r.json();
-        if(d.ok) {
-            showToast(d.msg, "bullish");
-            setTimeout(() => location.reload(), 1000); 
-        } else {
-            showToast(d.error || "Código inválido", "bearish");
-        }
-    } catch(e) {
-        showToast("Error al conectar con el servidor", "bearish");
-    }
-}
+async function redeemVipCode(code) {
+      if (!code) return;
+      
+      // Attempt to get user ID safely
+      let userId = 'default';
+      try {
+          if (typeof getNotifUserId === 'function') {
+              userId = getNotifUserId();
+          } else {
+              userId = localStorage.getItem('etf_user_id') || 'default';
+          }
+      } catch(e) { console.error("Error getting userId:", e); }
+
+      console.log("REDEEM: Iniciando para usuario:", userId, "con código:", code);
+      
+      const btn = document.getElementById('btnUpgradeActivate');
+      const originalText = btn ? btn.innerText : 'ACTIVAR AHORA';
+      
+      if(btn) {
+          btn.innerText = 'PROCESANDO...';
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+      }
+
+      try {
+          const resp = await fetch(`/api/notifications/redeem?user_id=${encodeURIComponent(userId)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: code, user_id: userId })
+          });
+          
+          if (!resp.ok) throw new Error("Server error: " + resp.status);
+          
+          const data = await resp.json();
+          console.log("REDEEM: Respuesta:", data);
+          
+          if (data.ok) {
+              alert(data.msg || "¡Acceso VIP Activado!");
+              localStorage.setItem('etf_vip_status', 'true');
+              location.reload();
+          } else {
+              alert("Error: " + (data.error || "Código no válido"));
+              if(btn) {
+                  btn.innerText = originalText;
+                  btn.disabled = false;
+                  btn.style.opacity = '1';
+              }
+          }
+      } catch (err) {
+          console.error("REDEEM ERROR:", err);
+          alert("Error de conexión. Verifica que el servidor esté activo.");
+          if(btn) {
+              btn.innerText = originalText;
+              btn.disabled = false;
+              btn.style.opacity = '1';
+          }
+      }
+  }
+
+      try {
+          const resp = await fetch(`/api/notifications/redeem?user_id=${encodeURIComponent(userId)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: code, user_id: userId })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+              alert(data.msg || "¡Acceso VIP Activado!");
+              localStorage.setItem('etf_vip_status', 'true');
+              location.reload();
+          } else {
+              alert("Error: " + (data.error || "Código no válido"));
+              if(btn) { btn.innerText = originalText; btn.disabled = false; }
+          }
+      } catch (err) {
+          console.error("Redeem error:", err);
+          alert("Error de conexión. Inténtalo de nuevo.");
+          if(btn) { btn.innerText = originalText; btn.disabled = false; }
+      }
+  }`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: code, user_id: userId })
+          });
+          const data = await resp.json();
+          console.log("DEBUG: Respuesta del servidor:", data);
+          if (data.ok) {
+              alert(data.msg || "¡Código canjeado con éxito!");
+              localStorage.setItem('etf_vip_status', 'true');
+              location.reload();
+          } else {
+              alert("Error: " + (data.error || "Código no válido"));
+          }
+      } catch (err) {
+          console.error("DEBUG: Error en fetch redeem:", err);
+          alert("Error de conexión al canjear el código.");
+      }
+  }`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: code, user_id: userId })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+              alert(data.msg || "¡Código canjeado con éxito!");
+              localStorage.setItem('etf_vip_status', 'true');
+              location.reload();
+          } else {
+              alert("Error: " + (data.error || "Código no válido"));
+          }
+      } catch (err) {
+          console.error("Redeem error:", err);
+          alert("Error de conexión al canjear el código.");
+      }
+  }
 
 function updateWatchlistUI() {
     const list = document.getElementById('watch-alerts-list');
@@ -1320,159 +1410,48 @@ function abrirTradingView() {
 }
 
 function openUpgradeModal() {
-    const modal = document.createElement('div');
-    modal.id = 'upgradeModal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(5px)';
-    modal.innerHTML = `
-        <div style="background:#0a0a12;border:1px solid var(--gold);padding:30px;border-radius:15px;max-width:400px;width:90%;text-align:center;box-shadow:0 0 30px rgba(201,168,76,0.2);max-height:90vh;overflow-y:auto">
-            <div style="font-size:40px;margin-bottom:15px">👑</div>
-            <h2 style="color:var(--gold2);margin-bottom:20px;font-family:var(--font-display)">Planes PRO</h2>
-            
-            <div style="padding:15px;background:rgba(201,168,76,0.1);border:1px solid var(--gold);border-radius:10px;margin-bottom:25px">
-                <p style="color:#fff;font-size:13px;margin-bottom:12px;font-weight:700">¿Ya tienes un código VIP?</p>
-                <div style="display:flex;gap:8px">
-                    <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce tu código" style="flex:1;padding:10px;border-radius:6px;background:#000;border:1px solid var(--gold);color:#fff;font-family:var(--font-mono);font-size:13px">
-                    <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
-                </div>
-            </div>
+      const existing = document.getElementById('upgradeModal');
+      if(existing) existing.remove();
 
-            <div style="display:flex;flex-direction:column;gap:15px;margin-bottom:25px">
-                <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div style="font-weight:700;color:#fff">Mensual</div>
-                        <div style="font-size:18px;color:var(--gold)">10€ <span style="font-size:12px;color:var(--muted)">/ mes</span></div>
-                    </div>
-                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
-                        <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ TradingView Pro</li>
-                        <li>✅ Todos los Activos</li>
-                        <li>✅ Soporte 24/7</li>
-                    </ul>
-                </div>
-                <div style="background:rgba(201,168,76,0.05);padding:15px;border-radius:10px;border:1px solid var(--gold);text-align:left">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div style="font-weight:700;color:#fff">Semestral <span style="font-size:10px;color:var(--gold2)">(Ahorro 30%)</span></div>
-                        <div style="font-size:18px;color:var(--gold)">42€ <span style="font-size:12px;color:var(--muted)">(7€/mes)</span></div>
-                    </div>
-                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
-                        <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ TradingView Pro</li>
-                        <li>✅ Todos los Activos</li>
-                        <li>✅ Ahorro 18€</li>
-                    </ul>
-                </div>
-                <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div style="font-weight:700;color:#fff">Anual <span style="font-size:10px;color:#2dd47e">(Mejor Valor)</span></div>
-                        <div style="font-size:18px;color:var(--gold)">60€ <span style="font-size:12px;color:var(--muted)">(5€/mes)</span></div>
-                    </div>
-                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
-                        <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ TradingView Pro</li>
-                        <li>✅ Todos los Activos</li>
-                        <li>✅ Ahorro 60€</li>
-                    </ul>
-                </div>
-            </div>
-            <div style="margin-top:25px;background:rgba(255,255,255,0.02);border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.05)">
-                <h3 style="color:#fff;font-size:16px;margin-bottom:20px;text-align:left;font-family:var(--font-display)">Comparativa de Planes</h3>
-                <div style="overflow-x:auto">
-                    <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left">
-                        <thead>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
-                                <th style="padding:12px 8px;color:var(--muted)">Característica</th>
-                                <th style="padding:12px 8px;color:#fff;text-align:center">Free</th>
-                                <th style="padding:12px 8px;color:var(--gold);text-align:center">PRO</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Análisis SMA (20, 50, 100, 200)</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Indicador RSI / SuperTrend</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Alertas de Compra/Venta</td>
-                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Límite de Activos en Vigilancia</td>
-                                <td style="padding:12px 8px;text-align:center;color:#fff">3</td>
-                                <td style="padding:12px 8px;text-align:center;color:var(--gold)">Ilimitados</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Intervalo de Actualización</td>
-                                <td style="padding:12px 8px;text-align:center;color:#fff">24 horas</td>
-                                <td style="padding:12px 8px;text-align:center;color:#2dd47e">Tiempo Real</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Radar Financiero Diario</td>
-                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                            </tr>
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                                <td style="padding:12px 8px;color:#e0e0e0">Acceso a TradingView Pro</td>
-                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
-                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+      const modal = document.createElement('div');
+      modal.id = 'upgradeModal';
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(10px)';
+      modal.innerHTML = `
+          <div style="background:#0a0a12;border:2px solid #c9a84c;padding:35px;border-radius:20px;max-width:420px;width:95%;text-align:center;position:relative;box-shadow:0 0 50px rgba(0,0,0,0.8);color:#fff">
+              <button onclick="document.getElementById('upgradeModal').remove()" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;font-size:28px">&times;</button>
+              <div style="font-size:60px;margin-bottom:15px">💎</div>
+              <h2 style="color:#f1d592;margin-bottom:25px;font-size:28px;font-family:inherit;font-weight:bold">Acceso PRO</h2>
+              
+              <div style="padding:25px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.4);border-radius:15px;margin-bottom:25px">
+                  <p style="color:#ddd;font-size:15px;margin-bottom:18px;font-weight:500">Introduce tu código VIP</p>
+                  <input type="text" id="upgradeVipInput" placeholder="EJ: VIP333" style="width:100%;padding:15px;margin-bottom:15px;border-radius:10px;background:#000;border:1px solid #c9a84c;color:#fff;text-align:center;font-family:monospace;font-size:18px;outline:none;box-sizing:border-box">
+                  <button id="btnUpgradeActivate" style="width:100%;padding:15px;background:#c9a84c;border:none;border-radius:10px;color:#000;font-weight:900;cursor:pointer;font-size:16px;transition:transform 0.2s">ACTIVAR AHORA</button>
+              </div>
 
-                <div style="margin-top:30px;padding:20px;background:rgba(201,168,76,0.05);border-radius:10px;border:1px solid rgba(201,168,76,0.2);text-align:left">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                        <span style="font-size:20px">📡</span>
-                        <h4 style="color:var(--gold2);margin:0;font-size:15px">¿Qué es el Radar Financiero?</h4>
-                    </div>
-                    <p style="color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:15px">
-                        Es nuestro boletín inteligente exclusivo que analiza el mercado mientras duermes y te entrega las claves del día.
-                    </p>
-                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:#e0e0e0;display:grid;grid-template-columns:1fr;gap:8px">
-                        <li><span style="color:#00e676">✔</span> <b>Panorama ETF:</b> Resumen de los 5 puntos críticos del mercado.</li>
-                        <li><span style="color:#00e676">✔</span> <b>Zonas de Movimiento:</b> Dónde están las oportunidades reales hoy.</li>
-                        <li><span style="color:#00e676">✔</span> <b>Impacto en Cartera:</b> Cómo afectan las noticias a tus activos vigilados.</li>
-                        <li><span style="color:#00e676">✔</span> <b>Alertas de Sentimiento:</b> Análisis de miedo y codicia del mercado.</li>
-                    </ul>
-                    <p style="margin-top:15px;font-size:10px;color:var(--gold);font-style:italic">Se genera automáticamente y se envía por Email y Telegram cada mañana.</p>
-                </div>
-            </div>
+              <div style="text-align:left;font-size:14px;color:#aaa;line-height:1.8;padding:0 10px">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span>✅</span> <span>Alertas Ilimitadas (Telegram/Email)</span></div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span>✅</span> <span>Gráficos Avanzados sin límites</span></div>
+                  <div style="display:flex;align-items:center;gap:10px"><span>✅</span> <span>Todos los Activos Disponibles</span></div>
+              </div>
+          </div>
+      `;
+      document.body.appendChild(modal);
 
-            <p style="color:var(--muted);font-size:12px;margin-top:20px;margin-bottom:10px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin-bottom:20px;text-align:left">
-                <p style="color:var(--muted);font-size:10px;line-height:1.4;margin:0">
-                    <strong>Descargo de responsabilidad:</strong> Los análisis y alertas proporcionados por esta plataforma son meramente informativos y basados en indicadores técnicos. No constituyen asesoramiento financiero ni recomendaciones de inversión. Usted es el único responsable de sus decisiones financieras y del riesgo asumido en sus operaciones. El rendimiento pasado no garantiza resultados futuros.
-                </p>
-            </div>
-            <div style="display:flex;gap:10px">
-                <button onclick="this.closest('#upgradeModal').remove()" style="flex:1;padding:12px;border-radius:8px;border:1px solid #333;background:none;color:#fff;cursor:pointer">Cerrar</button>
-                <a href="https://t.me/LC_MarketScanner_bot" target="_blank" style="flex:1;padding:12px;border-radius:8px;background:var(--gold);color:#000;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center">Soporte</a>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
+      // Focus the input
+      const input = document.getElementById('upgradeVipInput');
+      if(input) input.focus();
 
-function saveNotifPrefs(){
-  const prefs={
-    telegram_enabled:document.getElementById('tgEnabled').checked,
-    telegram_chat_id:document.getElementById('tgChatId').value.trim(),
-    email_enabled:document.getElementById('emEnabled').checked,
-    email_address:document.getElementById('emAddress').value.trim(),
-    watchlist:[...watchlist].join(','),
-  };
-  try{
-    fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
-    showToast('✅ Preferencias guardadas','bullish',2000);
-  }catch(e){showToast('❌ Error guardando preferencias','bearish');}
-}
-
-async function loadNotifStatus(){
+      document.getElementById('btnUpgradeActivate').onclick = function() {
+          const val = document.getElementById('upgradeVipInput').value.trim();
+          console.log("PRO MODAL: Activando con código:", val);
+          if(val) {
+              redeemVipCode(val);
+          } else {
+              alert('Por favor, introduce un código VIP válido');
+          }
+      };
+  }
+  async function loadNotifStatus(){
   try{
     const r=await fetch('/api/notifications/status');
     const s=await r.json();
@@ -1515,5 +1494,15 @@ async function sendAlertsNow(){
     <strong>Aviso Legal:</strong> LC Market Scanner / Expande Tu Futuro es una herramienta de análisis técnico automatizado. Los datos y alertas mostrados son meramente informativos y representan momentos que identificamos como técnicamente favorables según nuestros algoritmos. No somos asesores financieros ni recomendamos inversiones específicas. Usted es el único responsable de sus decisiones de inversión y del riesgo asumido. Invertir en mercados financieros conlleva riesgo de pérdida de capital.
   </p>
 </footer>
-</body>
+
+  <script>
+  console.log("ETF Market Scanner: Modal and VIP Logic Initialized");
+  window.addEventListener('click', function(e) {
+      if (e.target && e.target.innerText === 'ACTIVAR' && e.target.closest('#upgradeModal')) {
+          const input = document.getElementById('vipCodeInputUpgrade');
+          console.log("ACTIVAR clicked. Input value:", input ? input.value : "not found");
+      }
+  });
+  </script>
+  </body>
 </html>
