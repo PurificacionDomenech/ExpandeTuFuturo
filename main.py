@@ -357,6 +357,67 @@ async def notification_status():
     }
 
 
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    import httpx
+    try:
+        data = await request.json()
+        message = data.get("message") or data.get("edited_message")
+        if not message:
+            return {"ok": True}
+
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        first_name = message["from"].get("first_name", "")
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if not token:
+            return {"ok": False}
+
+        if text.startswith("/start") or text.startswith("/chatid"):
+            reply = (
+                f"¡Hola {first_name}! 👋\n\n"
+                f"✅ Tu <b>Chat ID</b> es:\n"
+                f"<code>{chat_id}</code>\n\n"
+                f"Copia ese número y pégalo en el panel de Alertas del <b>ETF Market Scanner</b> "
+                f"para recibir notificaciones de mercado aquí."
+            )
+        else:
+            reply = (
+                f"Tu <b>Chat ID</b> es: <code>{chat_id}</code>\n\n"
+                f"Usa /start para ver las instrucciones completas."
+            )
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"}
+            )
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/telegram/setup-webhook")
+async def setup_telegram_webhook(request: Request):
+    import httpx
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        return {"ok": False, "error": "TELEGRAM_BOT_TOKEN no configurado"}
+
+    domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+    if not domain:
+        return {"ok": False, "error": "Dominio no detectado"}
+
+    webhook_url = f"https://{domain}/api/telegram/webhook"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            json={"url": webhook_url, "allowed_updates": ["message"]}
+        )
+        result = r.json()
+    return {"ok": result.get("ok"), "webhook_url": webhook_url, "telegram_response": result}
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
