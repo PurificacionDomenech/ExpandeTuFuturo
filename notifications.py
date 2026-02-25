@@ -9,7 +9,8 @@ from email.mime.multipart import MIMEMultipart
 
 
 def get_db():
-    return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
+    # Eliminamos sslmode=require porque causa errores en este entorno
+    return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
 def load_prefs(user_id: str = "default") -> dict:
