@@ -21,6 +21,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"ok": False, "error": "Internal Server Error", "details": str(exc)}
     )
 
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(status_code=404, content={"ok": False, "error": "Endpoint not found"})
+    return FileResponse("templates/splash.html")
+
 INTERVAL_MAP = {
     "1d":  ("1d",  "max"),
     "1wk": ("1wk", "max"),
