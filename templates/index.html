@@ -28,6 +28,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-hei
 #dispPrice{font-size:24px;font-weight:700;color:#fff}
 #chart-card{padding:16px;position:relative;min-height:400px}
 #tv-bar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+#ind-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.btn-ind{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all 0.2s}
+.btn-ind.off{opacity:0.3;filter:grayscale(1)}
 #plotDiv{width:100%;height:500px}
 @media(min-width:900px){#plotDiv{height:600px}}
 #favs-panel{overflow:hidden}
@@ -71,6 +74,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-hei
         <span style="font-size:12px;font-weight:700">GRÁFICO TIEMPO REAL</span>
         <span id="chartStatus" style="font-size:10px;color:var(--gold)">Cargando...</span>
       </div>
+      <div id="ind-bar">
+        <button class="btn-ind" id="tog-sma20" style="background:rgba(0,255,255,0.1);color:#00ffff;border-color:rgba(0,255,255,0.3)" onclick="toggleInd('sma20')">SMA20</button>
+        <button class="btn-ind" id="tog-sma50" style="background:rgba(255,255,0,0.1);color:#ffff00;border-color:rgba(255,255,0,0.3)" onclick="toggleInd('sma50')">SMA50</button>
+        <button class="btn-ind" id="tog-sma100" style="background:rgba(255,165,0,0.1);color:#ffa500;border-color:rgba(255,165,0,0.3)" onclick="toggleInd('sma100')">SMA100</button>
+        <button class="btn-ind" id="tog-sma200" style="background:rgba(255,0,255,0.1);color:#ff00ff;border-color:rgba(255,0,255,0.3)" onclick="toggleInd('sma200')">SMA200</button>
+        <button class="btn-ind" id="tog-st" style="background:rgba(0,230,118,0.1);color:#00e676;border-color:rgba(0,230,118,0.3)" onclick="toggleInd('st')">SUPERTREND</button>
+      </div>
       <div id="plotDiv"></div>
     </div>
   </div>
@@ -90,8 +100,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-hei
   </div>
 </div>
 <script>
-const SYMBOLS = ['BTC-USD','ETH-USD','^GSPC','^NDX','AAPL','TSLA'];
+const SYMBOLS = ['BTC-USD','ETH-USD','^GSPC','^NDX','AAPL','TSLA','SPY'];
 let currentSym = 'BTC-USD';
+let currentData = null;
+let inds = { sma20:true, sma50:true, sma100:true, sma200:true, st:true };
 
 async function loadTable() {
     const list = document.getElementById('favItems');
@@ -119,25 +131,10 @@ async function loadSymbol(sym) {
     try {
         const r = await fetch('/api/chart/' + sym);
         const d = await r.json();
+        currentData = d;
         if(d.chart) {
-            Plotly.newPlot('plotDiv', [{
-                x: d.chart.candles.map(c => new Date(c.x)),
-                open: d.chart.candles.map(c => c.o),
-                high: d.chart.candles.map(c => c.h),
-                low: d.chart.candles.map(c => c.l),
-                close: d.chart.candles.map(c => c.c),
-                type: 'candlestick',
-                name: sym
-            }], {
-                margin: {t:10,r:10,b:30,l:50},
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {color:'#fff'},
-                xaxis: {rangeslider:{visible:false}, gridcolor:'rgba(255,255,255,0.05)'},
-                yaxis: {gridcolor:'rgba(255,255,255,0.05)'}
-            });
+            renderChart();
             document.getElementById('dispPrice').innerText = '$' + d.last_price;
-            
             const ab = document.getElementById('alertBox');
             const al = document.getElementById('alertList');
             al.innerHTML = '';
@@ -153,6 +150,48 @@ async function loadSymbol(sym) {
         }
         document.getElementById('chartStatus').innerText = 'En vivo';
     } catch(e) { document.getElementById('chartStatus').innerText = 'Error'; }
+}
+
+function renderChart() {
+    if(!currentData || !currentData.chart) return;
+    const d = currentData;
+    const x = d.chart.candles.map(c => new Date(c.x));
+    
+    const traces = [{
+        x: x,
+        open: d.chart.candles.map(c => c.o),
+        high: d.chart.candles.map(c => c.h),
+        low: d.chart.candles.map(c => c.l),
+        close: d.chart.candles.map(c => c.c),
+        type: 'candlestick',
+        name: currentSym
+    }];
+    
+    if(d.indicadores) {
+        if(inds.sma20 && d.indicadores.SMA20) traces.push({x:x, y:d.indicadores.SMA20, type:'scatter', mode:'lines', name:'SMA20', line:{color:'#00ffff', width:1}});
+        if(inds.sma50 && d.indicadores.SMA50) traces.push({x:x, y:d.indicadores.SMA50, type:'scatter', mode:'lines', name:'SMA50', line:{color:'#ffff00', width:1}});
+        if(inds.sma100 && d.indicadores.SMA100) traces.push({x:x, y:d.indicadores.SMA100, type:'scatter', mode:'lines', name:'SMA100', line:{color:'#ffa500', width:1}});
+        if(inds.sma200 && d.indicadores.SMA200) traces.push({x:x, y:d.indicadores.SMA200, type:'scatter', mode:'lines', name:'SMA200', line:{color:'#ff00ff', width:1}});
+        if(inds.st && d.indicadores.ST) traces.push({x:x, y:d.indicadores.ST, type:'scatter', mode:'lines', name:'SuperTrend', line:{color:'#00e676', width:1.5}});
+    }
+
+    Plotly.newPlot('plotDiv', traces, {
+        margin: {t:10,r:10,b:30,l:50},
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: {color:'#fff'},
+        xaxis: {rangeslider:{visible:false}, gridcolor:'rgba(255,255,255,0.05)'},
+        yaxis: {gridcolor:'rgba(255,255,255,0.05)'},
+        legend: {orientation:'h', y:1.1}
+    });
+}
+
+function toggleInd(id) {
+    inds[id] = !inds[id];
+    const btn = document.getElementById('tog-' + id);
+    if(inds[id]) btn.classList.remove('off');
+    else btn.classList.add('off');
+    renderChart();
 }
 
 function doSearch() {

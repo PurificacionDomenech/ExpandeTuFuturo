@@ -141,10 +141,19 @@ async def get_chart(ticker: str, interval: str = "1d"):
                 "l": float(df["Low"].iloc[i]),
                 "c": float(df["Close"].iloc[i]),
             })
+        
+        # Preparar indicadores para el frontend
+        indicadores = {}
+        for col in ["SMA20", "SMA50", "SMA100", "SMA200", "RSI", "ST"]:
+            if col in df.columns:
+                # Convertir a lista de floats manejando NaNs
+                indicadores[col] = [float(x) if pd.notna(x) else None for x in df[col].tolist()]
+        
         last_price = float(df["Close"].iloc[-1])
         alertas = detectar_alertas(df, ticker)
         return {
             "chart": {"candles": candles},
+            "indicadores": indicadores,
             "last_price": last_price,
             "alertas": alertas
         }
