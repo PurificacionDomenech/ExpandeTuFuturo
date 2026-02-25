@@ -24,8 +24,8 @@ def load_prefs(user_id: str = "default") -> dict:
                 row = cur.fetchone()
                 if row:
                     d = dict(row)
-                    # Convertimos is_vip a booleano explícito
                     d["is_vip"] = bool(d.get("is_vip", False))
+                    # NO SOBREESCRIBIR AQUÍ. Solo devolvemos lo que hay en BD.
                     return d
     except Exception:
         pass

@@ -1062,22 +1062,33 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
   const emIn = document.getElementById('emAddress');
   if (emIn) emIn.onchange = saveNotifPrefs;
+  
+  // Forzar carga inicial
+  setTimeout(loadNotifPrefs, 500);
+}
 
 let isVip = false;
 
 async function loadNotifPrefs(){
   try{
-    const r=await fetch(notifUrl('/api/notifications/prefs'));
+    const userId = getUserId();
+    const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
     const p=await r.json();
     isVip = !!p.is_vip;
+    console.log("VIP Status loaded:", isVip, "for user:", userId);
     
     // UI VIP Status
     const btn = document.getElementById('notifBtn');
-    if(isVip) {
-        btn.innerHTML = '💎 Acceso VIP';
-        btn.style.borderColor = '#c9a84c';
-    } else {
-        btn.innerHTML = '🔔 Alertas (Free)';
+    if(btn) {
+        if(isVip) {
+            btn.innerHTML = '💎 Acceso VIP';
+            btn.style.borderColor = '#c9a84c';
+            btn.style.color = '#c9a84c';
+        } else {
+            btn.innerHTML = '🔔 Alertas (Free)';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }
     }
 
     const tgEn = document.getElementById('tgEnabled');
@@ -1095,12 +1106,12 @@ async function loadNotifPrefs(){
     if(emF) emF.style.display=p.email_enabled?'block':'none';
 
     // Bloqueo visual si no es VIP
+    const statusBox = document.getElementById('notifStatus');
     if(!isVip) {
         document.querySelectorAll('.notif-channel').forEach(el => {
             el.style.opacity = '0.5';
             el.style.pointerEvents = 'none';
         });
-        const statusBox = document.getElementById('notifStatus');
         if(statusBox) {
             statusBox.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
@@ -1112,16 +1123,27 @@ async function loadNotifPrefs(){
                 </div>
             `;
         }
+    } else {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+        if(statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+        loadNotifStatus(); 
     }
-  }catch(e){}
+    updateWatchlistUI();
+  }catch(e){ console.error("Error loading prefs:", e); }
 }
 
 async function redeemVipCode() {
-    const code = document.getElementById('vipCodeInput').value;
+    const codeInput = document.getElementById('vipCodeInput');
+    const code = codeInput ? codeInput.value.trim() : '';
     if(!code) return;
     
+    showToast("Verificando código...", "info");
     try {
-        const r = await fetch(`/api/notifications/redeem?user_id=${getUserId()}`, {
+        const userId = getUserId();
+        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code })
@@ -1129,9 +1151,9 @@ async function redeemVipCode() {
         const d = await r.json();
         if(d.ok) {
             showToast(d.msg, "bullish");
-            loadNotifPrefs(); // Recargar para desbloquear
+            setTimeout(() => location.reload(), 1000); 
         } else {
-            showToast(d.error, "bearish");
+            showToast(d.error || "Código inválido", "bearish");
         }
     } catch(e) {
         showToast("Error al conectar con el servidor", "bearish");

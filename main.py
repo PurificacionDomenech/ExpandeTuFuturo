@@ -324,37 +324,47 @@ async def redeem_code(request: Request, user_id: str = "default"):
     if not code:
         return {"ok": False, "error": "Código vacío"}
     
+    # DEBUG: Imprimir para ver qué llega
+    print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
+    
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                 row = cur.fetchone()
                 if not row:
+                    print(f"DEBUG: Código '{code}' no encontrado en BD")
                     return {"ok": False, "error": "Código inválido"}
                 if row[0]:
+                    print(f"DEBUG: Código '{code}' ya está marcado como usado")
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                # Marcar código como usado y dar VIP
+                # Marcar código como usado
                 cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
-                prefs = load_prefs(user_id)
-                prefs["is_vip"] = True
-                save_prefs(prefs, user_id)
+                # ACTUALIZACIÓN DIRECTA DE VIP
+                cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
+                if not cur.fetchone():
+                    cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
+                else:
+                    cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
                 
             conn.commit()
+        print(f"DEBUG: Canje exitoso para {user_id}")
         return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
     except Exception as e:
+        print(f"DEBUG: Error en redeem: {e}")
         return {"ok": False, "error": str(e)}
 
 
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
     prefs = load_prefs(user_id)
-    # Si no es VIP, forzar canales desactivados para la lógica de envío
-    # y ocultar datos sensibles en el front si se prefiere
+    # Si NO es VIP, capamos las opciones para que el front lo sepa
     if not prefs.get("is_vip"):
         prefs["telegram_enabled"] = False
         prefs["email_enabled"] = False
+    # Si ES VIP, devolvemos las prefs tal cual están en la BD (incluyendo telegram_enabled=True si el usuario lo activó)
     return prefs
 
 
