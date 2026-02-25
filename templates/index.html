@@ -1048,7 +1048,11 @@ function openNotifModal(){
   if(!m) return;
   m.style.display='flex';
   if(typeof loadNotifPrefs === 'function') loadNotifPrefs();
-  if(typeof loadNotifStatus === 'function') loadNotifStatus();
+}
+
+function closeNotifModal(){
+  const m=document.getElementById('notifModal');
+  if(m) m.style.display='none';
 }
 
 function initNotifListeners(){
@@ -1077,45 +1081,14 @@ function initNotifListeners(){
   // Forzar carga inicial de preferencias
   setTimeout(() => {
     if(typeof loadNotifPrefs === 'function') loadNotifPrefs();
-  }, 500);
-}
-function closeNotifModal(){
-  document.getElementById('notifModal').style.display='none';
-}
-document.getElementById('notifModal').addEventListener('click',function(e){
-  if(e.target===this)closeNotifModal();
-});
-
-  const tgEnabledEl = document.getElementById('tgEnabled');
-  if (tgEnabledEl) {
-    tgEnabledEl.addEventListener('change', function() {
-      const f = document.getElementById('tgFields');
-      if (f) f.style.display = this.checked ? 'block' : 'none';
-      saveNotifPrefs();
-    });
-  }
-  const emEnabledEl = document.getElementById('emEnabled');
-  if (emEnabledEl) {
-    emEnabledEl.addEventListener('change', function() {
-      const f = document.getElementById('emFields');
-      if (f) f.style.display = this.checked ? 'block' : 'none';
-      saveNotifPrefs();
-    });
-  }
-  
-  const tgIn = document.getElementById('tgChatId');
-  if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
-  const emIn = document.getElementById('emAddress');
-  if (emIn) emIn.onchange = saveNotifPrefs;
-  
-  // Forzar carga inicial
-  setTimeout(() => {
-    loadNotifPrefs();
-    const defaultSym = ALL_ASSETS && ALL_ASSETS.length ? ALL_ASSETS[0].ticker : 'BTC-USD';
-    loadSymbol(defaultSym);
+    const defaultSym = typeof ALL_ASSETS !== 'undefined' && ALL_ASSETS.length ? ALL_ASSETS[0].ticker : 'BTC-USD';
+    if(typeof loadSymbol === 'function') loadSymbol(defaultSym);
   }, 500);
 }
 
+/* ─────────────────────────────────────────────
+   AUXILIARES
+───────────────────────────────────────────── */
 function favId(t){return 'f_'+t.replace(/[^a-z0-9]/gi,'_');}
 function formatPrice(p){
   if(p===null||p===undefined)return '—';
