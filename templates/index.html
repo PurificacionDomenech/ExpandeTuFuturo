@@ -1126,8 +1126,17 @@ function refreshStars(){
 
 function toggleWatch(ticker,e){
   if(e) e.stopPropagation();
-  if(watchlist.has(ticker)){watchlist.delete(ticker);showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);}
-  else{watchlist.add(ticker);showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);}
+  if(watchlist.has(ticker)){
+    watchlist.delete(ticker);
+    showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);
+  } else {
+    if(!isVip && watchlist.size >= 3) {
+      openUpgradeModal();
+      return;
+    }
+    watchlist.add(ticker);
+    showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);
+  }
   saveWL();refreshStars();updateWatchingCount();
   if(typeof renderWatchPanel === 'function') renderWatchPanel();
 }
@@ -1299,15 +1308,15 @@ function openUpgradeModal() {
             <div style="display:flex;flex-direction:column;gap:15px;margin-bottom:25px">
                 <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1)">
                     <div style="font-weight:700;color:#fff">Mensual</div>
-                    <div style="font-size:20px;color:var(--gold)">10€/mes</div>
+                    <div style="font-size:20px;color:var(--gold)">10€ <span style="font-size:12px;color:var(--muted)">/ mes</span></div>
                 </div>
                 <div style="background:rgba(201,168,76,0.05);padding:15px;border-radius:10px;border:1px solid var(--gold)">
                     <div style="font-weight:700;color:#fff">Semestral (Ahorro 30%)</div>
-                    <div style="font-size:20px;color:var(--gold)">7€/mes</div>
+                    <div style="font-size:20px;color:var(--gold)">42€ <span style="font-size:12px;color:var(--muted)">(7€ / mes)</span></div>
                 </div>
                 <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1)">
                     <div style="font-weight:700;color:#fff">Anual (Mejor Valor)</div>
-                    <div style="font-size:20px;color:var(--gold)">5€/mes</div>
+                    <div style="font-size:20px;color:var(--gold)">60€ <span style="font-size:12px;color:var(--muted)">(5€ / mes)</span></div>
                 </div>
             </div>
             <p style="color:var(--muted);font-size:12px;margin-bottom:20px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
