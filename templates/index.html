@@ -1193,15 +1193,28 @@ async function loadNotifPrefs(){
     
     // UI VIP Status
     const btn = document.getElementById('notifBtn');
+    const badge = document.getElementById('hdr-badge');
     if(btn) {
         if(isVip) {
             btn.innerHTML = '💎 Acceso VIP';
             btn.style.borderColor = '#c9a84c';
             btn.style.color = '#c9a84c';
+            if(badge) {
+                badge.innerText = 'PRO · 1D · SMAs';
+                badge.style.background = 'var(--gold)';
+                badge.style.color = '#000';
+                badge.style.border = 'none';
+            }
         } else {
             btn.innerHTML = '🔔 Alertas (Free)';
             btn.style.borderColor = '';
             btn.style.color = '';
+            if(badge) {
+                badge.innerText = 'FREE · 1D · SMAs';
+                badge.style.background = 'rgba(255,255,255,0.05)';
+                badge.style.color = 'rgba(255,255,255,0.3)';
+                badge.style.border = '1px solid rgba(255,255,255,0.1)';
+            }
         }
     }
 
