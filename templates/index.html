@@ -166,7 +166,7 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
       <img src="/static/logo.png" alt="ETF" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">
     </div>
     <span id="hdr-title"><span style="color:#c9a84c">E</span>XPANDE <span style="color:#c9a84c">T</span>U <span style="color:#c9a84c">F</span>UTURO</span>
-    <span id="hdr-badge">ETF · 1D · SMAs</span>
+    <span id="hdr-badge" style="background:var(--gold); color:#000; border:none;">PRO · 1D · SMAs</span>
     <button id="notifBtn" onclick="openNotifModal()">🔔 Alertas</button>
     <div id="hdr-search">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
@@ -950,16 +950,13 @@ async function loadSymbol(sym){
   const el=document.getElementById('fc-'+favId(sym));if(el)el.classList.add('active-sym');
   document.getElementById('loadWrap').style.display='flex';
   try{
-    if(data.error){
-      document.getElementById('loadWrap').style.display='none';
-      showToast('❌ '+data.error,'bearish');
-      return;
-    }
+    const data=await fetchData(sym);
+    lastData=data;
     document.getElementById('loadWrap').style.display='none';
     
-    // Asegurar que el cuerpo del gráfico esté visible si es la carga inicial o búsqueda
+    // Forzar visibilidad del gráfico
     const chartBody = document.getElementById('chartBody');
-    if(chartBody.style.display==='none'){
+    if(chartBody) {
         chartBody.style.display='block';
         const btn = document.getElementById('btnToggleChart');
         if(btn) btn.innerText='▲ Cerrar gráfico';
