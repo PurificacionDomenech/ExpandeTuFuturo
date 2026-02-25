@@ -119,6 +119,11 @@ def ts_ms(idx):
 
 
 @app.get("/")
+async def splash():
+    return FileResponse("templates/splash.html")
+
+
+@app.get("/app")
 async def index():
     return FileResponse("templates/index.html")
 
