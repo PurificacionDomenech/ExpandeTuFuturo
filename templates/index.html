@@ -1041,15 +1041,27 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   if(e.target===this)closeNotifModal();
 });
 
-document.getElementById('tgEnabled').addEventListener('change',function(){
-  document.getElementById('tgFields').style.display=this.checked?'block':'none';
-});
-document.getElementById('waEnabled').addEventListener('change',function(){
-  document.getElementById('waFields').style.display=this.checked?'block':'none';
-});
-document.getElementById('emEnabled').addEventListener('change',function(){
-  document.getElementById('emFields').style.display=this.checked?'block':'none';
-});
+  const tgEnabledEl = document.getElementById('tgEnabled');
+  if (tgEnabledEl) {
+    tgEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('tgFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  const emEnabledEl = document.getElementById('emEnabled');
+  if (emEnabledEl) {
+    emEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('emFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  
+  const tgIn = document.getElementById('tgChatId');
+  if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
+  const emIn = document.getElementById('emAddress');
+  if (emIn) emIn.onchange = saveNotifPrefs;
 
 async function loadNotifPrefs(){
   try{
@@ -1058,27 +1070,28 @@ async function loadNotifPrefs(){
     document.getElementById('tgEnabled').checked=!!p.telegram_enabled;
     document.getElementById('tgChatId').value=p.telegram_chat_id||'';
     document.getElementById('tgFields').style.display=p.telegram_enabled?'block':'none';
-    document.getElementById('waEnabled').checked=!!p.whatsapp_enabled;
-    document.getElementById('waNumber').value=p.whatsapp_number||'';
-    document.getElementById('waFields').style.display=p.whatsapp_enabled?'block':'none';
+    const waEnabledEl = document.getElementById('waEnabled');
+    if (waEnabledEl) waEnabledEl.checked = !!p.whatsapp_enabled;
+    const waNumberEl = document.getElementById('waNumber');
+    if (waNumberEl) waNumberEl.value = p.whatsapp_number || '';
+    const waFieldsEl = document.getElementById('waFields');
+    if (waFieldsEl) waFieldsEl.style.display = p.whatsapp_enabled ? 'block' : 'none';
     document.getElementById('emEnabled').checked=!!p.email_enabled;
     document.getElementById('emAddress').value=p.email_address||'';
     document.getElementById('emFields').style.display=p.email_enabled?'block':'none';
   }catch(e){}
 }
 
-async function saveNotifPrefs(){
+function saveNotifPrefs(){
   const prefs={
     telegram_enabled:document.getElementById('tgEnabled').checked,
     telegram_chat_id:document.getElementById('tgChatId').value.trim(),
-    whatsapp_enabled:document.getElementById('waEnabled').checked,
-    whatsapp_number:document.getElementById('waNumber').value.trim(),
     email_enabled:document.getElementById('emEnabled').checked,
     email_address:document.getElementById('emAddress').value.trim(),
     watchlist:[...watchlist].join(','),
   };
   try{
-    await fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
     showToast('✅ Preferencias guardadas','bullish',2000);
   }catch(e){showToast('❌ Error guardando preferencias','bearish');}
 }

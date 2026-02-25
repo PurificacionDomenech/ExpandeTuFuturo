@@ -148,7 +148,14 @@ def format_alerts_text(alertas: list) -> str:
         return "Sin alertas activas."
     icon_map = {"bullish": "🟢", "bearish": "🔴", "info": "🟡"}
     from datetime import datetime
-    now_str = datetime.now().strftime("%H:%M")
+    # Usar Madrid/Europe para la hora local
+    try:
+        import pytz
+        tz = pytz.timezone('Europe/Madrid')
+        now = datetime.now(tz)
+    except Exception:
+        now = datetime.now()
+    now_str = now.strftime("%H:%M")
     lines = [f"⚡ ETF Market Scanner · {now_str}\n"]
     for a in alertas:
         icon = icon_map.get(a.get("nivel", "info"), "🟡")
@@ -162,7 +169,13 @@ def format_alerts_html(alertas: list) -> str:
     color_map = {"bullish": "#2dd47e", "bearish": "#f05858", "info": "#e8c96d"}
     icon_map  = {"bullish": "🟢",      "bearish": "🔴",       "info": "🟡"}
     from datetime import datetime
-    now_str = datetime.now().strftime("%H:%M")
+    try:
+        import pytz
+        tz = pytz.timezone('Europe/Madrid')
+        now = datetime.now(tz)
+    except Exception:
+        now = datetime.now()
+    now_str = now.strftime("%H:%M")
     parts = [f"""
     <div style="font-family:'DM Sans',Arial,sans-serif;background:#060810;
                 color:#e8e4d9;padding:30px;border-radius:12px;max-width:600px">

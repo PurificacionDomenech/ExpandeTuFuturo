@@ -72,7 +72,10 @@ def detectar_alertas(df, ticker=""):
 
     precio_now  = float(df["Close"].iloc[n])
     precio_prev = float(df["Close"].iloc[n - 1])
-    prefix = "[" + ticker + "] " if ticker else ""
+    
+    # Asegurar que el ticker esté siempre presente y sea visible
+    ticker_clean = str(ticker).upper().strip()
+    prefix = f"[{ticker_clean}] " if ticker_clean else ""
 
     smas = {
         "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
@@ -304,9 +307,9 @@ async def test_notification(request: Request, user_id: str = "default"):
     prefs = load_prefs(user_id)
 
     test_alertas = [
-        {"nivel": "bullish", "msg": "[TEST] Precio cruza SMA50 al alza $185.20"},
-        {"nivel": "bearish", "msg": "[TEST] Death Cross SMA100/200 detectado"},
-        {"nivel": "info",    "msg": "[TEST] Precio tocando SMA200 $182.50"},
+        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $185.20"},
+        {"nivel": "bearish", "msg": "[BTC-USD] Death Cross SMA100/200 detectado"},
+        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $182.50"},
     ]
 
     test_prefs = dict(prefs)
