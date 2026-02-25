@@ -1067,6 +1067,79 @@ document.getElementById('notifModal').addEventListener('click',function(e){
   setTimeout(loadNotifPrefs, 500);
 }
 
+function favId(t){return 'f_'+t.replace(/[^a-z0-9]/gi,'_');}
+function formatPrice(p){
+  if(p===null||p===undefined)return '—';
+  return p>100?p.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):p.toFixed(4);
+}
+
+function buildFavGrid(){
+  const tbody=document.getElementById('favItems');
+  if(!tbody) return;
+  tbody.innerHTML='';
+  ALL_ASSETS.forEach(f=>{
+    const id=favId(f.ticker),isW=watchlist.has(f.ticker);
+    const tr=document.createElement('tr');
+    tr.id='fc-'+id;tr.className='asset-row';
+    tr.onclick=e=>{if(e.target.closest('.fav-star'))return;loadSymbol(f.ticker);};
+    tr.innerHTML=`
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}" onclick="toggleWatch('${f.ticker}',event)">★</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
+            <div style="font-size:10px;color:var(--muted)">${f.cat} ${f.name}</div>
+            <canvas id="spark-${id}" width="80" height="22" style="display:block;margin-top:3px;max-width:60px"></canvas>
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center">
+        <span id="tst-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tp-${id}" class="mono" style="font-size:12px;font-weight:600;color:#fff">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center">
+        <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center;min-width:110px">
+        <div id="tsma-${id}" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center">
+          <span style="font-size:10px;color:rgba(255,255,255,.15)">—</span>
+        </div>
+      </td>
+      <td style="text-align:center"><span id="tcr-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span></td>
+      <td style="text-align:center"><span id="tes-${id}">—</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function refreshStars(){
+  ALL_ASSETS.forEach(f=>{
+    const s=document.getElementById('star-'+favId(f.ticker));
+    if(!s)return;
+    s.className='fav-star '+(watchlist.has(f.ticker)?'watching':'idle');
+  });
+}
+
+function toggleWatch(ticker,e){
+  if(e) e.stopPropagation();
+  if(watchlist.has(ticker)){watchlist.delete(ticker);showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);}
+  else{watchlist.add(ticker);showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);}
+  saveWL();refreshStars();updateWatchingCount();
+  if(typeof renderWatchPanel === 'function') renderWatchPanel();
+}
+
+function updateWatchingCount(){
+  const n=watchlist.size;
+  const wc = document.getElementById('watchingCount');
+  if(wc) wc.innerText=n>0?`— ${n} ★`:'';
+  const wcc = document.getElementById('watchCount');
+  if(wcc) wcc.innerText=n>0?`${n} activo${n>1?'s':''} en vigilancia`:'';
+}
+
 function toggleChart(){
   const b=document.getElementById('chartBody'),btn=document.getElementById('btnToggleChart');
   if(b.style.display==='none'){
@@ -1084,6 +1157,7 @@ function toggleFavs(){
   if(b.classList.contains('closed')){
     b.classList.remove('closed');b.classList.add('open');
     if(c) c.style.transform='rotate(0deg)';
+    ALL_ASSETS.forEach(f=>loadRowData(f.ticker));
   }else{
     b.classList.remove('open');b.classList.add('closed');
     if(c) c.style.transform='rotate(-90deg)';

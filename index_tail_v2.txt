@@ -1,0 +1,500 @@
+    fill:'tozeroy',fillcolor:'rgba(255,255,255,.055)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>'});
+
+  const xy=arr=>({xs:arr.map(p=>new Date(p.x)),ys:arr.map(p=>p.y)});
+
+  // ── SMAs ──
+  [{key:'sma20',data:cd.sma20,col:'rgba(0,255,255,.85)',  w:1.2,name:'SMA 20'},
+   {key:'sma50',data:cd.sma50,col:'rgba(255,255,0,.85)',  w:1.5,name:'SMA 50'},
+   {key:'sma100',data:cd.sma100,col:'rgba(255,200,100,.85)',w:1.8,name:'SMA 100'},
+   {key:'sma200',data:cd.sma200,col:'rgba(200,150,220,.9)', w:2.2,name:'SMA 200'},
+  ].forEach(s=>{
+    if(!indVisible[s.key]||!cd[s.key]||!cd[s.key].length)return;
+    const{xs,ys}=xy(cd[s.key]);
+    traces.push({x:xs,y:ys,type:'scatter',mode:'lines',name:s.name,
+      line:{color:s.col,width:s.w},hovertemplate:`<b>${s.name}</b>: $%{y:,.2f}<extra></extra>`});
+  });
+
+  // ── SuperTrend ──
+  if(indVisible.st&&cd.st_buy&&cd.st_sell){
+    const stB=xy(cd.st_buy),stS=xy(cd.st_sell);
+    if(stB.xs.length)traces.push({x:stB.xs,y:stB.ys,type:'scatter',mode:'markers',name:'ST▲',
+      marker:{color:'rgba(0,255,100,.8)',size:3,symbol:'circle'},hovertemplate:'ST▲: $%{y:,.2f}<extra></extra>'});
+    if(stS.xs.length)traces.push({x:stS.xs,y:stS.ys,type:'scatter',mode:'markers',name:'ST▼',
+      marker:{color:'rgba(255,50,50,.8)',size:3,symbol:'circle'},hovertemplate:'ST▼: $%{y:,.2f}<extra></extra>'});
+  }
+
+  // ── RSI markers ──
+  if(indVisible.rsi&&cd.rsi_os&&cd.rsi_ob){
+    const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
+    if(ros.xs.length)traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
+      marker:{color:'#00e676',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🟢 RSI Sobreventa<br>$%{y:,.2f}<extra></extra>'});
+    if(rob.xs.length)traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
+      marker:{color:'#c9a84c',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🔴 RSI Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
+  }
+
+  // ── Smart Y-range: escala solo a las velas visibles (de Matrix) ──
+  const calcYRange=(xRange)=>{
+    const x0=new Date(xRange[0]).getTime(),x1=new Date(xRange[1]).getTime();
+    const vis=cd.candles.filter(c=>c.x>=x0&&c.x<=x1);
+    if(!vis.length)return null;
+    let mn=Math.min(...vis.map(c=>c.l||c.c)),mx=Math.max(...vis.map(c=>c.h||c.c));
+    // Incluir SMAs visibles
+    ['sma20','sma50','sma100','sma200'].forEach(k=>{
+      if(!cd[k])return;
+      cd[k].forEach(p=>{if(p.x>=x0&&p.x<=x1){mn=Math.min(mn,p.y);mx=Math.max(mx,p.y);}});
+    });
+    const pad=(mx-mn)*0.08;
+    return[mn-pad,mx+pad];
+  };
+
+  const layout={
+    paper_bgcolor:BG,plot_bgcolor:'#0a0a12',margin:{t:12,r:70,b:50,l:50},
+    hovermode:'x unified',
+    hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',font:{family:'Space Mono,monospace',size:11,color:'#e0e0e0'}},
+    showlegend:false,
+    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.06)',
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},showspikes:true,spikecolor:'rgba(255,255,255,.1)',
+      spikedash:'dot',spikethickness:1,rangeslider:{visible:false}},
+    yaxis:{gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.06)',
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},side:'right',tickformat:yFmt},
+    dragmode:'pan',font:{family:'DM Sans,sans-serif'}
+  };
+
+  // ── Rango X: 2 meses por defecto (ETF=1D, más contexto que Matrix) ──
+  const xEnd=dates[dates.length-1];
+  const xStart2m=xEnd?new Date(xEnd.getTime()-60*24*60*60*1000):null;
+  const xRangeToUse=savedXRange||(xStart2m?[xStart2m.toISOString(),xEnd.toISOString()]:null);
+  if(xRangeToUse)layout.xaxis.range=xRangeToUse;
+
+  const yRange=xRangeToUse?calcYRange(xRangeToUse):null;
+  if(yRange)layout.yaxis.range=yRange;
+
+  Plotly.react('plotDiv',traces,layout,{responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
+
+  // Guardar rango + recalcular Y + sincronizar RSI al hacer pan/zoom
+  const div=document.getElementById('plotDiv');
+  if(div._relayoutHandler)div.removeListener('plotly_relayout',div._relayoutHandler);
+  div._relayoutHandler=ed=>{
+    if(ed['xaxis.range[0]']&&ed['xaxis.range[1]']){
+      savedXRange=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
+      const yr=calcYRange(savedXRange);
+      if(yr)Plotly.relayout('plotDiv',{'yaxis.range':yr});
+      // Sincronizar RSI
+      if(indVisible.rsi&&document.getElementById('rsiWrap').style.display!=='none'){
+        Plotly.relayout('rsiDiv',{'xaxis.range':savedXRange});
+      }
+    }else if(ed['xaxis.autorange']===true){
+      savedXRange=null;
+      if(indVisible.rsi&&document.getElementById('rsiWrap').style.display!=='none'){
+        Plotly.relayout('rsiDiv',{'xaxis.autorange':true});
+      }
+    }
+  };
+  div.on('plotly_relayout',div._relayoutHandler);
+
+  const rsiWrap=document.getElementById('rsiWrap');
+  if(indVisible.rsi){rsiWrap.style.display='block';renderRSIPanel(cd,dates,xRangeToUse);}
+  else{rsiWrap.style.display='none';}
+}
+
+function renderRSIPanel(cd,dates,xRange){
+  const closes=cd.candles.map(c=>c.c).filter(v=>v!=null);
+  const rsiDates=cd.candles.map(c=>new Date(c.x));
+  const period=14,rsiVals=new Array(closes.length).fill(null);
+  if(closes.length>period){
+    let gains=0,losses=0;
+    for(let i=1;i<=period;i++){const d=closes[i]-closes[i-1];if(d>=0)gains+=d;else losses-=d;}
+    let avgGain=gains/period,avgLoss=losses/period;
+    rsiVals[period]=avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    for(let i=period+1;i<closes.length;i++){
+      const d=closes[i]-closes[i-1];
+      avgGain=(avgGain*(period-1)+Math.max(d,0))/period;
+      avgLoss=(avgLoss*(period-1)+Math.max(-d,0))/period;
+      rsiVals[i]=avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    }
+  }
+  const xNorm=[],yNorm=[];
+  rsiDates.forEach((d,i)=>{const v=rsiVals[i];if(v==null)return;xNorm.push(d);yNorm.push(v);});
+  const d0=rsiDates[0]||new Date(),dN=rsiDates[rsiDates.length-1]||new Date();
+
+  Plotly.react('rsiDiv',[
+    {x:xNorm,y:yNorm.map(v=>v!=null&&v<30?v:null),type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'transparent',width:0},fill:'tozeroy',fillcolor:'rgba(0,230,118,.12)'},
+    {x:xNorm,y:yNorm.map(v=>v!=null&&v>70?v:null),type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',fill:'toself',fillcolor:'rgba(255,0,127,.10)',line:{color:'transparent',width:0}},
+    {x:xNorm,y:yNorm,type:'scatter',mode:'lines',name:'RSI 14',line:{color:'rgba(180,130,220,.9)',width:1.5},hovertemplate:'<b>RSI</b>: %{y:.1f}<extra></extra>'},
+    {x:[d0,dN],y:[30,30],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(0,230,118,.5)',width:1,dash:'dot'}},
+    {x:[d0,dN],y:[70,70],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(255,0,127,.5)',width:1,dash:'dot'}},
+    {x:[d0,dN],y:[50,50],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(255,255,255,.08)',width:1,dash:'dot'}},
+  ],{
+    paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',margin:{t:8,r:70,b:40,l:50},showlegend:false,
+    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',tickfont:{color:'rgba(255,255,255,.3)',size:9},rangeslider:{visible:false},...(xRange?{range:xRange}:{})},
+    yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[0,30,50,70,100]},
+    shapes:[
+      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:0,y1:30,fillcolor:'rgba(0,230,118,.04)',line:{width:0}},
+      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:70,y1:100,fillcolor:'rgba(255,0,127,.04)',line:{width:0}}
+    ],font:{family:'DM Sans,sans-serif'},dragmode:'pan'
+  },{responsive:true,scrollZoom:false,displayModeBar:false});
+}
+
+function toggleInd(key){
+  indVisible[key]=!indVisible[key];
+  document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
+  if(lastData)renderPlotly(lastData);
+}
+
+function zoomChart(factor){
+  const div=document.getElementById('plotDiv');
+  if(!div||!div.layout||!div.layout.xaxis)return;
+  const xr=div.layout.xaxis.range;if(!xr||xr.length<2)return;
+  const s=new Date(xr[0]).getTime(),e=new Date(xr[1]).getTime();
+  const center=(s+e)/2,half=((e-s)/2)/factor;
+  savedXRange=[new Date(center-half).toISOString(),new Date(center+half).toISOString()];
+  Plotly.relayout('plotDiv',{'xaxis.range':savedXRange});
+}
+
+function resetZoom2m(){
+  if(!lastData)return;
+  const dates=lastData.chart.candles.map(c=>new Date(c.x));
+  const ld=dates[dates.length-1];
+  if(!ld)return;
+  savedXRange=[new Date(ld.getTime()-60*24*60*60*1000).toISOString(),ld.toISOString()];
+  renderPlotly(lastData);
+}
+
+/* ─────────────────────────────────────────────
+   CARGA SÍMBOLO
+───────────────────────────────────────────── */
+async function loadSymbol(sym){
+  currentSymbol=sym;savedXRange=null;
+  document.getElementById('symbolInput').value=sym;
+  document.querySelectorAll('.asset-row').forEach(r=>r.classList.remove('active-sym'));
+  const el=document.getElementById('fc-'+favId(sym));if(el)el.classList.add('active-sym');
+  document.getElementById('loadWrap').style.display='flex';
+  try{
+    const data=await fetchData(sym);
+    lastData=data;
+    document.getElementById('loadWrap').style.display='none';
+    if(document.getElementById('chartBody').style.display!=='none')renderPlotly(data);
+    updateSidebar(data);
+    renderCurrentAlerts();
+  }catch(e){
+    document.getElementById('loadWrap').style.display='none';
+    showToast('❌ '+e.message,'bearish');
+  }
+}
+
+function renderCurrentAlerts(){
+  const fromWatch=watchlist.has(currentSymbol)?(alertsByTicker[currentSymbol]||[]):[];
+  const fromData=lastData?(lastData.alertas||[]):[];
+  const all=fromWatch.length?fromWatch.map(a=>({msg:a.msg,nivel:a.nivel})):fromData;
+  renderAlertas(all);
+}
+
+function doSearch(){const s=document.getElementById('symbolInput').value.trim().toUpperCase();if(s)loadSymbol(s);}
+
+function abrirTradingView(){
+  const map={
+    '^DJI':'DJ:DJI','^NDX':'NASDAQ:NDX','^GSPC':'SP:SPX','^RUT':'TVC:RUT',
+    'YM=F':'CME_MINI:YM1!','NQ=F':'CME_MINI:NQ1!','GC=F':'TVC:GOLD','SI=F':'TVC:SILVER','CL=F':'TVC:USOIL',
+    'USDJPY=X':'FX:USDJPY','GBPJPY=X':'FX:GBPJPY','EURUSD=X':'FX:EURUSD','AUDUSD=X':'FX:AUDUSD',
+    '^TNX':'TVC:US10Y','^TYX':'TVC:US20Y','DX=F':'TVC:DXY',
+    'BTC-USD':'BINANCE:BTCUSDT','ETH-USD':'BINANCE:ETHUSDT',
+    'SPY':'AMEX:SPY','VOO':'AMEX:VOO','VTI':'AMEX:VTI','QQQ':'NASDAQ:QQQ','QQQM':'NASDAQ:QQQM',
+    'GLD':'AMEX:GLD','IAU':'AMEX:IAU','GDX':'AMEX:GDX','IWM':'AMEX:IWM','SMH':'NASDAQ:SMH',
+    'XLE':'AMEX:XLE','SCHD':'NASDAQ:SCHD','SCHG':'NASDAQ:SCHG','VGT':'AMEX:VGT',
+    'EEM':'AMEX:EEM','DIA':'AMEX:DIA','AAPL':'NASDAQ:AAPL',
+  };
+  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(map[currentSymbol]||currentSymbol)}`,'_blank');
+}
+
+function updateSidebar(data){
+  document.getElementById('dispSym').innerText=DISPLAY_NAMES[currentSymbol]||currentSymbol;
+  document.getElementById('dispPrice').innerText=formatPrice(data.last_price);
+  const chEl=document.getElementById('dispChange'),pre=data.change>=0?'+':'';
+  chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
+  chEl.style.color=data.change>=0?'#00e676':'#ff4444';
+  updateRSI(data.rsi_current);
+  document.getElementById('alertSymLabel').innerText=currentSymbol;
+}
+
+function updateRSI(v){
+  v=parseFloat(v);if(isNaN(v))return;
+  document.getElementById('rsiVal').innerText=v.toFixed(1);
+  document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
+  const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
+  if(v<30){lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';val.style.color='#00e676';}
+  else if(v>70){lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';val.style.color='#ff5252';}
+  else{lbl.innerText='N';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700';val.style.color='#fff';}
+}
+
+function renderAlertas(alertas){
+  const box=document.getElementById('alertBox'),list=document.getElementById('alertList');
+  if(!alertas||!alertas.length){box.style.display='none';return;}
+  box.style.display='block';
+  list.innerHTML=alertas.map(a=>`<div class="alerta-item ${a.nivel}">${a.msg.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join('');
+}
+
+function showToast(msg,nivel,ms=6000){
+  const c=document.getElementById('toasts'),t=document.createElement('div');
+  t.className=`toast ${nivel}`;t.innerText=msg;c.appendChild(t);setTimeout(()=>t.remove(),ms);
+}
+
+/* ─────────────────────────────────────────────
+   NOTIFICACIONES
+───────────────────────────────────────────── */
+
+/* Obtiene/genera un user_id persistente en localStorage.
+   Si el usuario está autenticado con Supabase, se usará su email. */
+function getNotifUserId(){
+  let uid = localStorage.getItem('etf_user_id');
+  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
+  return uid;
+}
+function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
+
+function openNotifModal(){
+  const m=document.getElementById('notifModal');
+  m.style.display='flex';
+  loadNotifPrefs();
+  loadNotifStatus();
+}
+function closeNotifModal(){
+  document.getElementById('notifModal').style.display='none';
+}
+document.getElementById('notifModal').addEventListener('click',function(e){
+  if(e.target===this)closeNotifModal();
+});
+
+  const tgEnabledEl = document.getElementById('tgEnabled');
+  if (tgEnabledEl) {
+    tgEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('tgFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  const emEnabledEl = document.getElementById('emEnabled');
+  if (emEnabledEl) {
+    emEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('emFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  
+  const tgIn = document.getElementById('tgChatId');
+  if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
+  const emIn = document.getElementById('emAddress');
+  if (emIn) emIn.onchange = saveNotifPrefs;
+  
+  // Forzar carga inicial
+  setTimeout(loadNotifPrefs, 500);
+}
+
+function toggleChart(){
+  const b=document.getElementById('chartBody'),btn=document.getElementById('btnToggleChart');
+  if(b.style.display==='none'){
+    b.style.display='block';
+    btn.innerText='▲ Cerrar gráfico';
+    if(typeof chartLoaded !== 'undefined' && !chartLoaded) loadChart();
+  }else{
+    b.style.display='none';
+    btn.innerText='▼ Abrir gráfico';
+  }
+}
+
+function toggleFavs(){
+  const b=document.getElementById('favBody'),c=document.getElementById('favChevron');
+  if(b.classList.contains('closed')){
+    b.classList.remove('closed');b.classList.add('open');
+    if(c) c.style.transform='rotate(0deg)';
+  }else{
+    b.classList.remove('open');b.classList.add('closed');
+    if(c) c.style.transform='rotate(-90deg)';
+  }
+}
+
+let isVip = false;
+
+async function loadNotifPrefs(){
+  try{
+    const userId = getNotifUserId();
+    const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
+    const p=await r.json();
+    isVip = !!p.is_vip;
+    console.log("VIP Status loaded:", isVip, "for user:", userId);
+    
+    // UI VIP Status
+    const btn = document.getElementById('notifBtn');
+    if(btn) {
+        if(isVip) {
+            btn.innerHTML = '💎 Acceso VIP';
+            btn.style.borderColor = '#c9a84c';
+            btn.style.color = '#c9a84c';
+        } else {
+            btn.innerHTML = '🔔 Alertas (Free)';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }
+    }
+
+    const tgEn = document.getElementById('tgEnabled');
+    if(tgEn) tgEn.checked=!!p.telegram_enabled;
+    const tgId = document.getElementById('tgChatId');
+    if(tgId) tgId.value=p.telegram_chat_id||'';
+    const tgF = document.getElementById('tgFields');
+    if(tgF) tgF.style.display=p.telegram_enabled?'block':'none';
+    
+    const emEn = document.getElementById('emEnabled');
+    if(emEn) emEn.checked=!!p.email_enabled;
+    const emAd = document.getElementById('emAddress');
+    if(emAd) emAd.value=p.email_address||'';
+    const emF = document.getElementById('emFields');
+    if(emF) emF.style.display=p.email_enabled?'block':'none';
+
+    // Bloqueo visual si no es VIP
+    const statusBox = document.getElementById('notifStatus');
+    if(!isVip) {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+        });
+        if(statusBox) {
+            statusBox.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
+                    <div style="color:#e8c96d;text-align:center;font-weight:700">👑 Pásate a PRO para activar alertas</div>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="vipCodeInput" placeholder="Introduce código VIP" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
+                        <button onclick="redeemVipCode()" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+        if(statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+        loadNotifStatus(); 
+    }
+    updateWatchlistUI();
+  }catch(e){ console.error("Error loading prefs:", e); }
+}
+
+async function redeemVipCode() {
+    const codeInput = document.getElementById('vipCodeInput');
+    const code = codeInput ? codeInput.value.trim() : '';
+    if(!code) return;
+    
+    showToast("Verificando código...", "info");
+    try {
+        const userId = getNotifUserId();
+        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const d = await r.json();
+        if(d.ok) {
+            showToast(d.msg, "bullish");
+            setTimeout(() => location.reload(), 1000); 
+        } else {
+            showToast(d.error || "Código inválido", "bearish");
+        }
+    } catch(e) {
+        showToast("Error al conectar con el servidor", "bearish");
+    }
+}
+
+function updateWatchlistUI() {
+    const list = document.getElementById('watch-alerts-list');
+    const empty = document.getElementById('watchEmpty');
+    const count = document.getElementById('watchCount');
+    
+    if (watchlist.size === 0) {
+        if(empty) empty.style.display = 'block';
+        if(list) list.style.display = 'none';
+        if(count) count.innerText = '';
+    } else {
+        if(empty) empty.style.display = 'none';
+        if(list) list.style.display = 'flex';
+        
+        // LIMITAR A 3 SI NO ES VIP
+        if(!isVip && watchlist.size > 3) {
+            if(count) count.innerHTML = `⚠️ Plan Free: Límite 3 activos. <br> <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="openUpgradeModal()">Actualizar a PRO</span>`;
+        } else {
+            if(count) count.innerText = `${watchlist.size} activos vigilados`;
+        }
+    }
+}
+
+function abrirTradingView() {
+    if(!isVip) {
+        openUpgradeModal();
+        return;
+    }
+    const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+    window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+}
+
+function openUpgradeModal() {
+    showToast("🌟 Plan PRO: 10€/mes. Contacta con soporte para activar VIP.", "info", 8000);
+}
+
+function saveNotifPrefs(){
+  const prefs={
+    telegram_enabled:document.getElementById('tgEnabled').checked,
+    telegram_chat_id:document.getElementById('tgChatId').value.trim(),
+    email_enabled:document.getElementById('emEnabled').checked,
+    email_address:document.getElementById('emAddress').value.trim(),
+    watchlist:[...watchlist].join(','),
+  };
+  try{
+    fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    showToast('✅ Preferencias guardadas','bullish',2000);
+  }catch(e){showToast('❌ Error guardando preferencias','bearish');}
+}
+
+async function loadNotifStatus(){
+  try{
+    const r=await fetch('/api/notifications/status');
+    const s=await r.json();
+    const chk=(ok,label)=>`${ok?'<span style="color:#2dd47e">✅</span>':'<span style="color:#f05858">⚠️</span>'} <span style="color:var(--text)">${label}</span>`;
+    document.getElementById('notifStatus').innerHTML=
+      '<div style="display:flex;flex-direction:column;gap:5px">'+
+      '<div style="font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-mono)">Estado del servidor</div>'+
+      `<div>${chk(s.telegram_configured,'Telegram Bot')}</div>`+
+      `<div>${chk(s.whatsapp_configured,'WhatsApp · Twilio')}</div>`+
+      `<div>${chk(s.email_configured,'Email · SMTP')}</div>`+
+      '</div>';
+  }catch(e){}
+}
+
+async function testChannel(channel){
+  showToast('Enviando prueba de '+channel+'...','info',3000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const d=await r.json();
+    const res=d.results[channel];
+    if(res&&res.ok)showToast('✅ Prueba '+channel+' enviada correctamente','bullish');
+    else showToast('❌ '+(res?.error||'No se pudo enviar. Revisa la configuración del servidor.'),'bearish',8000);
+  }catch(e){showToast('❌ Error de conexión','bearish');}
+}
+
+async function sendAlertsNow(){
+  const tickers=[...watchlist].join(',');
+  if(!tickers){showToast('Añade activos a vigilancia (★) primero','info');return;}
+  showToast('Analizando '+watchlist.size+' activos...','info',4000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/send'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
+    const d=await r.json();
+    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas por los canales activos`,'bullish');
+    else showToast('Sin alertas activas en tus activos vigilados ahora','info');
+  }catch(e){showToast('❌ Error enviando alertas','bearish');}
+}
+</script>
+</body>
+</html>
