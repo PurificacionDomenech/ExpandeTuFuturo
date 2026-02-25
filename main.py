@@ -1,9 +1,12 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI
+import asyncio
+import os
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -280,8 +283,81 @@ async def sparkline(ticker: str):
         return {"closes": [], "pct": 0}
 
 
+@app.get("/api/notifications/prefs")
+async def get_notification_prefs():
+    return load_prefs()
+
+
+@app.post("/api/notifications/prefs")
+async def set_notification_prefs(request: Request):
+    body = await request.json()
+    prefs = load_prefs()
+    prefs.update(body)
+    save_prefs(prefs)
+    return {"ok": True, "prefs": prefs}
+
+
+@app.post("/api/notifications/test")
+async def test_notification(request: Request):
+    body = await request.json()
+    channel = body.get("channel", "all")
+    prefs = load_prefs()
+
+    test_alertas = [
+        {"nivel": "bullish", "msg": "[TEST] Precio cruza SMA50 al alza $185.20"},
+        {"nivel": "bearish", "msg": "[TEST] Death Cross SMA100/200 detectado"},
+        {"nivel": "info", "msg": "[TEST] Precio tocando SMA200 $182.50"},
+    ]
+
+    test_prefs = dict(prefs)
+    if channel != "all":
+        for ch in ["telegram", "whatsapp", "email"]:
+            if ch != channel:
+                test_prefs[f"{ch}_enabled"] = False
+
+    results = await dispatch_notifications(test_prefs, test_alertas)
+    return {"ok": True, "results": results}
+
+
+@app.post("/api/notifications/send")
+async def send_alerts_now(request: Request):
+    body = await request.json()
+    tickers_str = body.get("tickers", "")
+    prefs = load_prefs()
+
+    all_alertas = []
+    for t in tickers_str.split(","):
+        t = t.strip()
+        if not t:
+            continue
+        try:
+            df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+            if not df.empty:
+                df = clean_df(df)
+                df = calcular_indicadores(df)
+                all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
+        except Exception:
+            pass
+
+    if all_alertas:
+        results = await dispatch_notifications(prefs, all_alertas)
+        return {"ok": True, "alertas_count": len(all_alertas), "results": results}
+    return {"ok": True, "alertas_count": 0, "msg": "Sin alertas activas para enviar"}
+
+
+@app.get("/api/notifications/status")
+async def notification_status():
+    has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
+    has_twilio = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
+    has_smtp = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    return {
+        "telegram_configured": has_telegram,
+        "whatsapp_configured": has_twilio,
+        "email_configured": has_smtp,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    import os
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

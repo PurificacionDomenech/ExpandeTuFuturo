@@ -6,12 +6,6 @@ numpy
 plotly
 jinja2
 python-multipart
-fastapi
 gunicorn
-jinja2
-numpy
-pandas
-plotly
-python-multipart
-uvicorn
-yfinance
+httpx
+twilio

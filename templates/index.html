@@ -140,8 +140,21 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
 .toast.bearish{background:rgba(255,68,68,.13);color:#ff5252;border:1px solid rgba(255,68,68,.25)}
 .toast.info{background:rgba(255,0,127,.13);color:#e8c96d;border:1px solid rgba(255,0,127,.25)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@keyframes modalIn{from{opacity:0;transform:scale(.94) translateY(16px)}to{opacity:1;transform:none}}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+.notif-channel{padding:14px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+.notif-toggle{position:relative;display:inline-block;width:40px;height:22px}
+.notif-toggle input{opacity:0;width:0;height:0}
+.notif-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);border-radius:22px;transition:.3s}
+.notif-slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.notif-toggle input:checked + .notif-slider{background:var(--gold)}
+.notif-toggle input:checked + .notif-slider::before{transform:translateX(18px)}
+.notif-test-btn{margin-top:8px;padding:6px 14px;border-radius:6px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.25);color:var(--gold);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);transition:all .2s}
+.notif-test-btn:hover{background:rgba(201,168,76,.3)}
+#notifBtn{padding:6px 12px;border-radius:7px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap}
+#notifBtn:hover{background:rgba(201,168,76,.3);border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -154,6 +167,7 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
     </div>
     <span id="hdr-title"><span style="color:#c9a84c">E</span>XPANDE <span style="color:#c9a84c">T</span>U <span style="color:#c9a84c">F</span>UTURO</span>
     <span id="hdr-badge">ETF · 1D · SMAs</span>
+    <button id="notifBtn" onclick="openNotifModal()">🔔 Alertas</button>
     <div id="hdr-search">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
              autocomplete="off" autocorrect="off" autocapitalize="off"
@@ -314,6 +328,97 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
   </div>
 
 </div>
+
+<!-- ── NOTIFICATION SETTINGS MODAL ── -->
+<div id="notifModal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(4,5,10,.92);backdrop-filter:blur(16px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0a0d18;border:1px solid rgba(201,168,76,.2);border-radius:16px;width:100%;max-width:520px;box-shadow:0 40px 100px rgba(0,0,0,.7);overflow:hidden;animation:modalIn .4s cubic-bezier(.2,.8,.2,1)">
+
+    <div style="padding:24px 28px 0;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:#fff">🔔 Notificaciones</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Recibe alertas por Telegram, WhatsApp o Email</div>
+      </div>
+      <button onclick="closeNotifModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px">✕</button>
+    </div>
+
+    <div style="padding:20px 28px 28px">
+
+      <!-- TELEGRAM -->
+      <div class="notif-channel" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">📬</span>
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">Telegram</span>
+          </div>
+          <label class="notif-toggle">
+            <input type="checkbox" id="tgEnabled" onchange="saveNotifPrefs()">
+            <span class="notif-slider"></span>
+          </label>
+        </div>
+        <div id="tgFields" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+            1. Abre <a href="https://t.me/BotFather" target="_blank" style="color:var(--gold)">@BotFather</a> y crea un bot<br>
+            2. Envía <code style="background:rgba(255,255,255,.06);padding:2px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px">/start</code> a tu bot<br>
+            3. Obtén tu Chat ID con <a href="https://t.me/userinfobot" target="_blank" style="color:var(--gold)">@userinfobot</a>
+          </div>
+          <input type="text" id="tgChatId" placeholder="Tu Chat ID (ej: 123456789)" onchange="saveNotifPrefs()"
+            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
+          <button onclick="testChannel('telegram')" class="notif-test-btn">Enviar prueba</button>
+        </div>
+      </div>
+
+      <!-- WHATSAPP -->
+      <div class="notif-channel" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">💬</span>
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">WhatsApp</span>
+          </div>
+          <label class="notif-toggle">
+            <input type="checkbox" id="waEnabled" onchange="saveNotifPrefs()">
+            <span class="notif-slider"></span>
+          </label>
+        </div>
+        <div id="waFields" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+            Usa Twilio WhatsApp Sandbox. Incluye código de país (ej: +1234567890)
+          </div>
+          <input type="text" id="waNumber" placeholder="Tu número WhatsApp (+1234567890)" onchange="saveNotifPrefs()"
+            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
+          <button onclick="testChannel('whatsapp')" class="notif-test-btn">Enviar prueba</button>
+        </div>
+      </div>
+
+      <!-- EMAIL -->
+      <div class="notif-channel" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">✉️</span>
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">Email</span>
+          </div>
+          <label class="notif-toggle">
+            <input type="checkbox" id="emEnabled" onchange="saveNotifPrefs()">
+            <span class="notif-slider"></span>
+          </label>
+        </div>
+        <div id="emFields" style="display:none">
+          <input type="email" id="emAddress" placeholder="tu@email.com" onchange="saveNotifPrefs()"
+            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
+          <button onclick="testChannel('email')" class="notif-test-btn">Enviar prueba</button>
+        </div>
+      </div>
+
+      <!-- STATUS -->
+      <div id="notifStatus" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);padding:10px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid var(--border)"></div>
+
+      <!-- SEND NOW -->
+      <button onclick="sendAlertsNow()" style="width:100%;margin-top:14px;padding:12px;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#b8943d,var(--gold2));border:none;color:#07070f;font-size:14px;font-weight:700;font-family:var(--font-body);box-shadow:0 4px 15px rgba(201,168,76,.2);transition:transform .2s">
+        ⚡ Enviar alertas ahora
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <script>
@@ -932,6 +1037,98 @@ function renderAlertas(alertas){
 function showToast(msg,nivel,ms=6000){
   const c=document.getElementById('toasts'),t=document.createElement('div');
   t.className=`toast ${nivel}`;t.innerText=msg;c.appendChild(t);setTimeout(()=>t.remove(),ms);
+}
+
+/* ─────────────────────────────────────────────
+   NOTIFICACIONES
+───────────────────────────────────────────── */
+function openNotifModal(){
+  const m=document.getElementById('notifModal');
+  m.style.display='flex';
+  loadNotifPrefs();
+  loadNotifStatus();
+}
+function closeNotifModal(){
+  document.getElementById('notifModal').style.display='none';
+}
+document.getElementById('notifModal').addEventListener('click',function(e){
+  if(e.target===this)closeNotifModal();
+});
+
+document.getElementById('tgEnabled').addEventListener('change',function(){
+  document.getElementById('tgFields').style.display=this.checked?'block':'none';
+});
+document.getElementById('waEnabled').addEventListener('change',function(){
+  document.getElementById('waFields').style.display=this.checked?'block':'none';
+});
+document.getElementById('emEnabled').addEventListener('change',function(){
+  document.getElementById('emFields').style.display=this.checked?'block':'none';
+});
+
+async function loadNotifPrefs(){
+  try{
+    const r=await fetch('/api/notifications/prefs');
+    const p=await r.json();
+    document.getElementById('tgEnabled').checked=!!p.telegram_enabled;
+    document.getElementById('tgChatId').value=p.telegram_chat_id||'';
+    document.getElementById('tgFields').style.display=p.telegram_enabled?'block':'none';
+    document.getElementById('waEnabled').checked=!!p.whatsapp_enabled;
+    document.getElementById('waNumber').value=p.whatsapp_number||'';
+    document.getElementById('waFields').style.display=p.whatsapp_enabled?'block':'none';
+    document.getElementById('emEnabled').checked=!!p.email_enabled;
+    document.getElementById('emAddress').value=p.email_address||'';
+    document.getElementById('emFields').style.display=p.email_enabled?'block':'none';
+  }catch(e){}
+}
+
+async function saveNotifPrefs(){
+  const prefs={
+    telegram_enabled:document.getElementById('tgEnabled').checked,
+    telegram_chat_id:document.getElementById('tgChatId').value.trim(),
+    whatsapp_enabled:document.getElementById('waEnabled').checked,
+    whatsapp_number:document.getElementById('waNumber').value.trim(),
+    email_enabled:document.getElementById('emEnabled').checked,
+    email_address:document.getElementById('emAddress').value.trim(),
+  };
+  try{
+    await fetch('/api/notifications/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    showToast('Preferencias guardadas','info',2000);
+  }catch(e){showToast('Error guardando preferencias','bearish');}
+}
+
+async function loadNotifStatus(){
+  try{
+    const r=await fetch('/api/notifications/status');
+    const s=await r.json();
+    const lines=[];
+    lines.push(`📬 Telegram: ${s.telegram_configured?'✅ Configurado':'⚠️ Token no configurado'}`);
+    lines.push(`💬 WhatsApp: ${s.whatsapp_configured?'✅ Configurado':'⚠️ Twilio no configurado'}`);
+    lines.push(`✉️ Email: ${s.email_configured?'✅ Configurado':'⚠️ SMTP no configurado'}`);
+    document.getElementById('notifStatus').innerHTML=lines.join('<br>');
+  }catch(e){}
+}
+
+async function testChannel(channel){
+  showToast('Enviando prueba de '+channel+'...','info',3000);
+  try{
+    const r=await fetch('/api/notifications/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const d=await r.json();
+    const res=d.results[channel];
+    if(res&&res.ok)showToast('✅ Prueba '+channel+' enviada correctamente','bullish');
+    else showToast('❌ Error: '+(res?.error||'No se pudo enviar'),'bearish',8000);
+  }catch(e){showToast('❌ Error de conexión','bearish');}
+}
+
+async function sendAlertsNow(){
+  const tickers=[...watchlist].join(',');
+  if(!tickers){showToast('Añade activos a vigilancia primero','info');return;}
+  showToast('Enviando alertas de '+watchlist.size+' activos...','info',4000);
+  try{
+    const r=await fetch('/api/notifications/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
+    const d=await r.json();
+    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas`,'bullish');
+    else showToast('Sin alertas activas en este momento','info');
+  }catch(e){showToast('❌ Error enviando alertas','bearish');}
 }
 </script>
 </body>
