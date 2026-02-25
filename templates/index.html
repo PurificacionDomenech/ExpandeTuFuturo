@@ -1102,10 +1102,40 @@ async function loadNotifPrefs(){
         });
         const statusBox = document.getElementById('notifStatus');
         if(statusBox) {
-            statusBox.innerHTML = '<div style="color:#e8c96d;padding:10px;text-align:center">👑 Pásate a PRO para activar alertas en Telegram y Email</div>';
+            statusBox.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
+                    <div style="color:#e8c96d;text-align:center;font-weight:700">👑 Pásate a PRO para activar alertas</div>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="vipCodeInput" placeholder="Introduce código VIP" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
+                        <button onclick="redeemVipCode()" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
+                    </div>
+                </div>
+            `;
         }
     }
   }catch(e){}
+}
+
+async function redeemVipCode() {
+    const code = document.getElementById('vipCodeInput').value;
+    if(!code) return;
+    
+    try {
+        const r = await fetch(`/api/notifications/redeem?user_id=${getUserId()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const d = await r.json();
+        if(d.ok) {
+            showToast(d.msg, "bullish");
+            loadNotifPrefs(); // Recargar para desbloquear
+        } else {
+            showToast(d.error, "bearish");
+        }
+    } catch(e) {
+        showToast("Error al conectar con el servidor", "bearish");
+    }
 }
 
 function updateWatchlistUI() {

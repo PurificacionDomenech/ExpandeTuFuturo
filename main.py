@@ -301,6 +301,52 @@ async def set_vip_status(request: Request):
     return {"ok": True, "user_id": user_id, "is_vip": is_vip}
 
 
+@app.post("/api/admin/generate-code")
+async def generate_code():
+    import secrets
+    import string
+    # Solo el admin debería poder llamar a esto, por ahora es libre para que tú lo uses
+    code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO access_codes (code) VALUES (%s)", (code,))
+            conn.commit()
+        return {"ok": True, "code": code}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/notifications/redeem")
+async def redeem_code(request: Request, user_id: str = "default"):
+    body = await request.json()
+    code = body.get("code", "").upper().strip()
+    if not code:
+        return {"ok": False, "error": "Código vacío"}
+    
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
+                row = cur.fetchone()
+                if not row:
+                    return {"ok": False, "error": "Código inválido"}
+                if row[0]:
+                    return {"ok": False, "error": "Código ya utilizado"}
+                
+                # Marcar código como usado y dar VIP
+                cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
+                
+                prefs = load_prefs(user_id)
+                prefs["is_vip"] = True
+                save_prefs(prefs, user_id)
+                
+            conn.commit()
+        return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
     prefs = load_prefs(user_id)
