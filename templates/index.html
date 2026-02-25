@@ -1264,7 +1264,8 @@ async function loadNotifPrefs(){
 
 async function redeemVipCode(explicitCode) {
     const codeInput = document.getElementById('vipCodeInput');
-    let code = explicitCode || (codeInput ? codeInput.value.trim() : '');
+    const codeInputUpgrade = document.getElementById('vipCodeInputUpgrade');
+    let code = explicitCode || (codeInput ? codeInput.value.trim() : '') || (codeInputUpgrade ? codeInputUpgrade.value.trim() : '');
     if(!code) return;
     
     showToast("Verificando código...", "info");
