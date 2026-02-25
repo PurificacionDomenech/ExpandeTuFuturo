@@ -3,59 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Expande Tu Futuro</title>
+<title>Expande Tu Futuro | Market Scanner</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+:root{--gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--bg:#060810;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.08)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-height:100vh;overflow-x:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e0e0e0;min-height:100vh;overflow-x:hidden}
 .mono{font-family:'Space Mono',monospace}
-.card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px}
-#app{width:100%;max-width:1600px;margin:0 auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
-#hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-#hdr-logo{width:30px;height:30px;border-radius:9px;background:#c9a84c;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-#hdr-title{font-size:14px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
-#hdr-badge{font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.1);font-weight:700;letter-spacing:.08em;white-space:nowrap}
-#hdr-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
-#symbolInput{flex:1;min-width:0;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:8px 12px;font-size:13px;color:#e0e0e0;font-family:'DM Sans',sans-serif}
-#btnSearch{padding:8px 14px;border-radius:9px;background:#c9a84c;color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap}
-#main{display:flex;flex-direction:column;gap:10px;width:100%}
-@media(min-width:900px){#main{display:grid;grid-template-columns:170px 1fr;align-items:flex-start}}
-#sidebar{display:flex;flex-direction:column;gap:8px}
-#price-widget{padding:13px}
-#dispSym{font-size:10px;font-weight:800;letter-spacing:.12em;color:#c9a84c;margin-bottom:2px}
-#dispPrice{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
-#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;position:relative}
-#tv-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05)}
-#plotDiv{width:100%;height:min(120vw,600px)}
-@media(min-width:900px){#plotDiv{height:750px}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+#app{width:100%;max-width:1600px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+#hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#hdr-logo{width:34px;height:34px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#hdr-title{font-size:16px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
+#hdr-badge{font-size:10px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);border:1px solid var(--border);font-weight:700}
+#hdr-search{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}
+#symbolInput{flex:1;background:#111;border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:#fff}
+#btnSearch{padding:10px 18px;border-radius:10px;background:var(--gold);color:#000;font-size:14px;font-weight:700;border:none;cursor:pointer}
+#main{display:flex;flex-direction:column;gap:12px}
+@media(min-width:900px){#main{display:grid;grid-template-columns:200px 1fr;align-items:flex-start}}
+#sidebar{display:flex;flex-direction:column;gap:10px}
+#price-widget{padding:16px}
+#dispSym{font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px;letter-spacing:1px}
+#dispPrice{font-size:24px;font-weight:700;color:#fff}
+#chart-card{padding:16px;position:relative;min-height:400px}
+#tv-bar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+#plotDiv{width:100%;height:500px}
+@media(min-width:900px){#plotDiv{height:600px}}
 #favs-panel{overflow:hidden}
-#favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;background:none;border:none;width:100%;color:inherit;font-family:'DM Sans',sans-serif;padding:14px 16px}
-.acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
-.acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
-.acc-body.open{max-height:9999px;opacity:1}
-#assetsTable{width:100%;border-collapse:collapse;min-width:780px}
-#assetsTable thead th{padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:.07em;color:#c9a84c;text-transform:uppercase;white-space:nowrap;background:#060810;border-bottom:1px solid rgba(201,168,76,0.2);text-align:left}
-#assetsTable thead th.r{text-align:right}
-#assetsTable thead th.c{text-align:center}
-.asset-row{border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s}
-.asset-row:hover{background:rgba(255,255,255,.025)!important}
-.asset-row td{padding:8px 12px;white-space:nowrap;vertical-align:middle}
-.badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
-.badge.favorable{background:rgba(0,230,118,.15);color:#00e676}
-#notifBtn{padding:6px 12px;border-radius:7px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);color:#c9a84c;font-size:11px;font-weight:700;cursor:pointer}
+#favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:none;border:none;width:100%;color:inherit;padding:16px;font-family:inherit}
+#assetsTable{width:100%;border-collapse:collapse}
+#assetsTable th{padding:12px;font-size:11px;color:var(--gold);text-align:left;border-bottom:1px solid var(--border)}
+#assetsTable td{padding:12px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.02)}
+.asset-row:hover{background:rgba(255,255,255,0.02);cursor:pointer}
+#notifBtn{padding:8px 14px;border-radius:8px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer}
+#alertBox{padding:12px;margin-top:10px}
+.alerta-item{padding:8px;border-radius:6px;font-size:11px;margin-bottom:4px}
+.alerta-item.bullish{background:rgba(0,230,118,0.1);color:#00e676}
+.alerta-item.bearish{background:rgba(255,68,68,0.1);color:#ff5252}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="hdr">
     <div id="hdr-logo"><img src="/static/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"></div>
-    <span id="hdr-title"><span style="color:#c9a84c">E</span>XPANDE <span style="color:#c9a84c">T</span>U <span style="color:#c9a84c">F</span>UTURO</span>
-    <span id="hdr-badge">FREE · 1D · SMAs</span>
-    <button id="notifBtn" onclick="window.openUpgradeModal()">💎 Pro Plan</button>
+    <span id="hdr-title">EXPANDE TU FUTURO</span>
+    <span id="hdr-badge">PRO v1.2</span>
+    <button id="notifBtn" onclick="openUpgrade()">💎 PLAN PRO</button>
     <div id="hdr-search">
-      <input id="symbolInput" type="text" placeholder="BTC-USD · AAPL..." onkeydown="if(event.key==='Enter')window.doSearch()">
-      <button id="btnSearch" onclick="window.doSearch()">Buscar</button>
+      <input id="symbolInput" type="text" placeholder="AAPL, BTC-USD..." onkeydown="if(event.key==='Enter')doSearch()">
+      <button id="btnSearch" onclick="doSearch()">BUSCAR</button>
     </div>
   </div>
   <div id="main">
@@ -64,153 +61,136 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
         <div id="dispSym">---</div>
         <div id="dispPrice" class="mono">---</div>
       </div>
+      <div id="alertBox" class="card" style="display:none">
+        <div style="font-size:10px;color:var(--gold);font-weight:800;margin-bottom:8px">⚡ ALERTAS ACTIVAS</div>
+        <div id="alertList"></div>
+      </div>
     </div>
     <div class="card" id="chart-card">
       <div id="tv-bar">
-        <span style="font-size:10px;font-weight:700;color:#c9a84c;text-transform:uppercase">Gráfico 1D</span>
-        <button onclick="window.toggleChart()" id="btnToggleChart" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.1);color:#c9a84c;cursor:pointer">▼ Abrir gráfico</button>
+        <span style="font-size:12px;font-weight:700">GRÁFICO TIEMPO REAL</span>
+        <span id="chartStatus" style="font-size:10px;color:var(--gold)">Cargando...</span>
       </div>
-      <div id="chartBody" style="display:none">
-        <div id="plotDiv"></div>
-      </div>
+      <div id="plotDiv"></div>
     </div>
   </div>
   <div class="card" id="favs-panel">
-    <button id="favs-hdr" onclick="window.toggleFavs()">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="color:#c9a84c;font-size:14px">★</span>
-        <span style="font-size:13px;font-weight:700">Todos los activos</span>
-      </div>
-      <span>▼</span>
-    </button>
-    <div id="favBody" class="acc-body open">
-      <div style="overflow-x:auto">
-        <table id="assetsTable">
-          <thead>
-            <tr><th>★ Activo</th><th class="c">Tendencia</th><th class="r">Precio</th><th class="r">Cambio %</th><th class="c">RSI 14</th><th class="c">Medias</th><th class="c">Cruce</th><th class="c">Estado</th></tr>
-          </thead>
-          <tbody id="favItems"></tbody>
-        </table>
-      </div>
+    <div id="favs-hdr">
+      <span style="font-weight:700">MERCADOS PRINCIPALES</span>
+      <span style="font-size:11px;opacity:0.5">Haz clic para ver gráfico</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="assetsTable">
+        <thead>
+          <tr><th>ACTIVO</th><th>PRECIO</th><th>CAMBIO</th><th>ESTADO</th></tr>
+        </thead>
+        <tbody id="favItems"></tbody>
+      </table>
     </div>
   </div>
 </div>
-
 <script>
-(async function() {
-    const DISPLAY_NAMES = {
-      'BTC-USD':'BTC','ETH-USD':'ETH','^GSPC':'SPX','^NDX':'NQ','AAPL':'AAPL','MSFT':'MSFT','TSLA':'TSLA'
-    };
-    let currentSymbol = 'BTC-USD';
+const SYMBOLS = ['BTC-USD','ETH-USD','^GSPC','^NDX','AAPL','TSLA'];
+let currentSym = 'BTC-USD';
 
-    window.getNotifUserId = function() {
-      let id = localStorage.getItem('etf_user_id');
-      if(!id) { id = 'anon_' + Math.random().toString(36).substring(2,10); localStorage.setItem('etf_user_id', id); }
-      return id;
-    };
-
-    window.loadRowData = async function(sym) {
-      try {
-        const r = await fetch('/api/row/' + encodeURIComponent(sym));
-        if (!r.ok) return;
-        const d = await r.json();
-        const tr = document.createElement('tr');
-        tr.className = 'asset-row';
-        tr.onclick = () => window.loadSymbol(sym);
-        tr.innerHTML = \`
-          <td>☆ <span class="mono" style="font-weight:800">\${sym}</span></td>
-          <td class="c">🟢</td>
-          <td class="r mono">\$\${d.price || 0}</td>
-          <td class="r mono" style="color:\${d.change_pct >= 0 ? '#00e676' : '#ff5252'}">\${d.change_pct || 0}%</td>
-          <td class="c">--</td><td class="c">--</td><td class="c">--</td>
-          <td class="c"><span class="badge favorable">Favorable</span></td>
-        \`;
-        document.getElementById('favItems').appendChild(tr);
-      } catch(e) {}
-    };
-
-    window.loadSymbol = async function(sym) {
-      currentSymbol = sym;
-      document.getElementById('dispSym').innerText = sym;
-      try {
-        const r = await fetch('/api/chart/' + encodeURIComponent(sym) + '?interval=1d');
-        const d = await r.json();
-        if (d.chart) renderChart(d);
-        document.getElementById('dispPrice').innerText = '$' + (d.last_price || '---');
-        document.getElementById('chartBody').style.display = 'block';
-        document.getElementById('btnToggleChart').innerText = '▲ Cerrar gráfico';
-      } catch(e) {}
-    };
-
-    function renderChart(data) {
-      const trace = {
-        x: data.chart.candles.map(c => new Date(c.x)),
-        open: data.chart.candles.map(c => c.o),
-        high: data.chart.candles.map(c => c.h),
-        low: data.chart.candles.map(c => c.l),
-        close: data.chart.candles.map(c => c.c),
-        type: 'candlestick'
-      };
-      Plotly.newPlot('plotDiv', [trace], { 
-        margin: { r: 10, t: 10, b: 10, l: 10 },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: '#e0e0e0' },
-        xaxis: { type: 'date', rangeslider: { visible: false } }
-      });
+async function loadTable() {
+    const list = document.getElementById('favItems');
+    list.innerHTML = '';
+    for(const s of SYMBOLS) {
+        try {
+            const r = await fetch('/api/row/' + s);
+            const d = await r.json();
+            const tr = document.createElement('tr');
+            tr.className = 'asset-row';
+            tr.onclick = () => loadSymbol(s);
+            tr.innerHTML = '<td><b>' + s + '</b></td>' +
+                '<td class="mono">$' + (d.price || 0) + '</td>' +
+                '<td class="mono" style="color:' + (d.change_pct >= 0 ? '#00e676' : '#ff5252') + '">' + (d.change_pct || 0) + '%</td>' +
+                '<td><span style="color:#00e676">ACTIVO</span></td>';
+            list.appendChild(tr);
+        } catch(e) {}
     }
+}
 
-    window.doSearch = function() {
-        const sym = document.getElementById('symbolInput').value.trim().toUpperCase();
-        if(sym) window.loadSymbol(sym);
-    };
-
-    window.toggleChart = function() {
-      const b = document.getElementById('chartBody');
-      const btn = document.getElementById('btnToggleChart');
-      if(b.style.display==='none'){ b.style.display='block'; btn.innerText='▲ Cerrar gráfico'; Plotly.Plots.resize('plotDiv'); }
-      else { b.style.display='none'; btn.innerText='▼ Abrir gráfico'; }
-    };
-
-    window.toggleFavs = function() { document.getElementById('favBody').classList.toggle('closed'); };
-
-    window.redeemVipCode = async function(code) {
-      if (!code) return;
-      const uid = window.getNotifUserId();
-      try {
-        const r = await fetch('/api/notifications/redeem?user_id=' + uid, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({code: code, user_id: uid})
-        });
+async function loadSymbol(sym) {
+    currentSym = sym;
+    document.getElementById('dispSym').innerText = sym;
+    document.getElementById('chartStatus').innerText = 'Actualizando...';
+    try {
+        const r = await fetch('/api/chart/' + sym);
         const d = await r.json();
-        if(d.ok) { alert(d.msg); location.reload(); }
-        else alert('Error: ' + d.error);
-      } catch(e) { alert('Error de conexión'); }
-    };
+        if(d.chart) {
+            Plotly.newPlot('plotDiv', [{
+                x: d.chart.candles.map(c => new Date(c.x)),
+                open: d.chart.candles.map(c => c.o),
+                high: d.chart.candles.map(c => c.h),
+                low: d.chart.candles.map(c => c.l),
+                close: d.chart.candles.map(c => c.c),
+                type: 'candlestick',
+                name: sym
+            }], {
+                margin: {t:10,r:10,b:30,l:50},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color:'#fff'},
+                xaxis: {rangeslider:{visible:false}, gridcolor:'rgba(255,255,255,0.05)'},
+                yaxis: {gridcolor:'rgba(255,255,255,0.05)'}
+            });
+            document.getElementById('dispPrice').innerText = '$' + d.last_price;
+            
+            const ab = document.getElementById('alertBox');
+            const al = document.getElementById('alertList');
+            al.innerHTML = '';
+            if(d.alertas && d.alertas.length > 0) {
+                ab.style.display = 'block';
+                d.alertas.forEach(a => {
+                    const i = document.createElement('div');
+                    i.className = 'alerta-item ' + a.nivel;
+                    i.innerText = a.msg;
+                    al.appendChild(i);
+                });
+            } else { ab.style.display = 'none'; }
+        }
+        document.getElementById('chartStatus').innerText = 'En vivo';
+    } catch(e) { document.getElementById('chartStatus').innerText = 'Error'; }
+}
 
-    window.openUpgradeModal = function() {
-        const modal = document.createElement('div');
-        modal.id = 'upgradeModal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(10px)';
-        modal.innerHTML = \`
-            <div style="background:#0a0a12;border:2px solid #c9a84c;padding:35px;border-radius:20px;max-width:420px;width:95%;text-align:center;position:relative;color:#fff">
-                <button onclick="this.closest('#upgradeModal').remove()" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;font-size:28px">&times;</button>
-                <div style="font-size:60px;margin-bottom:15px">💎</div>
-                <h2 style="color:#f1d592;margin-bottom:25px;font-size:28px;font-weight:bold">Acceso PRO</h2>
-                <div style="padding:25px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.4);border-radius:15px;margin-bottom:25px">
-                    <input type="text" id="upgradeVipInput" placeholder="VIP333" style="width:100%;padding:15px;margin-bottom:15px;border-radius:10px;background:#000;border:1px solid #c9a84c;color:#fff;text-align:center;font-family:monospace;font-size:18px">
-                    <button onclick="window.redeemVipCode(document.getElementById('upgradeVipInput').value)" style="width:100%;padding:15px;background:#c9a84c;border:none;border-radius:10px;color:#000;font-weight:900;cursor:pointer;font-size:16px">ACTIVAR AHORA</button>
-                </div>
-            </div>
-        \`;
-        document.body.appendChild(modal);
-    };
+function doSearch() {
+    const s = document.getElementById('symbolInput').value.trim().toUpperCase();
+    if(s) loadSymbol(s);
+}
 
-    const symbols = Object.keys(DISPLAY_NAMES);
-    for (const sym of symbols) { await window.loadRowData(sym); }
-    window.loadSymbol('BTC-USD');
-})();
+function openUpgrade() {
+    const m = document.createElement('div');
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(10px)';
+    m.innerHTML = '<div class="card" style="padding:40px;text-align:center;max-width:400px;background:#0a0a15;border-color:var(--gold)">' +
+        '<div style="font-size:50px">💎</div>' +
+        '<h2 style="margin:20px 0;color:var(--gold)">EXPANDE TU FUTURO PRO</h2>' +
+        '<p style="font-size:14px;opacity:0.7;margin-bottom:30px">Accede a indicadores premium y alertas personalizadas.</p>' +
+        '<input id="vipIn" type="text" placeholder="Código VIP" style="width:100%;padding:12px;margin-bottom:12px;background:#000;border:1px solid var(--gold);color:#fff;text-align:center">' +
+        '<button onclick="activateVIP()" style="width:100%;padding:12px;background:var(--gold);border:none;font-weight:800;cursor:pointer">ACTIVAR</button>' +
+        '<button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;background:none;border:none;color:#555;cursor:pointer">Cerrar</button>' +
+        '</div>';
+    document.body.appendChild(m);
+}
+
+async function activateVIP() {
+    const c = document.getElementById('vipIn').value;
+    if(!c) return;
+    const r = await fetch('/api/notifications/redeem', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({code: c, user_id: localStorage.getItem('etf_user_id') || 'anon'})
+    });
+    const d = await r.json();
+    alert(d.msg || d.error);
+    if(d.ok) location.reload();
+}
+
+window.onload = () => {
+    loadTable();
+    loadSymbol('BTC-USD');
+};
 </script>
 </body>
 </html>
