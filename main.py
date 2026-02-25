@@ -6,7 +6,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text
+from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
