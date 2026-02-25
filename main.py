@@ -284,29 +284,29 @@ async def sparkline(ticker: str):
 
 
 @app.get("/api/notifications/prefs")
-async def get_notification_prefs():
-    return load_prefs()
+async def get_notification_prefs(user_id: str = "default"):
+    return load_prefs(user_id)
 
 
 @app.post("/api/notifications/prefs")
-async def set_notification_prefs(request: Request):
+async def set_notification_prefs(request: Request, user_id: str = "default"):
     body = await request.json()
-    prefs = load_prefs()
+    prefs = load_prefs(user_id)
     prefs.update(body)
-    save_prefs(prefs)
-    return {"ok": True, "prefs": prefs}
+    save_prefs(prefs, user_id)
+    return {"ok": True}
 
 
 @app.post("/api/notifications/test")
-async def test_notification(request: Request):
+async def test_notification(request: Request, user_id: str = "default"):
     body = await request.json()
     channel = body.get("channel", "all")
-    prefs = load_prefs()
+    prefs = load_prefs(user_id)
 
     test_alertas = [
         {"nivel": "bullish", "msg": "[TEST] Precio cruza SMA50 al alza $185.20"},
         {"nivel": "bearish", "msg": "[TEST] Death Cross SMA100/200 detectado"},
-        {"nivel": "info", "msg": "[TEST] Precio tocando SMA200 $182.50"},
+        {"nivel": "info",    "msg": "[TEST] Precio tocando SMA200 $182.50"},
     ]
 
     test_prefs = dict(prefs)
@@ -320,10 +320,10 @@ async def test_notification(request: Request):
 
 
 @app.post("/api/notifications/send")
-async def send_alerts_now(request: Request):
+async def send_alerts_now(request: Request, user_id: str = "default"):
     body = await request.json()
     tickers_str = body.get("tickers", "")
-    prefs = load_prefs()
+    prefs = load_prefs(user_id)
 
     all_alertas = []
     for t in tickers_str.split(","):
@@ -348,12 +348,12 @@ async def send_alerts_now(request: Request):
 @app.get("/api/notifications/status")
 async def notification_status():
     has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
-    has_twilio = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
-    has_smtp = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    has_twilio   = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
+    has_smtp     = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
     return {
-        "telegram_configured": has_telegram,
-        "whatsapp_configured": has_twilio,
-        "email_configured": has_smtp,
+        "telegram_configured":  has_telegram,
+        "whatsapp_configured":  has_twilio,
+        "email_configured":     has_smtp,
     }
 
 

@@ -9,3 +9,4 @@ python-multipart
 gunicorn
 httpx
 twilio
+psycopg2-binary

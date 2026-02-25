@@ -1042,6 +1042,16 @@ function showToast(msg,nivel,ms=6000){
 /* ─────────────────────────────────────────────
    NOTIFICACIONES
 ───────────────────────────────────────────── */
+
+/* Obtiene/genera un user_id persistente en localStorage.
+   Si el usuario está autenticado con Supabase, se usará su email. */
+function getNotifUserId(){
+  let uid = localStorage.getItem('etf_user_id');
+  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
+  return uid;
+}
+function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
+
 function openNotifModal(){
   const m=document.getElementById('notifModal');
   m.style.display='flex';
@@ -1067,7 +1077,7 @@ document.getElementById('emEnabled').addEventListener('change',function(){
 
 async function loadNotifPrefs(){
   try{
-    const r=await fetch('/api/notifications/prefs');
+    const r=await fetch(notifUrl('/api/notifications/prefs'));
     const p=await r.json();
     document.getElementById('tgEnabled').checked=!!p.telegram_enabled;
     document.getElementById('tgChatId').value=p.telegram_chat_id||'';
@@ -1089,45 +1099,49 @@ async function saveNotifPrefs(){
     whatsapp_number:document.getElementById('waNumber').value.trim(),
     email_enabled:document.getElementById('emEnabled').checked,
     email_address:document.getElementById('emAddress').value.trim(),
+    watchlist:[...watchlist].join(','),
   };
   try{
-    await fetch('/api/notifications/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
-    showToast('Preferencias guardadas','info',2000);
-  }catch(e){showToast('Error guardando preferencias','bearish');}
+    await fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    showToast('✅ Preferencias guardadas','bullish',2000);
+  }catch(e){showToast('❌ Error guardando preferencias','bearish');}
 }
 
 async function loadNotifStatus(){
   try{
     const r=await fetch('/api/notifications/status');
     const s=await r.json();
-    const lines=[];
-    lines.push(`📬 Telegram: ${s.telegram_configured?'✅ Configurado':'⚠️ Token no configurado'}`);
-    lines.push(`💬 WhatsApp: ${s.whatsapp_configured?'✅ Configurado':'⚠️ Twilio no configurado'}`);
-    lines.push(`✉️ Email: ${s.email_configured?'✅ Configurado':'⚠️ SMTP no configurado'}`);
-    document.getElementById('notifStatus').innerHTML=lines.join('<br>');
+    const chk=(ok,label)=>`${ok?'<span style="color:#2dd47e">✅</span>':'<span style="color:#f05858">⚠️</span>'} <span style="color:var(--text)">${label}</span>`;
+    document.getElementById('notifStatus').innerHTML=
+      '<div style="display:flex;flex-direction:column;gap:5px">'+
+      '<div style="font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-mono)">Estado del servidor</div>'+
+      `<div>${chk(s.telegram_configured,'Telegram Bot')}</div>`+
+      `<div>${chk(s.whatsapp_configured,'WhatsApp · Twilio')}</div>`+
+      `<div>${chk(s.email_configured,'Email · SMTP')}</div>`+
+      '</div>';
   }catch(e){}
 }
 
 async function testChannel(channel){
   showToast('Enviando prueba de '+channel+'...','info',3000);
   try{
-    const r=await fetch('/api/notifications/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const r=await fetch(notifUrl('/api/notifications/test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
     const d=await r.json();
     const res=d.results[channel];
     if(res&&res.ok)showToast('✅ Prueba '+channel+' enviada correctamente','bullish');
-    else showToast('❌ Error: '+(res?.error||'No se pudo enviar'),'bearish',8000);
+    else showToast('❌ '+(res?.error||'No se pudo enviar. Revisa la configuración del servidor.'),'bearish',8000);
   }catch(e){showToast('❌ Error de conexión','bearish');}
 }
 
 async function sendAlertsNow(){
   const tickers=[...watchlist].join(',');
-  if(!tickers){showToast('Añade activos a vigilancia primero','info');return;}
-  showToast('Enviando alertas de '+watchlist.size+' activos...','info',4000);
+  if(!tickers){showToast('Añade activos a vigilancia (★) primero','info');return;}
+  showToast('Analizando '+watchlist.size+' activos...','info',4000);
   try{
-    const r=await fetch('/api/notifications/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
+    const r=await fetch(notifUrl('/api/notifications/send'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
     const d=await r.json();
-    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas`,'bullish');
-    else showToast('Sin alertas activas en este momento','info');
+    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas por los canales activos`,'bullish');
+    else showToast('Sin alertas activas en tus activos vigilados ahora','info');
   }catch(e){showToast('❌ Error enviando alertas','bearish');}
 }
 </script>
