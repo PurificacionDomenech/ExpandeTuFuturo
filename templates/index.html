@@ -433,7 +433,12 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
     if(m) m.style.display = 'none';
   };
 
-  window.redeemVipCode = async function() {
+  window.redeemVipCode = async function(passedCode) {
+  const input = document.getElementById('vipCodeInputUpgrade');
+  const btn = document.getElementById('btnRedeemUpgrade');
+  if(!input || !btn) return;
+  const code = (passedCode || input.value || '').trim().toUpperCase();
+  if(!code) return;
     const input = document.getElementById('vipCodeInputUpgrade');
     const btn = document.getElementById('btnRedeemUpgrade');
     if(!input || !btn) return;
@@ -1399,7 +1404,7 @@ function openUpgradeModal() {
                 <p style="color:#fff;font-size:13px;margin-bottom:12px;font-weight:700">¿Ya tienes un código VIP?</p>
                 <div style="display:flex;gap:8px">
                     <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce tu código" style="flex:1;padding:10px;border-radius:6px;background:#000;border:1px solid var(--gold);color:#fff;font-family:var(--font-mono);font-size:13px">
-                    <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
+                    <button id="btnRedeemUpgrade" onclick="redeemVipCode()" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
                 </div>
             </div>
 
