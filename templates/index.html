@@ -662,8 +662,8 @@ async function loadRowData(ticker){
     const rsiEl=document.getElementById(`tr-${id}`);
     if(rsiEl&&d.rsi!=null){
       rsiEl.innerText=d.rsi.toFixed(1);
-      if(d.rsi<30){rsiEl.style.background='rgba(0,230,118,.15)';rsiEl.style.color='#00e676';}
-      else if(d.rsi>70){rsiEl.style.background='rgba(255,68,68,.15)';rsiEl.style.color='#ff5252';}
+      if(d.rsi<30){rsiEl.style.background='rgba(255,68,68,.15)';rsiEl.style.color='#ff4444';}
+      else if(d.rsi>70){rsiEl.style.background='rgba(0,230,118,.15)';rsiEl.style.color='#00e676';}
       else{rsiEl.style.background='rgba(255,255,255,.06)';rsiEl.style.color='rgba(255,255,255,.5)';}
     }
 
@@ -872,11 +872,11 @@ function renderPlotly(apiData){
   if(indVisible.rsi&&cd.rsi_os&&cd.rsi_ob){
     const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
     if(ros.xs.length)traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
-      marker:{color:'#00e676',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
-      hovertemplate:'🟢 RSI Sobreventa<br>$%{y:,.2f}<extra></extra>'});
+      marker:{color:'#ff4444',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🔴 RSI Sobreventa<br>$%{y:,.2f}<extra></extra>'});
     if(rob.xs.length)traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
-      marker:{color:'#c9a84c',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
-      hovertemplate:'🔴 RSI Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
+      marker:{color:'#00e676',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🟢 RSI Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
   }
 
   // ── Smart Y-range: escala solo a las velas visibles (de Matrix) ──
