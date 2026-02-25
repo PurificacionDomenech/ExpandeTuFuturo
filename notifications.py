@@ -147,7 +147,9 @@ def format_alerts_text(alertas: list) -> str:
     if not alertas:
         return "Sin alertas activas."
     icon_map = {"bullish": "🟢", "bearish": "🔴", "info": "🟡"}
-    lines = ["⚡ ETF Market Scanner · Alertas\n"]
+    from datetime import datetime
+    now_str = datetime.now().strftime("%H:%M")
+    lines = [f"⚡ ETF Market Scanner · {now_str}\n"]
     for a in alertas:
         icon = icon_map.get(a.get("nivel", "info"), "🟡")
         lines.append(f"{icon} {a['msg']}")
@@ -159,13 +161,15 @@ def format_alerts_html(alertas: list) -> str:
         return "<p>Sin alertas activas.</p>"
     color_map = {"bullish": "#2dd47e", "bearish": "#f05858", "info": "#e8c96d"}
     icon_map  = {"bullish": "🟢",      "bearish": "🔴",       "info": "🟡"}
-    parts = ["""
+    from datetime import datetime
+    now_str = datetime.now().strftime("%H:%M")
+    parts = [f"""
     <div style="font-family:'DM Sans',Arial,sans-serif;background:#060810;
                 color:#e8e4d9;padding:30px;border-radius:12px;max-width:600px">
       <div style="border-bottom:1px solid rgba(201,168,76,.3);padding-bottom:15px;margin-bottom:20px">
         <h2 style="color:#e8c96d;margin:0;font-size:18px">⚡ ETF Market Scanner</h2>
         <p style="color:rgba(232,228,217,.5);font-size:12px;margin:4px 0 0">
-          Expande Tu Futuro · Alertas automáticas</p>
+          Expande Tu Futuro · {now_str}</p>
       </div>
     """]
     for a in alertas:
@@ -201,22 +205,6 @@ async def dispatch_notifications(prefs: dict, alertas: list) -> dict:
                 results["telegram"] = {"ok": False, "error": str(e)}
         else:
             results["telegram"] = {"ok": False, "error": "TELEGRAM_BOT_TOKEN no configurado"}
-
-    if prefs.get("whatsapp_enabled") and prefs.get("whatsapp_number"):
-        sid      = os.environ.get("TWILIO_ACCOUNT_SID", "")
-        token    = os.environ.get("TWILIO_AUTH_TOKEN", "")
-        from_num = os.environ.get("TWILIO_WHATSAPP_FROM", "")
-        if sid and token and from_num:
-            try:
-                r = await send_whatsapp(sid, token, from_num,
-                                        prefs["whatsapp_number"], text)
-                results["whatsapp"] = {"ok": "sid" in r,
-                                       "error": r.get("message")}
-            except Exception as e:
-                results["whatsapp"] = {"ok": False, "error": str(e)}
-        else:
-            results["whatsapp"] = {"ok": False,
-                                   "error": "Credenciales Twilio no configuradas en servidor"}
 
     if prefs.get("email_enabled") and prefs.get("email_address"):
         smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")

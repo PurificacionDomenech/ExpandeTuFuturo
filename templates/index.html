@@ -357,35 +357,11 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
         </div>
         <div id="tgFields" style="display:none">
           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-            1. Abre <a href="https://t.me/BotFather" target="_blank" style="color:var(--gold)">@BotFather</a> y crea un bot<br>
-            2. Envía <code style="background:rgba(255,255,255,.06);padding:2px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px">/start</code> a tu bot<br>
-            3. Obtén tu Chat ID con <a href="https://t.me/userinfobot" target="_blank" style="color:var(--gold)">@userinfobot</a>
+            Para obtener tu ID, busca a <a href="https://t.me/ExpandeTuFuturoBot" target="_blank" style="color:var(--gold)">@ExpandeTuFuturoBot</a> y dale a <strong>/start</strong>
           </div>
           <input type="text" id="tgChatId" placeholder="Tu Chat ID (ej: 123456789)" onchange="saveNotifPrefs()"
             style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
           <button onclick="testChannel('telegram')" class="notif-test-btn">Enviar prueba</button>
-        </div>
-      </div>
-
-      <!-- WHATSAPP -->
-      <div class="notif-channel" style="margin-bottom:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:18px">💬</span>
-            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">WhatsApp</span>
-          </div>
-          <label class="notif-toggle">
-            <input type="checkbox" id="waEnabled" onchange="saveNotifPrefs()">
-            <span class="notif-slider"></span>
-          </label>
-        </div>
-        <div id="waFields" style="display:none">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-            Usa Twilio WhatsApp Sandbox. Incluye código de país (ej: +1234567890)
-          </div>
-          <input type="text" id="waNumber" placeholder="Tu número WhatsApp (+1234567890)" onchange="saveNotifPrefs()"
-            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
-          <button onclick="testChannel('whatsapp')" class="notif-test-btn">Enviar prueba</button>
         </div>
       </div>
 
