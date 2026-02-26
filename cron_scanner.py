@@ -1,5 +1,6 @@
 import asyncio
 import yfinance as yf
+import gc
 import os
 import time
 from notifications import dispatch_notifications, get_db
@@ -16,20 +17,25 @@ async def scan_and_notify():
         for user in users:
             uid, tg_en, tg_id, em_en, em_adr, wl_str = user
             if not wl_str: continue
+            if not tg_en and not em_en: continue
             
             tickers = [t.strip() for t in wl_str.split(",") if t.strip()]
             all_alerts = []
             
             for t in tickers:
                 try:
-                    df_full = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+                    df_full = yf.download(t.upper(), period="6mo", interval="1d", progress=False)
                     if not df_full.empty:
                         df_full = clean_df(df_full)
                         df_full = calcular_indicadores(df_full)
                         alerts = detectar_alertas(df_full, ticker=t.upper())
                         all_alerts.extend(alerts)
+                    del df_full
                 except Exception as e:
                     print(f"Error escaneando {t}: {e}")
+                await asyncio.sleep(0.5)
+            
+            gc.collect()
             
             if all_alerts:
                 prefs = {
@@ -46,6 +52,7 @@ async def scan_and_notify():
 
 async def main():
     print("Scanner background loop active")
+    await asyncio.sleep(60)
     while True:
         try:
             await scan_and_notify()
