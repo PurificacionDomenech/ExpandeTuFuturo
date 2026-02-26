@@ -1,251 +1,1518 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expande Tu Futuro</title>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root { --gold: #c9a84c; --gold2: #e8c96d; --bg: #060810; --card: rgba(255,255,255,.025); --border: rgba(255,255,255,.07); --text: #e0e0e0; }
-        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; }
-        .mono { font-family: 'Space Mono', monospace; }
-        #app { max-width: 1600px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 15px; }
-        #hdr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-        #hdr-logo { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; }
-        #hdr-title { font-size: 16px; font-weight: 800; }
-        #hdr-badge { font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: 700; }
-        .btn { padding: 8px 14px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .2s; }
-        .btn-gold { background: var(--gold); color: #000; }
-        .btn-outline { background: rgba(255,255,255,.05); border: 1px solid var(--border); color: #fff; }
-        #hdr-search { margin-left: auto; display: flex; gap: 8px; }
-        #symbolInput { background: #111; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 8px; outline: none; }
-        #main { display: grid; grid-template-columns: 240px 1fr; gap: 12px; }
-        @media (max-width: 900px) { #main { grid-template-columns: 1fr; } }
-        #sidebar { display: flex; flex-direction: column; gap: 12px; }
-        #plotDiv { width: 100%; height: 600px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--gold); padding: 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.02); font-size: 13px; }
-        .asset-row { cursor: pointer; transition: background .2s; }
-        .asset-row:hover { background: rgba(255,255,255,.02); }
-        .fav-star { cursor: pointer; font-size: 16px; margin-right: 8px; transition: transform .1s; display: inline-block; }
-        .fav-star.watching { color: var(--gold); }
-        .fav-star.idle { color: rgba(255,255,255,.1); }
-        #toasts { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
-        .toast { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
-        .toast.info { background: #2196f3; }
-        .toast.bullish { background: #00e676; color: #000; }
-        .toast.bearish { background: #ff5252; }
-        #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); backdrop-filter: blur(5px); z-index: 9999; display: none; align-items: center; justify-content: center; }
-        .modal { background: #0a0d18; border: 1px solid var(--gold); border-radius: 16px; width: 90%; max-width: 450px; padding: 25px; position: relative; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Expande Tu Futuro</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-height:100vh;overflow-x:hidden}
+.mono{font-family:'Space Mono',monospace}
+.card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px}
+
+#app{width:100%;max-width:1600px;margin:0 auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+
+/* ── HEADER ── */
+#hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#hdr-logo{width:30px;height:30px;border-radius:9px;background:#c9a84c;box-shadow:0 0 14px rgba(255,0,127,.4);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#hdr-title{font-size:14px;font-weight:800;letter-spacing:-.2px;white-space:nowrap}
+#hdr-badge{font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,0,127,.12);
+  color:#e8c96d;border:1px solid rgba(255,0,127,.25);font-weight:700;letter-spacing:.08em;white-space:nowrap}
+#hdr-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+#symbolInput{flex:1;min-width:0;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+  padding:8px 12px;font-size:13px;color:#e0e0e0;font-family:'DM Sans',sans-serif;transition:border-color .2s}
+#symbolInput:focus{outline:none;border-color:rgba(255,0,127,.5)}
+#btnSearch{padding:8px 14px;border-radius:9px;background:#c9a84c;color:#fff;font-size:13px;font-weight:700;
+  border:none;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0}
+
+/* ── LAYOUT ── */
+#main{display:flex;flex-direction:column;gap:10px;width:100%}
+@media(min-width:900px){
+  #main{display:grid;grid-template-columns:170px 1fr;align-items:flex-start}
+}
+
+/* ── SIDEBAR ── */
+#sidebar{display:flex;flex-direction:column;gap:8px}
+#price-widget{padding:13px}
+#dispSym{font-size:10px;font-weight:800;letter-spacing:.12em;color:#c9a84c;margin-bottom:2px}
+#dispPrice{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
+#dispChange{font-size:11px;margin-top:4px;font-weight:600}
+#smaInfo{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05);
+  font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.06em}
+#rsiRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+#rsiBar{height:5px;border-radius:3px;position:relative;margin-top:5px;
+  background:linear-gradient(to right,rgba(0,230,118,.4) 0%,rgba(0,230,118,.4) 30%,
+    rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,rgba(255,68,68,.4) 70%,rgba(255,68,68,.4) 100%)}
+#rsiCursor{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:#fff;
+  box-shadow:0 0 5px rgba(255,255,255,.5);transform:translate(-50%,-50%);transition:left .4s;left:50%}
+
+#watch-panel{padding:11px}
+#watch-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+#watchDot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.15);display:inline-block;flex-shrink:0}
+#watch-alerts-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto}
+@media(max-width:899px){#watch-alerts-list{max-height:none;overflow-y:visible}}
+.w-alerta{padding:6px 9px;border-radius:8px;font-size:10px;font-weight:500;line-height:1.45;cursor:pointer;transition:filter .15s}
+.w-alerta:hover{filter:brightness(1.3)}
+.w-alerta .w-ticker{font-weight:800;font-size:10px;margin-right:4px}
+.w-alerta.bullish{background:rgba(0,230,118,.07);color:#00e676}
+.w-alerta.bearish{background:rgba(255,68,68,.07);color:#ff5252}
+.w-alerta.info{background:rgba(255,0,127,.07);color:#e8c96d}
+#alertBox{padding:11px;display:none}
+.alerta-item{padding:5px 9px;border-radius:7px;font-size:10px;font-weight:500;line-height:1.4}
+.alerta-item.bullish{background:rgba(0,230,118,.07);color:#00e676}
+.alerta-item.bearish{background:rgba(255,68,68,.07);color:#ff5252}
+.alerta-item.info{background:rgba(255,0,127,.07);color:#e8c96d}
+
+/* ── CHART CARD ── */
+#chart-card{padding:13px;display:flex;flex-direction:column;gap:9px;position:relative}
+
+/* TV-BAR — siempre visible */
+#tv-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
+  padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05)}
+#ind-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.btn-ind{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;
+  transition:all .15s;border:1px solid transparent;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.btn-ind.off{opacity:.25;filter:grayscale(.7)}
+#plotDiv{width:100%;height:min(120vw,600px)}
+#rsiWrap{display:none}
+#rsiDiv{width:100%;height:min(30vw,150px)}
+@media(min-width:900px){
+  #plotDiv{height:750px}
+  #rsiDiv{height:180px}
+  #favBody .table-wrap::-webkit-scrollbar{height:6px}
+  #favBody .table-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:3px}
+  #favBody .table-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+  #favBody .table-wrap::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3)}
+}
+#loadWrap{display:none;position:absolute;inset:0;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;color:rgba(255,255,255,.3);background:rgba(7,7,15,.75);z-index:10;border-radius:14px}
+.spin{width:32px;height:32px;border:3px solid rgba(255,0,127,.15);border-top-color:#c9a84c;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TABLA ── */
+#favs-panel{overflow:hidden}
+#favs-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;
+  background:none;border:none;width:100%;color:inherit;font-family:'DM Sans',sans-serif;padding:14px 16px}
+.acc-body{overflow:hidden;transition:max-height .35s ease,opacity .25s ease}
+.acc-body.closed{max-height:0!important;opacity:0;pointer-events:none}
+.acc-body.open{max-height:9999px;opacity:1}
+#assetsTable{width:100%;border-collapse:collapse;min-width:780px}
+#assetsTable thead th{padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:.07em;
+  color:var(--gold);text-transform:uppercase;white-space:nowrap;
+  background:#060810;border-bottom:1px solid var(--gold-dim);text-align:left}
+#assetsTable thead th.r{text-align:right}
+#assetsTable thead th.c{text-align:center}
+.asset-row{border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s;
+  border-left:3px solid transparent}
+.asset-row:hover{background:rgba(255,255,255,.025)!important}
+.asset-row.active-sym{background:rgba(255,0,127,.04)!important;border-left-color:#c9a84c!important}
+.asset-row td{padding:8px 12px;white-space:nowrap;vertical-align:middle}
+@media(max-width:899px){
+  .asset-row td{padding:5px 7px}
+  #assetsTable thead th{padding:6px 7px;font-size:9px}
+}
+.fav-star{font-size:13px;cursor:pointer;user-select:none;transition:transform .15s;line-height:1}
+.fav-star.watching{color:#c9a84c;text-shadow:0 0 8px rgba(255,0,127,.6)}
+.fav-star.idle{color:rgba(255,255,255,.15)}
+.fav-star:hover{transform:scale(1.4)}
+
+/* Estado badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
+.badge.favorable{background:rgba(0,230,118,.15);color:#00e676}
+.badge.interesante{background:rgba(255,215,0,.12);color:#ffd700}
+.badge.considerar{background:rgba(255,140,0,.12);color:#ff8c00}
+.badge.no_favorable{background:rgba(255,255,255,.05);color:rgba(255,255,255,.28)}
+
+/* SMA píldoras */
+.sma-pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;margin:1px}
+
+/* TOASTS */
+#toasts{position:fixed;top:12px;right:12px;z-index:9999;display:flex;flex-direction:column;
+  gap:7px;pointer-events:none;max-width:calc(100vw - 24px)}
+.toast{padding:9px 14px;border-radius:10px;font-size:12px;font-weight:500;pointer-events:auto;
+  animation:fadeIn .25s ease;line-height:1.45;word-break:break-word}
+.toast.bullish{background:rgba(0,230,118,.13);color:#00e676;border:1px solid rgba(0,230,118,.25)}
+.toast.bearish{background:rgba(255,68,68,.13);color:#ff5252;border:1px solid rgba(255,68,68,.25)}
+.toast.info{background:rgba(255,0,127,.13);color:#e8c96d;border:1px solid rgba(255,0,127,.25)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@keyframes modalIn{from{opacity:0;transform:scale(.94) translateY(16px)}to{opacity:1;transform:none}}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+.notif-channel{padding:14px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+.notif-toggle{position:relative;display:inline-block;width:40px;height:22px}
+.notif-toggle input{opacity:0;width:0;height:0}
+.notif-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);border-radius:22px;transition:.3s}
+.notif-slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.notif-toggle input:checked + .notif-slider{background:var(--gold)}
+.notif-toggle input:checked + .notif-slider::before{transform:translateX(18px)}
+.notif-test-btn{margin-top:8px;padding:6px 14px;border-radius:6px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.25);color:var(--gold);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);transition:all .2s}
+.notif-test-btn:hover{background:rgba(201,168,76,.3)}
+#notifBtn{padding:6px 12px;border-radius:7px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap}
+#notifBtn:hover{background:rgba(201,168,76,.3);border-color:var(--gold)}
+</style>
 </head>
 <body>
-    <div id="app">
-        <div id="hdr">
-            <div id="hdr-logo"><img src="/static/logo.png" style="width:100%"></div>
-            <div id="hdr-title"><span style="color:var(--gold)">E</span>XPANDE <span style="color:var(--gold)">T</span>U <span style="color:var(--gold)">F</span>UTURO</div>
-            <div id="hdr-badge" class="card">FREE</div>
-            <button class="btn btn-outline" onclick="openNotifModal()">🔔 Alertas</button>
-            <button id="proBtn" class="btn btn-gold" onclick="openUpgradeModal()">👑 Planes PRO</button>
-            <button class="btn btn-outline" onclick="handleLogout()" style="color:rgba(255,255,255,.4)">Salir</button>
-            <div id="hdr-search">
-                <input id="symbolInput" type="text" placeholder="AAPL, BTC-USD..." onkeydown="if(event.key==='Enter')doSearch()">
-                <button class="btn btn-gold" onclick="doSearch()">Buscar</button>
-            </div>
-        </div>
+<div id="app">
 
-        <div id="main">
-            <div id="sidebar">
-                <div class="card" id="price-card">
-                    <div id="dispSym" style="color:var(--gold); font-weight:800; font-size:12px">--</div>
-                    <div id="dispPrice" class="mono" style="font-size:24px; font-weight:700">--</div>
-                    <div id="dispChange">--</div>
-                    <button class="btn btn-outline" onclick="abrirTradingView()" style="width:100%; margin-top:10px; font-size:11px">📈 TradingView</button>
-                </div>
-                <div class="card">
-                    <div style="font-size:11px; font-weight:800; margin-bottom:10px">⭐ VIGILANCIA</div>
-                    <div id="watchList" style="font-size:12px; color:rgba(255,255,255,.4)">No hay activos vigilados</div>
-                </div>
-            </div>
-            <div id="chart-card" class="card">
-                <div id="plotDiv"></div>
-            </div>
-        </div>
+  <!-- ── HEADER ── -->
+  <div id="hdr">
+    <div id="hdr-logo">
+      <img src="/static/logo.png" alt="ETF" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">
+    </div>
+    <span id="hdr-title"><span style="color:#c9a84c">E</span>XPANDE <span style="color:#c9a84c">T</span>U <span style="color:#c9a84c">F</span>UTURO</span>
+    <span id="hdr-badge" style="background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.3); border:1px solid rgba(255,255,255,0.1);">FREE · 1D · SMAs</span>
+    <button id="notifBtn" onclick="openNotifModal()">🔔 Alertas</button>
+    <div id="hdr-search">
+      <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
+             autocomplete="off" autocorrect="off" autocapitalize="off"
+             onkeydown="if(event.key==='Enter')doSearch()">
+      <button id="btnSearch" onclick="doSearch()">Buscar</button>
+    </div>
+  </div>
 
-        <div class="card" style="margin-top:12px; overflow-x:auto">
-            <table>
-                <thead>
-                    <tr><th>★ Activo</th><th>Precio</th><th>Cambio</th><th>RSI</th><th>Acción</th></tr>
-                </thead>
-                <tbody id="assetsBody"></tbody>
-            </table>
+  <div id="main">
+
+    <!-- ── SIDEBAR ── -->
+    <div id="sidebar">
+      <div class="card" id="price-widget">
+        <div id="dispSym">---</div>
+        <div id="dispPrice" class="mono">---</div>
+        <div id="dispChange">--</div>
+        <div id="smaInfo">SMA 20 · 50 · 100 · 200</div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)">
+          <div id="rsiRow">
+            <span style="font-size:10px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.08em">RSI 14</span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <span id="rsiVal" class="mono" style="font-size:13px;font-weight:700">--</span>
+              <span id="rsiLbl" style="font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">--</span>
+            </div>
+          </div>
+          <div id="rsiBar"><div id="rsiCursor"></div></div>
         </div>
+      </div>
+
+      <div id="alertBox" class="card">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(232,228,217,0.6);font-weight:700;margin-bottom:6px">
+          ⚡ Alertas — <span id="alertSymLabel" style="color:#c9a84c"></span>
+        </div>
+        <div id="alertList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto"></div>
+      </div>
+
+      <div class="card" id="watch-panel">
+        <div id="watch-hdr" onclick="toggleWatchPanel()" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:700">🔔 Vigilancia</span>
+            <span id="watchDot"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
+            <span id="watchChevron" style="color:rgba(255,255,255,.3);font-size:10px;transition:transform .3s;transform:rotate(-90deg)">▼</span>
+          </div>
+        </div>
+        <div id="watchBody" class="acc-body closed">
+          <div id="watchEmpty" style="font-size:10px;line-height:1.6;color:rgba(255,255,255,.2)">
+            Marca ★ en cualquier activo para añadirlo. Alertas cuando precio toca SMAs o cruzan SMA100/SMA200.
+          </div>
+          <div id="watch-alerts-list"></div>
+          <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
+        </div>
+      </div>
     </div>
 
-    <div id="modal-overlay">
-        <div id="notifModal" class="modal" style="display:none">
-            <h3>🔔 Configurar Alertas</h3>
-            <div style="margin:15px 0">
-                <label>Telegram Chat ID:</label>
-                <input id="tgId" type="text" style="width:100%; padding:8px; margin-top:5px; background:#111; border:1px solid #333; color:#fff">
-            </div>
-            <button class="btn btn-gold" onclick="savePrefs()" style="width:100%">Guardar</button>
-            <button onclick="closeModals()" style="margin-top:10px; background:none; border:none; color:#fff; cursor:pointer">Cerrar</button>
+    <!-- ── GRÁFICO ── -->
+    <div class="card" id="chart-card">
+
+      <!-- TV-BAR: siempre visible -->
+      <div id="tv-bar">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Gráfico 1D</span>
+          <button onclick="toggleChart()" id="btnToggleChart"
+            style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid var(--gold-dim);
+            background:var(--gold-dim);color:var(--gold2);cursor:pointer;font-family:'DM Sans',sans-serif">
+            ▼ Abrir gráfico
+          </button>
         </div>
-        <div id="upgradeModal" class="modal" style="display:none; text-align:center">
-            <div style="font-size:40px">👑</div>
-            <h2 style="color:var(--gold)">Planes PRO</h2>
-            <p style="font-size:14px">Activa el modo profesional para alertas ilimitadas y TradingView.</p>
-            <div style="background:rgba(201,168,76,.1); padding:15px; border-radius:10px; margin:20px 0">
-                <input id="vipCodeInput" type="text" placeholder="Código VIP (ej: VIP333)" style="width:100%; padding:10px; background:#000; border:1px solid var(--gold); color:#fff; margin-bottom:10px">
-                <button class="btn btn-gold" onclick="redeemVipCode()" style="width:100%">ACTIVAR AHORA</button>
-            </div>
-            <button onclick="closeModals()" style="background:none; border:none; color:rgba(255,255,255,.4); cursor:pointer">Cerrar</button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <button class="btn-ind" onclick="abrirTradingView()"
+            style="background:rgba(41,98,255,.15);color:#2962ff;border-color:rgba(41,98,255,.4);padding:4px 10px;font-size:10px">
+            📈 TradingView
+          </button>
+          <button class="btn-ind" onclick="window.open('https://es.tradingview.com/script/zQDMj0ly/','_blank')"
+            style="background:rgba(41,98,255,.08);color:#6b8fff;border-color:rgba(41,98,255,.25);padding:4px 10px;font-size:10px">
+            ★ Indicador ETF
+          </button>
         </div>
+      </div>
+
+      <!-- CONTENIDO PLEGABLE -->
+      <div id="chartBody" style="display:none">
+        <div id="ind-bar">
+          <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.18);font-weight:700;margin-right:2px">Ind:</span>
+          <button class="btn-ind" id="tog-sma20"  style="background:rgba(0,255,255,.1);color:#00ffff;border-color:rgba(0,255,255,.3)"      onclick="toggleInd('sma20')">SMA20</button>
+          <button class="btn-ind" id="tog-sma50"  style="background:rgba(255,255,0,.1);color:#ffff00;border-color:rgba(255,255,0,.3)"      onclick="toggleInd('sma50')">SMA50</button>
+          <button class="btn-ind" id="tog-sma100" style="background:rgba(255,200,100,.1);color:#ffc864;border-color:rgba(255,200,100,.3)"  onclick="toggleInd('sma100')">SMA100</button>
+          <button class="btn-ind" id="tog-sma200" style="background:rgba(200,150,220,.1);color:#c896dc;border-color:rgba(200,150,220,.3)"  onclick="toggleInd('sma200')">SMA200</button>
+          <button class="btn-ind" id="tog-st" style="background:rgba(0,255,100,.1);color:#00e676;border-color:rgba(0,255,100,.3)"      onclick="toggleInd('st')">SuperT</button>
+          <button class="btn-ind" id="tog-rsi"style="background:rgba(255,0,127,.1);color:#e8c96d;border-color:rgba(255,0,127,.3)"      onclick="toggleInd('rsi')">RSI</button>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+            <button class="btn-ind" onclick="zoomChart(1.2)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">+</button>
+            <button class="btn-ind" onclick="zoomChart(0.8)" style="background:rgba(255,255,255,.05);color:#fff;padding:4px 10px;font-size:14px">-</button>
+            <button class="btn-ind" onclick="resetZoom2m()" style="background:rgba(255,0,127,.08);color:#e8c96d;border-color:rgba(255,0,127,.25);padding:4px 10px;font-size:10px">↺ 2M</button>
+            <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap">Doble clic reset</span>
+          </div>
+        </div>
+
+        <div id="loadWrap">
+          <div class="spin"></div>
+          <span style="font-size:12px">Cargando 1D…</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column">
+          <div id="plotDiv"></div>
+          <div id="rsiWrap">
+            <div style="padding:3px 60px 1px 8px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.18);font-weight:700">RSI 14 · señales extremas</span>
+              <span style="font-size:9px;color:rgba(255,255,255,.2)">
+                <span style="color:rgba(0,230,118,.8)">▲&lt;30</span>&nbsp;
+                <span style="color:rgba(255,0,127,.8)">▼&gt;70</span>
+              </span>
+            </div>
+            <div id="rsiDiv"></div>
+          </div>
+        </div>
+      </div><!-- fin chartBody -->
+
+    </div><!-- fin chart-card -->
+  </div><!-- fin #main -->
+
+  <!-- ── TABLA ACTIVOS: abierta por defecto ── -->
+  <div class="card" id="favs-panel">
+    <button id="favs-hdr" onclick="toggleFavs()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--gold);font-size:14px">★</span>
+        <span style="font-size:13px;font-weight:700;color:var(--gold2)">Todos los activos</span>
+        <span id="favCount" style="font-size:10px;color:var(--muted)"></span>
+        <span id="watchingCount" style="font-size:10px;color:var(--gold);font-weight:700"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:var(--muted)">★ vigilancia · clic fila = gráfico</span>
+        <span id="favChevron" style="color:var(--gold);font-size:11px;transition:transform .3s">▼</span>
+      </div>
+    </button>
+    <!-- clase "open" directamente → abierta sin JS al cargar -->
+    <div id="favBody" class="acc-body open">
+      <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;overflow-y:visible">
+        <table id="assetsTable">
+          <thead>
+            <tr>
+              <th>★ Activo</th>
+              <th class="c">Tendencia</th>
+              <th class="r">Precio</th>
+              <th class="r">Cambio %</th>
+              <th class="c">RSI 14</th>
+              <th class="c">Medias móviles</th>
+              <th class="c">Cruce 100/200</th>
+              <th class="c">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="favItems"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── NOTIFICATION SETTINGS MODAL ── -->
+<div id="notifModal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(4,5,10,.92);backdrop-filter:blur(16px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0a0d18;border:1px solid rgba(201,168,76,.2);border-radius:16px;width:100%;max-width:520px;box-shadow:0 40px 100px rgba(0,0,0,.7);overflow:hidden;animation:modalIn .4s cubic-bezier(.2,.8,.2,1)">
+
+    <div style="padding:24px 28px 0;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:#fff">🔔 Notificaciones</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Recibe alertas por Telegram, WhatsApp o Email</div>
+      </div>
+      <button onclick="closeNotifModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px">✕</button>
     </div>
 
-    <div id="toasts"></div>
+    <div style="padding:20px 28px 28px">
 
-    <script>
-        const ALL_ASSETS = [
-            { t: '^GSPC', n: 'S&P 500' }, { t: '^NDX', n: 'Nasdaq 100' }, { t: 'BTC-USD', n: 'Bitcoin' },
-            { t: 'ETH-USD', n: 'Ethereum' }, { t: 'AAPL', n: 'Apple' }, { t: 'NVDA', n: 'Nvidia' },
-            { t: 'TSLA', n: 'Tesla' }, { t: 'AMZN', n: 'Amazon' }, { t: 'MSFT', n: 'Microsoft' }
-        ];
-        let currentSymbol = 'BTC-USD';
-        let watchlist = new Set(JSON.parse(localStorage.getItem('etf_watchlist') || '[]'));
-        window.isVip = false;
+      <!-- TELEGRAM -->
+      <div class="notif-channel" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">📬</span>
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">Telegram</span>
+          </div>
+          <label for="tgEnabled" class="notif-toggle">
+            <input type="checkbox" id="tgEnabled" onchange="saveNotifPrefs()">
+            <span class="notif-slider"></span>
+          </label>
+        </div>
+        <div id="tgFields" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+            <label for="tgChatId">Para obtener tu ID, busca a <a href="https://t.me/ExpandeTuFuturoBot" target="_blank" style="color:var(--gold)">@ExpandeTuFuturoBot</a> y dale a <strong>/start</strong></label>
+          </div>
+          <input type="text" id="tgChatId" placeholder="Tu Chat ID (ej: 123456789)" onchange="saveNotifPrefs()"
+            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
+          <button onclick="testChannel('telegram')" class="notif-test-btn">Enviar prueba</button>
+        </div>
+      </div>
 
-        function getUserId() {
-            let id = localStorage.getItem('etf_user_id');
-            if(!id) { id = 'u_' + Math.random().toString(36).slice(2, 10); localStorage.setItem('etf_user_id', id); }
-            return id;
-        }
+      <!-- EMAIL -->
+      <div class="notif-channel" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">✉️</span>
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--gold2)">Email</span>
+          </div>
+          <label for="emEnabled" class="notif-toggle">
+            <input type="checkbox" id="emEnabled" onchange="saveNotifPrefs()">
+            <span class="notif-slider"></span>
+          </label>
+        </div>
+        <div id="emFields" style="display:none">
+          <label for="emAddress" style="display:none">Email</label>
+          <input type="email" id="emAddress" placeholder="tu@email.com" onchange="saveNotifPrefs()"
+            style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
+          <button onclick="testChannel('email')" class="notif-test-btn">Enviar prueba</button>
+        </div>
+      </div>
 
-        async function loadPrefs() {
-            try {
-                const r = await fetch('/api/notifications/prefs?user_id=' + getUserId());
-                const d = await r.json();
-                window.isVip = !!d.is_vip;
-                document.getElementById('hdr-badge').innerText = window.isVip ? 'PRO' : 'FREE';
-                if(window.isVip) document.getElementById('proBtn').style.display = 'none';
-                updateUI();
-            } catch(e) {}
-        }
+      <!-- STATUS -->
+      <div id="notifStatus" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);padding:10px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid var(--border)"></div>
 
-        async function fetchData(sym) {
-            const r = await fetch('/api/chart/' + sym);
-            return await r.json();
-        }
+      <!-- SEND NOW -->
+      <button onclick="sendAlertsNow()" style="width:100%;margin-top:14px;padding:12px;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#b8943d,var(--gold2));border:none;color:#07070f;font-size:14px;font-weight:700;font-family:var(--font-body);box-shadow:0 4px 15px rgba(201,168,76,.2);transition:transform .2s">
+        ⚡ Enviar alertas ahora
+      </button>
+    </div>
+  </div>
+</div>
 
-        function renderChart(data) {
-            const candles = data.chart.candles;
-            const trace = {
-                x: candles.map(c => new Date(c.x)),
-                open: candles.map(c => c.o), high: candles.map(c => c.h),
-                low: candles.map(c => c.l), close: candles.map(c => c.c),
-                type: 'candlestick', name: currentSymbol
-            };
-            const layout = {
-                plot_bgcolor: '#060810', paper_bgcolor: '#060810',
-                font: { color: '#e0e0e0' }, margin: { t: 30, b: 30, l: 30, r: 30 },
-                xaxis: { gridcolor: '#1a1a1a', rangeslider: { visible: false } },
-                yaxis: { gridcolor: '#1a1a1a' }
-            };
-            Plotly.newPlot('plotDiv', [trace], layout);
-        }
+<div id="toasts"></div>
 
-        async function loadSymbol(sym) {
-            currentSymbol = sym;
-            document.getElementById('dispSym').innerText = sym;
-            const data = await fetchData(sym);
-            if(data.error) return showToast(data.error, 'bearish');
-            document.getElementById('dispPrice').innerText = data.last_price.toFixed(2);
-            document.getElementById('dispChange').innerText = data.change_pct.toFixed(2) + '%';
-            document.getElementById('dispChange').style.color = data.change_pct >= 0 ? '#00e676' : '#ff5252';
-            renderChart(data);
-        }
+<script>
+/* ─────────────────────────────────────────────
+   DATOS
+───────────────────────────────────────────── */
+const DISPLAY_NAMES = {
+  'BTC-USD':'BTC · Bitcoin','ETH-USD':'ETH · Ethereum',
+  '^GSPC':'SPX · S&P 500','^NDX':'NQ · Nasdaq 100','^DJI':'YM · Dow Jones','^RUT':'RTY · Russell 2000',
+  'SPY':'SPY · S&P 500 ETF','VOO':'VOO · Vanguard S&P','VTI':'VTI · Mercado Total',
+  'QQQ':'QQQ · Nasdaq ETF','QQQM':'QQQM · Nasdaq Mini','SPMO':'SPMO · Momentum SP',
+  'JEPQ':'JEPQ · Income Nasdaq','ITOT':'ITOT · iShares Total','SCHD':'SCHD · Dividendos',
+  'SCHG':'SCHG · Growth','VGT':'VGT · Tecnología','VHT':'VHT · Salud',
+  'VFH':'VFH · Financiero','VEA':'VEA · Europa Asia','VTV':'VTV · Value',
+  'VTWO':'VTWO · Russell 2K','IWM':'IWM · Small Cap','XLE':'XLE · Energía',
+  'SMH':'SMH · Semiconductores','RSP':'RSP · SP Equi-pond','EEM':'EEM · Emergentes',
+  'ILF':'ILF · Latinoamérica','DIA':'DIA · Dow Jones ETF','IOO':'IOO · Global 100',
+  'SPYM':'SPYM · SP Apal. 1.5x','FEPI':'FEPI · Tech Income','GLD':'GLD · Oro ETF',
+  'IAU':'IAU · Oro iShares','GDX':'GDX · Mineras Oro','UGL':'UGL · Oro 2x',
+  'COPX':'COPX · Cobre ETF','REMX':'REMX · Tierras Raras','URNM':'URNM · Uranio ETF',
+  'URA':'URA · Uranio Global','AAPL':'AAPL · Apple',
+};
 
-        function buildTable() {
-            const body = document.getElementById('assetsBody');
-            body.innerHTML = ALL_ASSETS.map(a => `
-                <tr class="asset-row" onclick="loadSymbol('${a.t}')">
-                    <td><span class="fav-star ${watchlist.has(a.t)?'watching':'idle'}" onclick="toggleWatch('${a.t}', event)">★</span>${a.t}</td>
-                    <td id="p-${a.t}">--</td><td id="c-${a.t}">--</td><td id="r-${a.t}">--</td>
-                    <td><button class="btn btn-outline" style="font-size:10px">Ver</button></td>
-                </tr>
-            `).join('');
-        }
+const ALL_ASSETS = [
+  {name:'Bitcoin',   ticker:'BTC-USD',cat:'🪙'},{name:'Ethereum',  ticker:'ETH-USD',cat:'🪙'},
+  {name:'S&P 500',   ticker:'^GSPC',  cat:'📊'},{name:'Nasdaq 100',ticker:'^NDX',   cat:'📊'},
+  {name:'Dow Jones', ticker:'^DJI',   cat:'📊'},{name:'Russell 2K',ticker:'^RUT',   cat:'📊'},
+  {name:'SPY', ticker:'SPY', cat:'ETF'},{name:'VOO', ticker:'VOO', cat:'ETF'},
+  {name:'VTI', ticker:'VTI', cat:'ETF'},{name:'QQQ', ticker:'QQQ', cat:'ETF'},
+  {name:'QQQM',ticker:'QQQM',cat:'ETF'},{name:'SPMO',ticker:'SPMO',cat:'ETF'},
+  {name:'JEPQ',ticker:'JEPQ',cat:'ETF'},{name:'ITOT',ticker:'ITOT',cat:'ETF'},
+  {name:'SCHD',ticker:'SCHD',cat:'ETF'},{name:'SCHG',ticker:'SCHG',cat:'ETF'},
+  {name:'VGT', ticker:'VGT', cat:'ETF'},{name:'VHT', ticker:'VHT', cat:'ETF'},
+  {name:'VFH', ticker:'VFH', cat:'ETF'},{name:'VEA', ticker:'VEA', cat:'ETF'},
+  {name:'VTV', ticker:'VTV', cat:'ETF'},{name:'VTWO',ticker:'VTWO',cat:'ETF'},
+  {name:'IWM', ticker:'IWM', cat:'ETF'},{name:'XLE', ticker:'XLE', cat:'ETF'},
+  {name:'SMH', ticker:'SMH', cat:'ETF'},{name:'RSP', ticker:'RSP', cat:'ETF'},
+  {name:'EEM', ticker:'EEM', cat:'ETF'},{name:'ILF', ticker:'ILF', cat:'ETF'},
+  {name:'DIA', ticker:'DIA', cat:'ETF'},{name:'IOO', ticker:'IOO', cat:'ETF'},
+  {name:'SPYM',ticker:'SPYM',cat:'ETF'},{name:'FEPI',ticker:'FEPI',cat:'ETF'},
+  {name:'GLD', ticker:'GLD', cat:'🥇'},{name:'IAU', ticker:'IAU', cat:'🥇'},
+  {name:'GDX', ticker:'GDX', cat:'🥇'},{name:'UGL', ticker:'UGL', cat:'🥇'},
+  {name:'COPX',ticker:'COPX',cat:'⛏️'},{name:'REMX',ticker:'REMX',cat:'⛏️'},
+  {name:'URNM',ticker:'URNM',cat:'⚛️'},{name:'URA', ticker:'URA', cat:'⚛️'},
+  {name:'Apple',ticker:'AAPL',cat:'💼'},
+];
 
-        function toggleWatch(t, e) {
-            if(e) e.stopPropagation();
-            if(watchlist.has(t)) {
-                watchlist.delete(t);
-                showToast("Eliminado de vigilancia", "info");
-            } else {
-                if(!window.isVip && watchlist.size >= 3) return openUpgradeModal();
-                watchlist.add(t);
-                showToast("⭐ Añadido a vigilancia", "bullish");
+/* ─────────────────────────────────────────────
+   ESTADO
+───────────────────────────────────────────── */
+let currentSymbol  = '^NDX';
+let favsOpen       = true;
+let indVisible     = {sma20:true,sma50:true,sma100:true,sma200:true,st:true,rsi:true};
+let lastData       = null;
+let watchlist      = new Set();
+let alertsByTicker = {};
+let shownToasts    = new Set();
+let savedXRange    = null;
+let watchPanelOpen = false;
+
+function saveWL(){try{localStorage.setItem('etf_wl',JSON.stringify([...watchlist]))}catch(e){}}
+function loadWL(){try{const s=localStorage.getItem('etf_wl');if(s)watchlist=new Set(JSON.parse(s))}catch(e){}}
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+window.onload=()=>{
+  initNotifListeners();
+  loadWL();
+  document.getElementById('favCount').innerText=`— ${ALL_ASSETS.length} activos`;
+  document.getElementById('favChevron').style.transform='rotate(0deg)';
+  buildFavGrid();
+  updateWatchingCount();
+  ALL_ASSETS.forEach(f=>loadRowData(f.ticker));
+  loadSymbol('^NDX');
+  startWatcher();
+};
+
+/* ─────────────────────────────────────────────
+   CHART TOGGLE (nuevo, de Matrix)
+───────────────────────────────────────────── */
+function toggleChart(){
+  const body=document.getElementById('chartBody');
+  const btn=document.getElementById('btnToggleChart');
+  if(!body || !btn) return;
+  const visible=body.style.display!=='none';
+  body.style.display=visible?'none':'block';
+  btn.innerText=visible?'▼ Abrir gráfico':'▲ Cerrar gráfico';
+  if(!visible && lastData) renderPlotly(lastData);
+}
+
+/* ─────────────────────────────────────────────
+   TABLA
+───────────────────────────────────────────── */
+function favId(t){return 'f_'+t.replace(/[^a-z0-9]/gi,'_');}
+function formatPrice(p){
+  if(p===null||p===undefined)return '—';
+  return p>100?p.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):p.toFixed(4);
+}
+
+function buildFavGrid(){
+  const tbody=document.getElementById('favItems');
+  tbody.innerHTML='';
+  ALL_ASSETS.forEach(f=>{
+    const id=favId(f.ticker),isW=watchlist.has(f.ticker);
+    const tr=document.createElement('tr');
+    tr.id='fc-'+id;tr.className='asset-row';
+    tr.onclick=e=>{if(e.target.closest('.fav-star'))return;loadSymbol(f.ticker);};
+    tr.innerHTML=`
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}" onclick="toggleWatch('${f.ticker}',event)">★</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
+            <div style="font-size:10px;color:var(--muted)">${f.cat} ${f.name}</div>
+            <canvas id="spark-${id}" width="80" height="22" style="display:block;margin-top:3px;max-width:60px"></canvas>
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center">
+        <span id="tst-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tp-${id}" class="mono" style="font-size:12px;font-weight:600;color:#fff">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center">
+        <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center;min-width:110px">
+        <div id="tsma-${id}" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center">
+          <span style="font-size:10px;color:rgba(255,255,255,.15)">—</span>
+        </div>
+      </td>
+      <td style="text-align:center"><span id="tcr-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span></td>
+      <td style="text-align:center"><span id="tes-${id}">—</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function refreshStars(){
+  ALL_ASSETS.forEach(f=>{
+    const s=document.getElementById('star-'+favId(f.ticker));
+    if(!s)return;
+    s.className='fav-star '+(watchlist.has(f.ticker)?'watching':'idle');
+  });
+}
+
+function toggleWatch(ticker,e){
+  e.stopPropagation();
+  if(watchlist.has(ticker)){watchlist.delete(ticker);showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);}
+  else{watchlist.add(ticker);showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);}
+  saveWL();refreshStars();updateWatchingCount();renderWatchPanel();
+}
+
+function updateWatchingCount(){
+  const n=watchlist.size;
+  document.getElementById('watchingCount').innerText=n>0?`— ${n} ★`:'';
+  document.getElementById('watchCount').innerText=n>0?`${n} activo${n>1?'s':''} en vigilancia`:'';
+}
+
+function toggleFavs(){
+  favsOpen=!favsOpen;
+  document.getElementById('favBody').classList.toggle('open',favsOpen);
+  document.getElementById('favBody').classList.toggle('closed',!favsOpen);
+  document.getElementById('favChevron').style.transform=favsOpen?'rotate(0deg)':'rotate(-90deg)';
+  if(favsOpen)ALL_ASSETS.forEach(f=>loadRowData(f.ticker));
+}
+
+async function loadRowData(ticker){
+  try{
+    const[rowRes,spkRes]=await Promise.all([
+      fetch(`/api/row/${encodeURIComponent(ticker)}`),
+      fetch(`/api/sparkline/${encodeURIComponent(ticker)}`)
+    ]);
+    const d=await rowRes.json(),spk=await spkRes.json();
+    if(d.error)return;
+    const id=favId(ticker);
+
+    drawSparkline(id,spk);
+
+    // Tendencia SuperTrend
+    const stEl=document.getElementById(`tst-${id}`);
+    if(stEl){
+      if(d.st_dir===1)stEl.innerHTML='<span style="color:#00e676">▲</span>';
+      else if(d.st_dir===-1)stEl.innerHTML='<span style="color:#ff4444">▼</span>';
+      else stEl.innerText='—';
+    }
+
+    const prEl=document.getElementById(`tp-${id}`);if(prEl)prEl.innerText=formatPrice(d.price);
+
+    const chEl=document.getElementById(`tc-${id}`);
+    if(chEl){const up=d.change_pct>=0;chEl.innerText=`${up?'+':''}${d.change_pct.toFixed(2)}%`;chEl.style.color=up?'#00e676':'#ff4444';}
+
+    const rsiEl=document.getElementById(`tr-${id}`);
+    if(rsiEl&&d.rsi!=null){
+      rsiEl.innerText=d.rsi.toFixed(1);
+      if(d.rsi<30){rsiEl.style.background='rgba(0,230,118,.15)';rsiEl.style.color='#00e676';}
+      else if(d.rsi>70){rsiEl.style.background='rgba(255,68,68,.15)';rsiEl.style.color='#ff5252';}
+      else{rsiEl.style.background='rgba(255,255,255,.06)';rsiEl.style.color='rgba(255,255,255,.5)';}
+    }
+
+    // SMAs — cuáles está tocando
+    const smaCell=document.getElementById(`tsma-${id}`);
+    if(smaCell){
+      const THRESH=0.6;
+  const SMA_COLORS={
+  'SMA20': {hex:'#00ffff', rgb:'0,255,255'},
+  'SMA50': {hex:'#ffff00', rgb:'255,255,0'},
+  'SMA100':{hex:'#ffc864', rgb:'255,200,100'},
+  'SMA200':{hex:'#c896dc', rgb:'200,150,220'},
+};
+const defs=[{v:d.sma20,label:'SMA20'},{v:d.sma50,label:'SMA50'},{v:d.sma100,label:'SMA100'},{v:d.sma200,label:'SMA200'}];
+const near=defs.filter(s=>s.v&&Math.abs(d.price-s.v)/s.v*100<=THRESH);
+if(!near.length){
+  smaCell.innerHTML='<span style="font-size:10px;color:rgba(255,255,255,.12)">—</span>';
+}else{
+  smaCell.innerHTML=near.map(s=>{
+    const pct=((d.price-s.v)/s.v*100).toFixed(2);
+    const touching=Math.abs(parseFloat(pct))<=0.15;
+    const {hex,rgb}=SMA_COLORS[s.label];
+    const bg=touching?`rgba(${rgb},.28)`:`rgba(${rgb},.10)`;
+    return `<span class="sma-pill" style="background:${bg};color:${hex}" title="${s.label}: $${s.v.toFixed(2)} (${pct}%)">${touching?'●':'~'} ${s.label}</span>`;
+  }).join('');
+}
+    }
+
+    // Cruce 100/200
+    const crEl=document.getElementById(`tcr-${id}`);
+    if(crEl&&d.sma100&&d.sma200){
+      crEl.innerHTML=d.sma100>d.sma200
+        ?'<span style="color:#00e676;font-size:16px" title="Cruce Dorado — SMA100 sobre SMA200">▲</span>'
+        :'<span style="color:#ff4444;font-size:16px" title="Cruce de la Muerte — SMA100 bajo SMA200">▼</span>';
+    }
+
+    const esEl=document.getElementById(`tes-${id}`);
+    if(esEl)esEl.innerHTML=calcularEstado(d);
+  }catch(e){}
+}
+
+function calcularEstado(d){
+  if(d.rsi!=null&&d.rsi>68)return '<span class="badge no_favorable">No ahora</span>';
+  let pts=0;
+  if(d.rsi!=null){
+    if(d.rsi<30)pts+=3;else if(d.rsi<40)pts+=2;else if(d.rsi<50)pts+=1;
+  }
+  if(d.sma200&&Math.abs(d.price-d.sma200)/d.sma200*100<=0.8)pts+=4;
+  else if(d.sma100&&Math.abs(d.price-d.sma100)/d.sma100*100<=0.8)pts+=3;
+  else if(d.sma50&&Math.abs(d.price-d.sma50)/d.sma50*100<=0.8)pts+=2;
+  else if(d.sma20&&Math.abs(d.price-d.sma20)/d.sma20*100<=0.8)pts+=1;
+  if(d.sma200&&d.price<d.sma200)pts+=1;
+  if(pts>=5)return '<span class="badge favorable">Favorable</span>';
+  if(pts>=3)return '<span class="badge interesante">Interesante</span>';
+  if(pts>=2)return '<span class="badge considerar">Considerar</span>';
+  return '<span class="badge no_favorable">No ahora</span>';
+}
+
+function drawSparkline(id,spk){
+  if(!spk||!spk.closes||spk.closes.length<2)return;
+  const cvs=document.getElementById(`spark-${id}`);if(!cvs)return;
+  const isMobile=window.innerWidth<900,dpr=window.devicePixelRatio||1,W=isMobile?50:80,H=isMobile?18:22;
+  cvs.width=W*dpr;cvs.height=H*dpr;
+  const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
+  const closes=spk.closes,mn=Math.min(...closes),mx=Math.max(...closes),rng=mx-mn||1;
+  const up=spk.pct>=0,col=up?'#00e676':'#ff4444';
+  const pts=closes.map((v,i)=>({x:i/(closes.length-1)*W,y:H-2-(v-mn)/rng*(H-5)}));
+  const gr=ctx.createLinearGradient(0,0,0,H);
+  gr.addColorStop(0,up?'rgba(0,230,118,.18)':'rgba(255,68,68,.18)');gr.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=gr;ctx.fill();
+  ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+}
+
+/* ─────────────────────────────────────────────
+   VIGILANCIA
+───────────────────────────────────────────── */
+function startWatcher(){checkWatchlist();setInterval(checkWatchlist,5*60*1000);}
+
+async function checkWatchlist(){
+  if(watchlist.size===0){setWatchStatus('idle');renderWatchPanel();return;}
+  const tickers=[...watchlist].join(',');
+  try{
+    const r=await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
+    const d=await r.json();
+    const now=Date.now();
+    (d.alertas||[]).forEach(a=>{
+      const m=a.msg.match(/^\[([^\]]+)\]/),t=m?m[1]:'?';
+      if(!alertsByTicker[t])alertsByTicker[t]=[];
+      const isDup=alertsByTicker[t].some(x=>x.msg===a.msg&&now-x.ts<5*60*1000);
+      if(!isDup)alertsByTicker[t].push({msg:a.msg,nivel:a.nivel,ts:now});
+    });
+    const week=7*24*3600*1000;
+    Object.keys(alertsByTicker).forEach(t=>{
+      alertsByTicker[t]=alertsByTicker[t].filter(x=>now-x.ts<week);
+      if(!alertsByTicker[t].length)delete alertsByTicker[t];
+    });
+    const total=Object.values(alertsByTicker).reduce((s,a)=>s+a.length,0);
+    setWatchStatus(total>0?'alert':'ok');
+    renderWatchPanel();
+    (d.alertas||[]).forEach(a=>{
+      if(!shownToasts.has(a.msg)){shownToasts.add(a.msg);showToast(a.msg,a.nivel);setTimeout(()=>shownToasts.delete(a.msg),2*3600*1000);}
+    });
+    if(watchlist.has(currentSymbol))renderCurrentAlerts();
+  }catch(e){setWatchStatus('err');}
+}
+
+function setWatchStatus(s){
+  const dot=document.getElementById('watchDot'),lbl=document.getElementById('watchLabel');
+  const m={ok:['#00e676','Activa'],alert:['#c9a84c','¡Alerta!'],err:['#555','Error'],idle:['rgba(255,255,255,.15)','En espera']};
+  const[c,t]=m[s]||m.ok;dot.style.background=c;lbl.style.color=c;lbl.innerText=t;
+}
+
+function toggleWatchPanel(){
+  watchPanelOpen=!watchPanelOpen;
+  document.getElementById('watchBody').classList.toggle('open',watchPanelOpen);
+  document.getElementById('watchBody').classList.toggle('closed',!watchPanelOpen);
+  document.getElementById('watchChevron').style.transform=watchPanelOpen?'rotate(0deg)':'rotate(-90deg)';
+}
+
+function renderWatchPanel(){
+  const emptyEl=document.getElementById('watchEmpty'),listEl=document.getElementById('watch-alerts-list'),countEl=document.getElementById('watchCount');
+  if(watchlist.size===0){emptyEl.style.display='block';listEl.innerHTML='';countEl.innerText='';return;}
+  emptyEl.style.display='none';
+  const now=Date.now(),week=7*24*3600*1000;
+  let html='',total=0;
+  [...watchlist].forEach(ticker=>{
+    const alerts=(alertsByTicker[ticker]||[]).filter(x=>now-x.ts<week);
+    if(!alerts.length)return;
+    total+=alerts.length;
+    html+=`<div style="margin-bottom:6px">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between">
+        <span>${ticker}</span><span style="color:rgba(255,255,255,.2);font-weight:400">${alerts.length} alerta${alerts.length>1?'s':''}</span></div>`;
+    alerts.slice().reverse().forEach(a=>{
+      const fechaStr=new Date(a.ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      html+=`<div class="w-alerta ${a.nivel}" onclick="loadSymbol('${ticker}')">
+        <span class="w-ticker">${ticker}</span>${a.msg.replace(/^\[[^\]]+\]\s*/,'')}
+        <div style="font-size:8px;opacity:.45;margin-top:2px;display:flex;justify-content:space-between">
+          <span>${fechaStr}</span><span>${relTime(a.ts)}</span>
+        </div></div>`;
+    });
+    html+='</div>';
+  });
+  if(!html)html=`<div style="font-size:10px;color:rgba(255,255,255,.2);padding:4px 0">Sin alertas en los últimos 7 días.</div>`;
+  listEl.innerHTML=html;
+  countEl.innerText=total>0?`${total} alerta${total>1?'s':''} esta semana`:`${watchlist.size} activo${watchlist.size>1?'s':''} vigilados — sin alertas`;
+}
+
+function relTime(ts){
+  const d=Date.now()-ts;
+  if(d<60000)return'ahora';if(d<3600000)return`${Math.floor(d/60000)}m`;
+  if(d<86400000)return`${Math.floor(d/3600000)}h`;return`${Math.floor(d/86400000)}d`;
+}
+
+/* ─────────────────────────────────────────────
+   GRÁFICO PLOTLY
+───────────────────────────────────────────── */
+async function fetchData(sym){
+  const r=await fetch(`/api/chart/${encodeURIComponent(sym)}?interval=1d`);
+  const d=await r.json();if(d.error)throw new Error(d.error);return d;
+}
+
+const BG='#060810';
+
+function renderPlotly(apiData){
+  const cd=apiData.chart;
+  const dates=cd.candles.map(c=>new Date(c.x));
+  const closes=cd.candles.map(c=>c.c);
+  const last=closes[closes.length-1]||1;
+  const yFmt=last>500?',.0f':last>1?',.2f':',.4f';
+  const traces=[];
+
+  // ── Doble traza precio (área sólida + línea brillante, estilo Matrix) ──
+  traces.push({x:dates,y:closes,type:'scatter',mode:'none',name:'',
+    fill:'tozeroy',fillcolor:'rgba(255,255,255,.10)',hoverinfo:'skip',showlegend:false});
+  traces.push({x:dates,y:closes,type:'scatter',mode:'lines',name:'Precio 1D',
+    line:{color:'rgba(255,255,255,.95)',width:1.8},
+    fill:'tozeroy',fillcolor:'rgba(255,255,255,.055)',
+    hovertemplate:'<b>%{x|%d %b %Y}</b><br><b>$%{y:,.2f}</b><extra></extra>'});
+
+  const xy=arr=>({xs:arr.map(p=>new Date(p.x)),ys:arr.map(p=>p.y)});
+
+  // ── SMAs ──
+  [{key:'sma20',data:cd.sma20,col:'rgba(0,255,255,.85)',  w:1.2,name:'SMA 20'},
+   {key:'sma50',data:cd.sma50,col:'rgba(255,255,0,.85)',  w:1.5,name:'SMA 50'},
+   {key:'sma100',data:cd.sma100,col:'rgba(255,200,100,.85)',w:1.8,name:'SMA 100'},
+   {key:'sma200',data:cd.sma200,col:'rgba(200,150,220,.9)', w:2.2,name:'SMA 200'},
+  ].forEach(s=>{
+    if(!indVisible[s.key]||!cd[s.key]||!cd[s.key].length)return;
+    const{xs,ys}=xy(cd[s.key]);
+    traces.push({x:xs,y:ys,type:'scatter',mode:'lines',name:s.name,
+      line:{color:s.col,width:s.w},hovertemplate:`<b>${s.name}</b>: $%{y:,.2f}<extra></extra>`});
+  });
+
+  // ── SuperTrend ──
+  if(indVisible.st&&cd.st_buy&&cd.st_sell){
+    const stB=xy(cd.st_buy),stS=xy(cd.st_sell);
+    if(stB.xs.length)traces.push({x:stB.xs,y:stB.ys,type:'scatter',mode:'markers',name:'ST▲',
+      marker:{color:'rgba(0,255,100,.8)',size:3,symbol:'circle'},hovertemplate:'ST▲: $%{y:,.2f}<extra></extra>'});
+    if(stS.xs.length)traces.push({x:stS.xs,y:stS.ys,type:'scatter',mode:'markers',name:'ST▼',
+      marker:{color:'rgba(255,50,50,.8)',size:3,symbol:'circle'},hovertemplate:'ST▼: $%{y:,.2f}<extra></extra>'});
+  }
+
+  // ── RSI markers ──
+  if(indVisible.rsi&&cd.rsi_os&&cd.rsi_ob){
+    const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
+    if(ros.xs.length)traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
+      marker:{color:'#00e676',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🟢 RSI Sobreventa<br>$%{y:,.2f}<extra></extra>'});
+    if(rob.xs.length)traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
+      marker:{color:'#c9a84c',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🔴 RSI Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
+  }
+
+  // ── Smart Y-range: escala solo a las velas visibles (de Matrix) ──
+  const calcYRange=(xRange)=>{
+    const x0=new Date(xRange[0]).getTime(),x1=new Date(xRange[1]).getTime();
+    const vis=cd.candles.filter(c=>c.x>=x0&&c.x<=x1);
+    if(!vis.length)return null;
+    let mn=Math.min(...vis.map(c=>c.l||c.c)),mx=Math.max(...vis.map(c=>c.h||c.c));
+    // Incluir SMAs visibles
+    ['sma20','sma50','sma100','sma200'].forEach(k=>{
+      if(!cd[k])return;
+      cd[k].forEach(p=>{if(p.x>=x0&&p.x<=x1){mn=Math.min(mn,p.y);mx=Math.max(mx,p.y);}});
+    });
+    const pad=(mx-mn)*0.08;
+    return[mn-pad,mx+pad];
+  };
+
+  const layout={
+    paper_bgcolor:BG,plot_bgcolor:'#0a0a12',margin:{t:12,r:70,b:50,l:50},
+    hovermode:'x unified',
+    hoverlabel:{bgcolor:'rgba(10,10,22,.95)',bordercolor:'rgba(255,255,255,.1)',font:{family:'Space Mono,monospace',size:11,color:'#e0e0e0'}},
+    showlegend:false,
+    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.06)',
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},showspikes:true,spikecolor:'rgba(255,255,255,.1)',
+      spikedash:'dot',spikethickness:1,rangeslider:{visible:false}},
+    yaxis:{gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.06)',
+      tickfont:{color:'rgba(255,255,255,.4)',size:9},side:'right',tickformat:yFmt},
+    dragmode:'pan',font:{family:'DM Sans,sans-serif'}
+  };
+
+  // ── Rango X: 2 meses por defecto (ETF=1D, más contexto que Matrix) ──
+  const xEnd=dates[dates.length-1];
+  const xStart2m=xEnd?new Date(xEnd.getTime()-60*24*60*60*1000):null;
+  const xRangeToUse=savedXRange||(xStart2m?[xStart2m.toISOString(),xEnd.toISOString()]:null);
+  if(xRangeToUse)layout.xaxis.range=xRangeToUse;
+
+  const yRange=xRangeToUse?calcYRange(xRangeToUse):null;
+  if(yRange)layout.yaxis.range=yRange;
+
+  Plotly.react('plotDiv',traces,layout,{responsive:true,scrollZoom:true,displayModeBar:false,doubleClick:'reset'});
+
+  // Guardar rango + recalcular Y + sincronizar RSI al hacer pan/zoom
+  const div=document.getElementById('plotDiv');
+  if(div._relayoutHandler)div.removeListener('plotly_relayout',div._relayoutHandler);
+  div._relayoutHandler=ed=>{
+    if(ed['xaxis.range[0]']&&ed['xaxis.range[1]']){
+      savedXRange=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
+      const yr=calcYRange(savedXRange);
+      if(yr)Plotly.relayout('plotDiv',{'yaxis.range':yr});
+      // Sincronizar RSI
+      if(indVisible.rsi&&document.getElementById('rsiWrap').style.display!=='none'){
+        Plotly.relayout('rsiDiv',{'xaxis.range':savedXRange});
+      }
+    }else if(ed['xaxis.autorange']===true){
+      savedXRange=null;
+      if(indVisible.rsi&&document.getElementById('rsiWrap').style.display!=='none'){
+        Plotly.relayout('rsiDiv',{'xaxis.autorange':true});
+      }
+    }
+  };
+  div.on('plotly_relayout',div._relayoutHandler);
+
+  const rsiWrap=document.getElementById('rsiWrap');
+  if(indVisible.rsi){rsiWrap.style.display='block';renderRSIPanel(cd,dates,xRangeToUse);}
+  else{rsiWrap.style.display='none';}
+}
+
+function renderRSIPanel(cd,dates,xRange){
+  const closes=cd.candles.map(c=>c.c).filter(v=>v!=null);
+  const rsiDates=cd.candles.map(c=>new Date(c.x));
+  const period=14,rsiVals=new Array(closes.length).fill(null);
+  if(closes.length>period){
+    let gains=0,losses=0;
+    for(let i=1;i<=period;i++){const d=closes[i]-closes[i-1];if(d>=0)gains+=d;else losses-=d;}
+    let avgGain=gains/period,avgLoss=losses/period;
+    rsiVals[period]=avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    for(let i=period+1;i<closes.length;i++){
+      const d=closes[i]-closes[i-1];
+      avgGain=(avgGain*(period-1)+Math.max(d,0))/period;
+      avgLoss=(avgLoss*(period-1)+Math.max(-d,0))/period;
+      rsiVals[i]=avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    }
+  }
+  const xNorm=[],yNorm=[];
+  rsiDates.forEach((d,i)=>{const v=rsiVals[i];if(v==null)return;xNorm.push(d);yNorm.push(v);});
+  const d0=rsiDates[0]||new Date(),dN=rsiDates[rsiDates.length-1]||new Date();
+
+  Plotly.react('rsiDiv',[
+    {x:xNorm,y:yNorm.map(v=>v!=null&&v<30?v:null),type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'transparent',width:0},fill:'tozeroy',fillcolor:'rgba(0,230,118,.12)'},
+    {x:xNorm,y:yNorm.map(v=>v!=null&&v>70?v:null),type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',fill:'toself',fillcolor:'rgba(255,0,127,.10)',line:{color:'transparent',width:0}},
+    {x:xNorm,y:yNorm,type:'scatter',mode:'lines',name:'RSI 14',line:{color:'rgba(180,130,220,.9)',width:1.5},hovertemplate:'<b>RSI</b>: %{y:.1f}<extra></extra>'},
+    {x:[d0,dN],y:[30,30],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(0,230,118,.5)',width:1,dash:'dot'}},
+    {x:[d0,dN],y:[70,70],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(255,0,127,.5)',width:1,dash:'dot'}},
+    {x:[d0,dN],y:[50,50],type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',line:{color:'rgba(255,255,255,.08)',width:1,dash:'dot'}},
+  ],{
+    paper_bgcolor:BG,plot_bgcolor:'rgba(255,255,255,.01)',margin:{t:8,r:70,b:40,l:50},showlegend:false,
+    xaxis:{type:'date',gridcolor:'rgba(255,255,255,.03)',linecolor:'rgba(255,255,255,.05)',tickfont:{color:'rgba(255,255,255,.3)',size:9},rangeslider:{visible:false},...(xRange?{range:xRange}:{})},
+    yaxis:{range:[0,100],gridcolor:'rgba(255,255,255,.03)',tickfont:{color:'rgba(255,255,255,.2)',size:8},side:'right',tickvals:[0,30,50,70,100]},
+    shapes:[
+      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:0,y1:30,fillcolor:'rgba(0,230,118,.04)',line:{width:0}},
+      {type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:70,y1:100,fillcolor:'rgba(255,0,127,.04)',line:{width:0}}
+    ],font:{family:'DM Sans,sans-serif'},dragmode:'pan'
+  },{responsive:true,scrollZoom:false,displayModeBar:false});
+}
+
+function toggleInd(key){
+  indVisible[key]=!indVisible[key];
+  document.getElementById('tog-'+key).classList.toggle('off',!indVisible[key]);
+  if(lastData)renderPlotly(lastData);
+}
+
+function zoomChart(factor){
+  const div=document.getElementById('plotDiv');
+  if(!div||!div.layout||!div.layout.xaxis)return;
+  const xr=div.layout.xaxis.range;if(!xr||xr.length<2)return;
+  const s=new Date(xr[0]).getTime(),e=new Date(xr[1]).getTime();
+  const center=(s+e)/2,half=((e-s)/2)/factor;
+  savedXRange=[new Date(center-half).toISOString(),new Date(center+half).toISOString()];
+  Plotly.relayout('plotDiv',{'xaxis.range':savedXRange});
+}
+
+function resetZoom2m(){
+  if(!lastData)return;
+  const dates=lastData.chart.candles.map(c=>new Date(c.x));
+  const ld=dates[dates.length-1];
+  if(!ld)return;
+  savedXRange=[new Date(ld.getTime()-60*24*60*60*1000).toISOString(),ld.toISOString()];
+  renderPlotly(lastData);
+}
+
+/* ─────────────────────────────────────────────
+   CARGA SÍMBOLO
+───────────────────────────────────────────── */
+async function loadSymbol(sym){
+  currentSymbol=sym;savedXRange=null;
+  document.getElementById('symbolInput').value=sym;
+  document.querySelectorAll('.asset-row').forEach(r=>r.classList.remove('active-sym'));
+  const el=document.getElementById('fc-'+favId(sym));if(el)el.classList.add('active-sym');
+  document.getElementById('loadWrap').style.display='flex';
+  try{
+    const data=await fetchData(sym);
+    lastData=data;
+    document.getElementById('loadWrap').style.display='none';
+    
+    // Forzar visibilidad del gráfico
+    const chartBody = document.getElementById('chartBody');
+    if(chartBody) {
+        chartBody.style.display='block';
+        const btn = document.getElementById('btnToggleChart');
+        if(btn) btn.innerText='▲ Cerrar gráfico';
+    }
+    
+    renderPlotly(data);
+    updateSidebar(data);
+    renderCurrentAlerts();
+  }catch(e){
+    document.getElementById('loadWrap').style.display='none';
+    showToast('❌ '+e.message,'bearish');
+  }
+}
+
+function renderCurrentAlerts(){
+  const fromWatch=watchlist.has(currentSymbol)?(alertsByTicker[currentSymbol]||[]):[];
+  const fromData=lastData?(lastData.alertas||[]):[];
+  const all=fromWatch.length?fromWatch.map(a=>({msg:a.msg,nivel:a.nivel})):fromData;
+  renderAlertas(all);
+}
+
+function doSearch(){const s=document.getElementById('symbolInput').value.trim().toUpperCase();if(s)loadSymbol(s);}
+
+function abrirTradingView(){
+  const map={
+    '^DJI':'DJ:DJI','^NDX':'NASDAQ:NDX','^GSPC':'SP:SPX','^RUT':'TVC:RUT',
+    'YM=F':'CME_MINI:YM1!','NQ=F':'CME_MINI:NQ1!','GC=F':'TVC:GOLD','SI=F':'TVC:SILVER','CL=F':'TVC:USOIL',
+    'USDJPY=X':'FX:USDJPY','GBPJPY=X':'FX:GBPJPY','EURUSD=X':'FX:EURUSD','AUDUSD=X':'FX:AUDUSD',
+    '^TNX':'TVC:US10Y','^TYX':'TVC:US20Y','DX=F':'TVC:DXY',
+    'BTC-USD':'BINANCE:BTCUSDT','ETH-USD':'BINANCE:ETHUSDT',
+    'SPY':'AMEX:SPY','VOO':'AMEX:VOO','VTI':'AMEX:VTI','QQQ':'NASDAQ:QQQ','QQQM':'NASDAQ:QQQM',
+    'GLD':'AMEX:GLD','IAU':'AMEX:IAU','GDX':'AMEX:GDX','IWM':'AMEX:IWM','SMH':'NASDAQ:SMH',
+    'XLE':'AMEX:XLE','SCHD':'NASDAQ:SCHD','SCHG':'NASDAQ:SCHG','VGT':'AMEX:VGT',
+    'EEM':'AMEX:EEM','DIA':'AMEX:DIA','AAPL':'NASDAQ:AAPL',
+  };
+  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(map[currentSymbol]||currentSymbol)}`,'_blank');
+}
+
+function updateSidebar(data){
+  document.getElementById('dispSym').innerText=DISPLAY_NAMES[currentSymbol]||currentSymbol;
+  document.getElementById('dispPrice').innerText=formatPrice(data.last_price);
+  const chEl=document.getElementById('dispChange'),pre=data.change>=0?'+':'';
+  chEl.innerText=`${pre}${data.change.toFixed(2)} (${pre}${data.change_pct.toFixed(2)}%)`;
+  chEl.style.color=data.change>=0?'#00e676':'#ff4444';
+  updateRSI(data.rsi_current);
+  document.getElementById('alertSymLabel').innerText=currentSymbol;
+}
+
+function updateRSI(v){
+  v=parseFloat(v);if(isNaN(v))return;
+  document.getElementById('rsiVal').innerText=v.toFixed(1);
+  document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
+  const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
+  if(v<30){lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';val.style.color='#00e676';}
+  else if(v>70){lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';val.style.color='#ff5252';}
+  else{lbl.innerText='N';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700';val.style.color='#fff';}
+}
+
+function renderAlertas(alertas){
+  const box=document.getElementById('alertBox'),list=document.getElementById('alertList');
+  if(!alertas||!alertas.length){box.style.display='none';return;}
+  box.style.display='block';
+  list.innerHTML=alertas.map(a=>`<div class="alerta-item ${a.nivel}">${a.msg.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join('');
+}
+
+function showToast(msg,nivel,ms=6000){
+  const c=document.getElementById('toasts'),t=document.createElement('div');
+  t.className=`toast ${nivel}`;t.innerText=msg;c.appendChild(t);setTimeout(()=>t.remove(),ms);
+}
+
+/* ─────────────────────────────────────────────
+   NOTIFICACIONES
+───────────────────────────────────────────── */
+
+/* Obtiene/genera un user_id persistente en localStorage.
+   Si el usuario está autenticado con Supabase, se usará su email. */
+function getNotifUserId(){
+  let uid = localStorage.getItem('etf_user_id');
+  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
+  return uid;
+}
+function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
+
+function openNotifModal(){
+  const m=document.getElementById('notifModal');
+  if(!m) return;
+  m.style.display='flex';
+  if(typeof loadNotifPrefs === 'function') loadNotifPrefs();
+}
+
+function closeNotifModal(){
+  const m=document.getElementById('notifModal');
+  if(m) m.style.display='none';
+}
+
+function initNotifListeners(){
+  const tgEnabledEl = document.getElementById('tgEnabled');
+  if (tgEnabledEl) {
+    tgEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('tgFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  const emEnabledEl = document.getElementById('emEnabled');
+  if (emEnabledEl) {
+    emEnabledEl.addEventListener('change', function() {
+      const f = document.getElementById('emFields');
+      if (f) f.style.display = this.checked ? 'block' : 'none';
+      saveNotifPrefs();
+    });
+  }
+  
+  const tgIn = document.getElementById('tgChatId');
+  if (tgIn) tgIn.addEventListener('change', saveNotifPrefs);
+  const emIn = document.getElementById('emAddress');
+  if (emIn) emIn.onchange = saveNotifPrefs;
+  
+  // Forzar carga inicial de preferencias
+  setTimeout(() => {
+    if(typeof loadNotifPrefs === 'function') loadNotifPrefs();
+    const defaultSym = typeof ALL_ASSETS !== 'undefined' && ALL_ASSETS.length ? ALL_ASSETS[0].ticker : 'BTC-USD';
+    if(typeof loadSymbol === 'function') loadSymbol(defaultSym);
+  }, 500);
+}
+
+/* ─────────────────────────────────────────────
+   AUXILIARES
+───────────────────────────────────────────── */
+function favId(t){return 'f_'+t.replace(/[^a-z0-9]/gi,'_');}
+function formatPrice(p){
+  if(p===null||p===undefined)return '—';
+  return p>100?p.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):p.toFixed(4);
+}
+
+function buildFavGrid(){
+  const tbody=document.getElementById('favItems');
+  if(!tbody) return;
+  tbody.innerHTML='';
+  ALL_ASSETS.forEach(f=>{
+    const id=favId(f.ticker),isW=watchlist.has(f.ticker);
+    const tr=document.createElement('tr');
+    tr.id='fc-'+id;tr.className='asset-row';
+    tr.onclick=e=>{if(e.target.closest('.fav-star'))return;loadSymbol(f.ticker);};
+    tr.innerHTML=`
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="fav-star ${isW?'watching':'idle'}" id="star-${id}" onclick="toggleWatch('${f.ticker}',event)">★</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#e0e0e0">${f.ticker}</div>
+            <div style="font-size:10px;color:var(--muted)">${f.cat} ${f.name}</div>
+            <canvas id="spark-${id}" width="80" height="22" style="display:block;margin-top:3px;max-width:60px"></canvas>
+          </div>
+        </div>
+      </td>
+      <td style="text-align:center">
+        <span id="tst-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tp-${id}" class="mono" style="font-size:12px;font-weight:600;color:#fff">—</span>
+      </td>
+      <td style="text-align:right">
+        <span id="tc-${id}" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center">
+        <span id="tr-${id}" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)">—</span>
+      </td>
+      <td style="text-align:center;min-width:110px">
+        <div id="tsma-${id}" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center">
+          <span style="font-size:10px;color:rgba(255,255,255,.15)">—</span>
+        </div>
+      </td>
+      <td style="text-align:center"><span id="tcr-${id}" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.2)">—</span></td>
+      <td style="text-align:center"><span id="tes-${id}">—</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function refreshStars(){
+  ALL_ASSETS.forEach(f=>{
+    const s=document.getElementById('star-'+favId(f.ticker));
+    if(!s)return;
+    s.className='fav-star '+(watchlist.has(f.ticker)?'watching':'idle');
+  });
+}
+
+function toggleWatch(ticker,e){
+  if(e) e.stopPropagation();
+  if(watchlist.has(ticker)){
+    watchlist.delete(ticker);
+    showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);
+  } else {
+    if(!isVip && watchlist.size >= 3) {
+      openUpgradeModal();
+      return;
+    }
+    watchlist.add(ticker);
+    showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);
+  }
+  saveWL();refreshStars();updateWatchingCount();
+  if(typeof renderWatchPanel === 'function') renderWatchPanel();
+}
+
+function updateWatchingCount(){
+  const n=watchlist.size;
+  const wc = document.getElementById('watchingCount');
+  if(wc) wc.innerText=n>0?`— ${n} ★`:'';
+  const wcc = document.getElementById('watchCount');
+  if(wcc) wcc.innerText=n>0?`${n} activo${n>1?'s':''} en vigilancia`:'';
+}
+
+
+function toggleFavs(){
+  const b=document.getElementById('favBody'),c=document.getElementById('favChevron');
+  if(b.classList.contains('closed')){
+    b.classList.remove('closed');b.classList.add('open');
+    if(c) c.style.transform='rotate(0deg)';
+    ALL_ASSETS.forEach(f=>loadRowData(f.ticker));
+  }else{
+    b.classList.remove('open');b.classList.add('closed');
+    if(c) c.style.transform='rotate(-90deg)';
+  }
+}
+
+let isVip = false;
+
+async function loadNotifPrefs(){
+  try{
+    const userId = getNotifUserId();
+    const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
+    const p=await r.json();
+    isVip = !!p.is_vip;
+    console.log("VIP Status loaded:", isVip, "for user:", userId);
+    
+    // UI VIP Status
+    const btn = document.getElementById('notifBtn');
+    const badge = document.getElementById('hdr-badge');
+    if(btn) {
+        if(isVip) {
+            btn.innerHTML = '💎 Acceso VIP';
+            btn.style.borderColor = '#c9a84c';
+            btn.style.color = '#c9a84c';
+            if(badge) {
+                badge.innerText = 'PRO · 1D · SMAs';
+                badge.style.background = 'var(--gold)';
+                badge.style.color = '#000';
+                badge.style.border = 'none';
             }
-            localStorage.setItem('etf_watchlist', JSON.stringify([...watchlist]));
-            updateUI();
-        }
-
-        function updateUI() {
-            buildTable();
-            const list = document.getElementById('watchList');
-            list.innerHTML = watchlist.size ? [...watchlist].map(t => `<div style="padding:4px; color:#fff">★ ${t}</div>`).join('') : 'No hay activos vigilados';
-        }
-
-        async function redeemVipCode() {
-            const code = document.getElementById('vipCodeInput').value.trim();
-            if(!code) return;
-            const r = await fetch('/api/notifications/redeem?user_id=' + getUserId(), {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ code })
-            });
-            const d = await r.json();
-            if(d.ok) { showToast(d.msg, "bullish"); setTimeout(() => location.reload(), 1000); }
-            else showToast(d.error, "bearish");
-        }
-
-        function handleLogout() {
-            if(confirm("¿Cerrar sesión? Se borrarán tus datos locales.")) {
-                localStorage.clear();
-                location.reload();
+        } else {
+            btn.innerHTML = '🔔 Alertas (Free)';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            if(badge) {
+                badge.innerText = 'FREE · 1D · SMAs';
+                badge.style.background = 'rgba(255,255,255,0.05)';
+                badge.style.color = 'rgba(255,255,255,0.3)';
+                badge.style.border = '1px solid rgba(255,255,255,0.1)';
             }
         }
+    }
 
-        function openUpgradeModal() { 
-            document.getElementById('modal-overlay').style.display = 'flex';
-            document.getElementById('upgradeModal').style.display = 'block';
-            document.getElementById('notifModal').style.display = 'none';
-        }
-        function openNotifModal() { 
-            document.getElementById('modal-overlay').style.display = 'flex';
-            document.getElementById('notifModal').style.display = 'block';
-            document.getElementById('upgradeModal').style.display = 'none';
-        }
-        function closeModals() { document.getElementById('modal-overlay').style.display = 'none'; }
-        function showToast(m, n) {
-            const t = document.createElement('div');
-            t.className = 'toast ' + n; t.innerText = m;
-            document.getElementById('toasts').appendChild(t);
-            setTimeout(() => t.remove(), 3000);
-        }
-        function abrirTradingView() {
-            if(!window.isVip) return openUpgradeModal();
-            window.open('https://es.tradingview.com/chart/?symbol=' + currentSymbol, '_blank');
-        }
-        function doSearch() { const s = document.getElementById('symbolInput').value.trim().toUpperCase(); if(s) loadSymbol(s); }
+    const tgEn = document.getElementById('tgEnabled');
+    if(tgEn) tgEn.checked=!!p.telegram_enabled;
+    const tgId = document.getElementById('tgChatId');
+    if(tgId) tgId.value=p.telegram_chat_id||'';
+    const tgF = document.getElementById('tgFields');
+    if(tgF) tgF.style.display=p.telegram_enabled?'block':'none';
+    
+    const emEn = document.getElementById('emEnabled');
+    if(emEn) emEn.checked=!!p.email_enabled;
+    const emAd = document.getElementById('emAddress');
+    if(emAd) emAd.value=p.email_address||'';
+    const emF = document.getElementById('emFields');
+    if(emF) emF.style.display=p.email_enabled?'block':'none';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadPrefs();
-            loadSymbol(currentSymbol);
+    // Bloqueo visual si no es VIP
+    const statusBox = document.getElementById('notifStatus');
+    if(!isVip) {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
         });
-    </script>
+        if(statusBox) {
+            statusBox.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
+                    <div style="color:#e8c96d;text-align:center;font-weight:700">👑 Pásate a PRO para activar alertas</div>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="vipCodeInput" placeholder="Introduce código VIP" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
+                        <button onclick="redeemVipCode()" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        document.querySelectorAll('.notif-channel').forEach(el => {
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+        if(statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+        loadNotifStatus(); 
+    }
+    updateWatchlistUI();
+  }catch(e){ console.error("Error loading prefs:", e); }
+}
+
+async function redeemVipCode(explicitCode) {
+    const codeInput = document.getElementById('vipCodeInput');
+    let code = explicitCode || (codeInput ? codeInput.value.trim() : '');
+    if(!code) return;
+    
+    showToast("Verificando código...", "info");
+    try {
+        const userId = getNotifUserId();
+        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const d = await r.json();
+        if(d.ok) {
+            showToast(d.msg, "bullish");
+            setTimeout(() => location.reload(), 1000); 
+        } else {
+            showToast(d.error || "Código inválido", "bearish");
+        }
+    } catch(e) {
+        showToast("Error al conectar con el servidor", "bearish");
+    }
+}
+
+function updateWatchlistUI() {
+    const list = document.getElementById('watch-alerts-list');
+    const empty = document.getElementById('watchEmpty');
+    const count = document.getElementById('watchCount');
+    
+    if (watchlist.size === 0) {
+        if(empty) empty.style.display = 'block';
+        if(list) list.style.display = 'none';
+        if(count) count.innerText = '';
+    } else {
+        if(empty) empty.style.display = 'none';
+        if(list) list.style.display = 'flex';
+        
+        // LIMITAR A 3 SI NO ES VIP
+        if(!isVip && watchlist.size > 3) {
+            if(count) count.innerHTML = `⚠️ Plan Free: Límite 3 activos. <br> <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="openUpgradeModal()">Actualizar a PRO</span>`;
+        } else {
+            if(count) count.innerText = `${watchlist.size} activos vigilados`;
+        }
+    }
+}
+
+function abrirTradingView() {
+    if(!isVip) {
+        openUpgradeModal();
+        return;
+    }
+    const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+    window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+}
+
+function openUpgradeModal() {
+    const modal = document.createElement('div');
+    modal.id = 'upgradeModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(5px)';
+    modal.innerHTML = `
+        <div style="background:#0a0a12;border:1px solid var(--gold);padding:30px;border-radius:15px;max-width:400px;width:90%;text-align:center;box-shadow:0 0 30px rgba(201,168,76,0.2);max-height:90vh;overflow-y:auto">
+            <div style="font-size:40px;margin-bottom:15px">👑</div>
+            <h2 style="color:var(--gold2);margin-bottom:20px;font-family:var(--font-display)">Planes PRO</h2>
+            
+            <div style="padding:15px;background:rgba(201,168,76,0.1);border:1px solid var(--gold);border-radius:10px;margin-bottom:25px">
+                <p style="color:#fff;font-size:13px;margin-bottom:12px;font-weight:700">¿Ya tienes un código VIP?</p>
+                <div style="display:flex;gap:8px">
+                    <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce tu código" style="flex:1;padding:10px;border-radius:6px;background:#000;border:1px solid var(--gold);color:#fff;font-family:var(--font-mono);font-size:13px">
+                    <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:15px;margin-bottom:25px">
+                <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-weight:700;color:#fff">Mensual</div>
+                        <div style="font-size:18px;color:var(--gold)">10€ <span style="font-size:12px;color:var(--muted)">/ mes</span></div>
+                    </div>
+                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
+                        <li>✅ Alertas Ilimitadas</li>
+                        <li>✅ TradingView Pro</li>
+                        <li>✅ Todos los Activos</li>
+                        <li>✅ Soporte 24/7</li>
+                    </ul>
+                </div>
+                <div style="background:rgba(201,168,76,0.05);padding:15px;border-radius:10px;border:1px solid var(--gold);text-align:left">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-weight:700;color:#fff">Semestral <span style="font-size:10px;color:var(--gold2)">(Ahorro 30%)</span></div>
+                        <div style="font-size:18px;color:var(--gold)">42€ <span style="font-size:12px;color:var(--muted)">(7€/mes)</span></div>
+                    </div>
+                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
+                        <li>✅ Alertas Ilimitadas</li>
+                        <li>✅ TradingView Pro</li>
+                        <li>✅ Todos los Activos</li>
+                        <li>✅ Ahorro 18€</li>
+                    </ul>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-weight:700;color:#fff">Anual <span style="font-size:10px;color:#2dd47e">(Mejor Valor)</span></div>
+                        <div style="font-size:18px;color:var(--gold)">60€ <span style="font-size:12px;color:var(--muted)">(5€/mes)</span></div>
+                    </div>
+                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
+                        <li>✅ Alertas Ilimitadas</li>
+                        <li>✅ TradingView Pro</li>
+                        <li>✅ Todos los Activos</li>
+                        <li>✅ Ahorro 60€</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top:25px;background:rgba(255,255,255,0.02);border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.05)">
+                <h3 style="color:#fff;font-size:16px;margin-bottom:20px;text-align:left;font-family:var(--font-display)">Comparativa de Planes</h3>
+                <div style="overflow-x:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
+                                <th style="padding:12px 8px;color:var(--muted)">Característica</th>
+                                <th style="padding:12px 8px;color:#fff;text-align:center">Free</th>
+                                <th style="padding:12px 8px;color:var(--gold);text-align:center">PRO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Análisis SMA (20, 50, 100, 200)</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Indicador RSI / SuperTrend</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Alertas de Compra/Venta</td>
+                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Límite de Activos en Vigilancia</td>
+                                <td style="padding:12px 8px;text-align:center;color:#fff">3</td>
+                                <td style="padding:12px 8px;text-align:center;color:var(--gold)">Ilimitados</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Intervalo de Actualización</td>
+                                <td style="padding:12px 8px;text-align:center;color:#fff">24 horas</td>
+                                <td style="padding:12px 8px;text-align:center;color:#2dd47e">Tiempo Real</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Radar Financiero Diario</td>
+                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                                <td style="padding:12px 8px;color:#e0e0e0">Acceso a TradingView Pro</td>
+                                <td style="padding:12px 8px;text-align:center;color:#ff4444">✖</td>
+                                <td style="padding:12px 8px;text-align:center;color:#00e676">✔</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top:30px;padding:20px;background:rgba(201,168,76,0.05);border-radius:10px;border:1px solid rgba(201,168,76,0.2);text-align:left">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                        <span style="font-size:20px">📡</span>
+                        <h4 style="color:var(--gold2);margin:0;font-size:15px">¿Qué es el Radar Financiero?</h4>
+                    </div>
+                    <p style="color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:15px">
+                        Es nuestro boletín inteligente exclusivo que analiza el mercado mientras duermes y te entrega las claves del día.
+                    </p>
+                    <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:#e0e0e0;display:grid;grid-template-columns:1fr;gap:8px">
+                        <li><span style="color:#00e676">✔</span> <b>Panorama ETF:</b> Resumen de los 5 puntos críticos del mercado.</li>
+                        <li><span style="color:#00e676">✔</span> <b>Zonas de Movimiento:</b> Dónde están las oportunidades reales hoy.</li>
+                        <li><span style="color:#00e676">✔</span> <b>Impacto en Cartera:</b> Cómo afectan las noticias a tus activos vigilados.</li>
+                        <li><span style="color:#00e676">✔</span> <b>Alertas de Sentimiento:</b> Análisis de miedo y codicia del mercado.</li>
+                    </ul>
+                    <p style="margin-top:15px;font-size:10px;color:var(--gold);font-style:italic">Se genera automáticamente y se envía por Email y Telegram cada mañana.</p>
+                </div>
+            </div>
+
+            <p style="color:var(--muted);font-size:12px;margin-top:20px;margin-bottom:10px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin-bottom:20px;text-align:left">
+                <p style="color:var(--muted);font-size:10px;line-height:1.4;margin:0">
+                    <strong>Descargo de responsabilidad:</strong> Los análisis y alertas proporcionados por esta plataforma son meramente informativos y basados en indicadores técnicos. No constituyen asesoramiento financiero ni recomendaciones de inversión. Usted es el único responsable de sus decisiones financieras y del riesgo asumido en sus operaciones. El rendimiento pasado no garantiza resultados futuros.
+                </p>
+            </div>
+            <div style="display:flex;gap:10px">
+                <button onclick="this.closest('#upgradeModal').remove()" style="flex:1;padding:12px;border-radius:8px;border:1px solid #333;background:none;color:#fff;cursor:pointer">Cerrar</button>
+                <a href="https://t.me/LC_MarketScanner_bot" target="_blank" style="flex:1;padding:12px;border-radius:8px;background:var(--gold);color:#000;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center">Soporte</a>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function saveNotifPrefs(){
+  const prefs={
+    telegram_enabled:document.getElementById('tgEnabled').checked,
+    telegram_chat_id:document.getElementById('tgChatId').value.trim(),
+    email_enabled:document.getElementById('emEnabled').checked,
+    email_address:document.getElementById('emAddress').value.trim(),
+    watchlist:[...watchlist].join(','),
+  };
+  try{
+    fetch(notifUrl('/api/notifications/prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(prefs)});
+    showToast('✅ Preferencias guardadas','bullish',2000);
+  }catch(e){showToast('❌ Error guardando preferencias','bearish');}
+}
+
+async function loadNotifStatus(){
+  try{
+    const r=await fetch('/api/notifications/status');
+    const s=await r.json();
+    const chk=(ok,label)=>`${ok?'<span style="color:#2dd47e">✅</span>':'<span style="color:#f05858">⚠️</span>'} <span style="color:var(--text)">${label}</span>`;
+    document.getElementById('notifStatus').innerHTML=
+      '<div style="display:flex;flex-direction:column;gap:5px">'+
+      '<div style="font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-mono)">Estado del servidor</div>'+
+      `<div>${chk(s.telegram_configured,'Telegram Bot')}</div>`+
+      `<div>${chk(s.whatsapp_configured,'WhatsApp · Twilio')}</div>`+
+      `<div>${chk(s.email_configured,'Email · SMTP')}</div>`+
+      '</div>';
+  }catch(e){}
+}
+
+async function testChannel(channel){
+  showToast('Enviando prueba de '+channel+'...','info',3000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const d=await r.json();
+    const res=d.results[channel];
+    if(res&&res.ok)showToast('✅ Prueba '+channel+' enviada correctamente','bullish');
+    else showToast('❌ '+(res?.error||'No se pudo enviar. Revisa la configuración del servidor.'),'bearish',8000);
+  }catch(e){showToast('❌ Error de conexión','bearish');}
+}
+
+async function sendAlertsNow(){
+  const tickers=[...watchlist].join(',');
+  if(!tickers){showToast('Añade activos a vigilancia (★) primero','info');return;}
+  showToast('Analizando '+watchlist.size+' activos...','info',4000);
+  try{
+    const r=await fetch(notifUrl('/api/notifications/send'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers})});
+    const d=await r.json();
+    if(d.alertas_count>0)showToast(`✅ ${d.alertas_count} alertas enviadas por los canales activos`,'bullish');
+    else showToast('Sin alertas activas en tus activos vigilados ahora','info');
+  }catch(e){showToast('❌ Error enviando alertas','bearish');}
+}
+</script>
+<footer style="margin-top:20px;padding:20px 12px;border-top:1px solid rgba(255,255,255,0.05);text-align:center">
+  <p style="color:rgba(255,255,255,0.15);font-size:10px;line-height:1.6;max-width:900px;margin:0 auto;font-family:sans-serif">
+    <strong>Aviso Legal:</strong> LC Market Scanner / Expande Tu Futuro es una herramienta de análisis técnico automatizado. Los datos y alertas mostrados son meramente informativos y representan momentos que identificamos como técnicamente favorables según nuestros algoritmos. No somos asesores financieros ni recomendamos inversiones específicas. Usted es el único responsable de sus decisiones de inversión y del riesgo asumido. Invertir en mercados financieros conlleva riesgo de pérdida de capital.
+  </p>
+</footer>
 </body>
 </html>

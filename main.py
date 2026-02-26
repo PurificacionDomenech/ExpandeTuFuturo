@@ -4,7 +4,7 @@ import numpy as np
 import asyncio
 import os
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
 
@@ -17,10 +17,12 @@ INTERVAL_MAP = {
     "1mo": ("1mo", "max"),
 }
 
+
 def clean_df(df):
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     return df
+
 
 def calcular_indicadores(df):
     df["SMA20"]  = df["Close"].rolling(20).mean()
@@ -61,6 +63,7 @@ def calcular_indicadores(df):
 
     return df
 
+
 def detectar_alertas(df, ticker=""):
     alertas = []
     n = len(df) - 1
@@ -70,6 +73,7 @@ def detectar_alertas(df, ticker=""):
     precio_now  = float(df["Close"].iloc[n])
     precio_prev = float(df["Close"].iloc[n - 1])
     
+    # Asegurar que el ticker esté siempre presente y sea visible
     ticker_clean = str(ticker).upper().strip()
     prefix = f"[{ticker_clean}] " if ticker_clean else ""
 
@@ -111,19 +115,24 @@ def detectar_alertas(df, ticker=""):
 
     return alertas
 
+
 def safe(v):
     return float(v) if pd.notna(v) else None
 
+
 def ts_ms(idx):
     return [int(t.timestamp() * 1000) for t in idx]
+
 
 @app.get("/")
 async def splash():
     return FileResponse("templates/splash.html")
 
+
 @app.get("/app")
 async def index():
     return FileResponse("templates/index.html")
+
 
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, interval: str = "1d"):
@@ -206,6 +215,7 @@ async def get_chart(ticker: str, interval: str = "1d"):
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.get("/api/row/{ticker}")
 async def get_row(ticker: str):
     try:
@@ -243,22 +253,6 @@ async def get_row(ticker: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/sparkline/{ticker}")
-async def get_sparkline(ticker: str):
-    try:
-        df = yf.download(ticker.upper(), period="7d", interval="1d", progress=False)
-        if df.empty:
-            return {"error": "not found"}
-        df = clean_df(df)
-        closes = [float(x) for x in df["Close"].values]
-        last = closes[-1]
-        first = closes[0]
-        return {
-            "closes": closes,
-            "pct": (last - first) / first * 100
-        }
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.get("/api/watch")
 async def watch_favorites(tickers: str = ""):
@@ -277,8 +271,24 @@ async def watch_favorites(tickers: str = ""):
             pass
     return {"alertas": all_alertas}
 
+
+@app.get("/api/sparkline/{ticker}")
+async def sparkline(ticker: str):
+    try:
+        df = yf.download(ticker.upper(), period="1mo", interval="1d", progress=False)
+        if df.empty:
+            return {"closes": [], "pct": 0}
+        df = clean_df(df)
+        closes = df["Close"].dropna().tolist()
+        pct = (closes[-1] - closes[0]) / closes[0] * 100 if len(closes) > 1 else 0
+        return {"closes": [float(c) for c in closes], "pct": round(pct, 2)}
+    except Exception:
+        return {"closes": [], "pct": 0}
+
+
 @app.post("/api/admin/set-vip")
 async def set_vip_status(request: Request):
+    # Endpoint simple para que el admin dé acceso VIP
     body = await request.json()
     user_id = body.get("user_id")
     is_vip = body.get("is_vip", True)
@@ -290,10 +300,12 @@ async def set_vip_status(request: Request):
     save_prefs(prefs, user_id)
     return {"ok": True, "user_id": user_id, "is_vip": is_vip}
 
+
 @app.post("/api/admin/generate-code")
 async def generate_code():
     import secrets
     import string
+    # Solo el admin debería poder llamar a esto, por ahora es libre para que tú lo uses
     code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     try:
         with get_db() as conn:
@@ -304,96 +316,102 @@ async def generate_code():
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-@app.post("/api/notifications/redeem")
-async def redeem_code(request: Request):
-    try:
-        user_id = request.query_params.get("user_id")
-        body = await request.json()
-        if not user_id:
-            user_id = body.get("user_id", "default")
-        
-        code = body.get("code", "").upper().strip()
-        if not code:
-            return {"ok": False, "error": "Código vacío"}
-        
-        print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
-        
-        if code == "VIP333":
-            with get_db() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
-                    if not cur.fetchone():
-                        cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
-                    else:
-                        cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
-                conn.commit()
-            return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
 
+@app.post("/api/notifications/redeem")
+async def redeem_code(request: Request, user_id: str = "default"):
+    body = await request.json()
+    code = body.get("code", "").upper().strip()
+    if not code:
+        return {"ok": False, "error": "Código vacío"}
+    
+    # DEBUG: Imprimir para ver qué llega
+    print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
+    
+    try:
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                 row = cur.fetchone()
                 if not row:
+                    print(f"DEBUG: Código '{code}' no encontrado en BD")
                     return {"ok": False, "error": "Código inválido"}
                 if row[0]:
+                    print(f"DEBUG: Código '{code}' ya está marcado como usado")
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
+                # Marcar código como usado (excepto para el código maestro VIP333)
+                if code != "VIP333":
+                    cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
+                
+                # ACTUALIZACIÓN DIRECTA DE VIP
                 cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
                 if not cur.fetchone():
                     cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
                 else:
                     cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
+                
             conn.commit()
-            
         print(f"DEBUG: Canje exitoso para {user_id}")
         return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
     except Exception as e:
         print(f"DEBUG: Error en redeem: {e}")
         return {"ok": False, "error": str(e)}
 
+
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
     prefs = load_prefs(user_id)
+    # Si NO es VIP, capamos las opciones para que el front lo sepa
     if not prefs.get("is_vip"):
         prefs["telegram_enabled"] = False
         prefs["email_enabled"] = False
+    # Si ES VIP, devolvemos las prefs tal cual están en la BD (incluyendo telegram_enabled=True si el usuario lo activó)
     return prefs
+
 
 @app.post("/api/notifications/prefs")
 async def set_notification_prefs(request: Request, user_id: str = "default"):
     body = await request.json()
     prefs = load_prefs(user_id)
+    
+    # Impedir que un no-vip active notificaciones vía API
     if not prefs.get("is_vip"):
         body["telegram_enabled"] = False
         body["email_enabled"] = False
+        
     prefs.update(body)
     save_prefs(prefs, user_id)
     return {"ok": True}
+
 
 @app.post("/api/notifications/test")
 async def test_notification(request: Request, user_id: str = "default"):
     body = await request.json()
     channel = body.get("channel", "all")
     prefs = load_prefs(user_id)
+
     test_alertas = [
         {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $185.20"},
         {"nivel": "bearish", "msg": "[BTC-USD] Death Cross SMA100/200 detectado"},
         {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $182.50"},
     ]
+
     test_prefs = dict(prefs)
     if channel != "all":
         for ch in ["telegram", "whatsapp", "email"]:
             if ch != channel:
                 test_prefs[f"{ch}_enabled"] = False
+
     results = await dispatch_notifications(test_prefs, test_alertas)
     return {"ok": True, "results": results}
+
 
 @app.post("/api/notifications/send")
 async def send_alerts_now(request: Request, user_id: str = "default"):
     body = await request.json()
     tickers_str = body.get("tickers", "")
     prefs = load_prefs(user_id)
+
     all_alertas = []
     for t in tickers_str.split(","):
         t = t.strip()
@@ -407,10 +425,12 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
                 all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
         except Exception:
             pass
+
     if all_alertas:
         results = await dispatch_notifications(prefs, all_alertas)
         return {"ok": True, "alertas_count": len(all_alertas), "results": results}
     return {"ok": True, "alertas_count": 0, "msg": "Sin alertas activas para enviar"}
+
 
 @app.get("/api/notifications/status")
 async def notification_status():
@@ -423,6 +443,7 @@ async def notification_status():
         "email_configured":     has_smtp,
     }
 
+
 @app.post("/api/telegram/webhook")
 async def telegram_webhook(request: Request):
     import httpx
@@ -431,12 +452,14 @@ async def telegram_webhook(request: Request):
         message = data.get("message") or data.get("edited_message")
         if not message:
             return {"ok": True}
+
         chat_id = message["chat"]["id"]
         text = message.get("text", "")
         first_name = message["from"].get("first_name", "")
         token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
         if not token:
             return {"ok": False}
+
         if text.startswith("/start") or text.startswith("/chatid"):
             reply = (
                 f"¡Hola {first_name}! 👋\n\n"
@@ -450,6 +473,7 @@ async def telegram_webhook(request: Request):
                 f"Tu <b>Chat ID</b> es: <code>{chat_id}</code>\n\n"
                 f"Usa /start para ver las instrucciones completas."
             )
+
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
@@ -459,15 +483,18 @@ async def telegram_webhook(request: Request):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+
 @app.get("/api/telegram/setup-webhook")
 async def setup_telegram_webhook(request: Request):
     import httpx
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
         return {"ok": False, "error": "TELEGRAM_BOT_TOKEN no configurado"}
+
     domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
     if not domain:
         return {"ok": False, "error": "Dominio no detectado"}
+
     webhook_url = f"https://{domain}/api/telegram/webhook"
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
@@ -477,7 +504,8 @@ async def setup_telegram_webhook(request: Request):
         result = r.json()
     return {"ok": result.get("ok"), "webhook_url": webhook_url, "telegram_response": result}
 
+
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
