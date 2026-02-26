@@ -161,7 +161,7 @@ def format_alerts_text(alertas: list) -> str:
     except Exception:
         now = datetime.now()
     now_str = now.strftime("%H:%M")
-    lines = [f"⚡ ETF Market Scanner · {now_str}\n"]
+    lines = [f"🔱 ETF · Expande Tu Futuro · {now_str}\n"]
     for a in alertas:
         icon = icon_map.get(a.get("nivel", "info"), "🟡")
         lines.append(f"{icon} {a['msg']}")
@@ -185,9 +185,9 @@ def format_alerts_html(alertas: list) -> str:
     <div style="font-family:'DM Sans',Arial,sans-serif;background:#060810;
                 color:#e8e4d9;padding:30px;border-radius:12px;max-width:600px">
       <div style="border-bottom:1px solid rgba(201,168,76,.3);padding-bottom:15px;margin-bottom:20px">
-        <h2 style="color:#e8c96d;margin:0;font-size:18px">⚡ ETF Market Scanner</h2>
+        <h2 style="color:#e8c96d;margin:0;font-size:18px">🔱 ETF · Expande Tu Futuro</h2>
         <p style="color:rgba(232,228,217,.5);font-size:12px;margin:4px 0 0">
-          Expande Tu Futuro · {now_str}</p>
+          Alertas de mercado · {now_str}</p>
       </div>
     """]
     for a in alertas:
@@ -201,7 +201,7 @@ def format_alerts_html(alertas: list) -> str:
     parts.append("""
       <div style="margin-top:25px;padding-top:15px;border-top:1px solid rgba(201,168,76,.15);
                   font-size:10px;color:rgba(232,228,217,.3)">
-        Enviado por ETF Market Scanner · Expande Tu Futuro
+        Enviado por ETF · Expande Tu Futuro
       </div>
     </div>""")
     return "\n".join(parts)

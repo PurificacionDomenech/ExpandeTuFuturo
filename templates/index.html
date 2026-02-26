@@ -1102,9 +1102,10 @@
     /* ─────────────────────────────────────────────
        INIT
     ───────────────────────────────────────────── */
-    window.onload = () => {
-      initNotifListeners();
+    window.onload = async () => {
       loadWL();
+      await loadNotifPrefs();
+      initNotifListeners();
       document.getElementById('favCount').innerText = `— ${ALL_ASSETS.length} activos`;
       document.getElementById('favChevron').style.transform = 'rotate(0deg)';
       buildFavGrid();
@@ -1693,12 +1694,6 @@
       const emIn = document.getElementById('emAddress');
       if (emIn) emIn.onchange = saveNotifPrefs;
 
-      // Forzar carga inicial de preferencias
-      setTimeout(() => {
-        if (typeof loadNotifPrefs === 'function') loadNotifPrefs();
-        const defaultSym = typeof ALL_ASSETS !== 'undefined' && ALL_ASSETS.length ? ALL_ASSETS[0].ticker : 'BTC-USD';
-        if (typeof loadSymbol === 'function') loadSymbol(defaultSym);
-      }, 500);
     }
 
     /* ─────────────────────────────────────────────
@@ -1885,8 +1880,19 @@
 
     async function redeemVipCode(explicitCode) {
       const codeInput = document.getElementById('vipCodeInput');
-      let code = explicitCode || (codeInput ? codeInput.value.trim() : '');
-      if (!code) return;
+      const upgradeInput = document.getElementById('vipCodeInputUpgrade');
+      let code = '';
+      if (explicitCode && explicitCode.trim()) {
+        code = explicitCode.trim();
+      } else if (upgradeInput && upgradeInput.value.trim()) {
+        code = upgradeInput.value.trim();
+      } else if (codeInput && codeInput.value.trim()) {
+        code = codeInput.value.trim();
+      }
+      if (!code) {
+        showToast("Introduce un código VIP primero", "bearish");
+        return;
+      }
 
       showToast("Verificando código...", "info");
       try {
@@ -1901,8 +1907,16 @@
         if (!txt || txt.startsWith('<!')) { showToast("Servidor no disponible", "bearish"); return; }
         const d = JSON.parse(txt);
         if (d.ok) {
-          showToast(d.msg, "bullish");
-          setTimeout(() => location.reload(), 1000);
+          isVip = true;
+          showToast("💎 ¡VIP ACTIVADO! Ya puedes añadir activos ilimitados", "bullish", 4000);
+          const btn = document.getElementById('notifBtn');
+          const badge = document.getElementById('hdr-badge');
+          if (btn) { btn.innerHTML = '💎 Acceso VIP'; btn.style.borderColor = '#c9a84c'; btn.style.color = '#c9a84c'; }
+          if (badge) { badge.innerText = 'PRO · 1D · SMAs'; badge.style.background = 'var(--gold)'; badge.style.color = '#000'; badge.style.border = 'none'; }
+          const modal = document.getElementById('upgradeModal');
+          if (modal) modal.remove();
+          refreshStars();
+          updateWatchingCount();
         } else {
           showToast(d.error || "Código inválido", "bearish");
         }
