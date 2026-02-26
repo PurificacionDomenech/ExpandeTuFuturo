@@ -26,6 +26,10 @@ INTERVAL_MAP = {
 }
 
 
+def safe(v):
+    return float(v) if pd.notna(v) else None
+
+
 def ts_ms(idx):
     return [int(t.timestamp() * 1000) for t in idx]
 

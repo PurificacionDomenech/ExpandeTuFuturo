@@ -1614,20 +1614,20 @@
       document.getElementById('symbolInput').value = sym;
       document.querySelectorAll('.asset-row').forEach(r => r.classList.remove('active-sym'));
       const el = document.getElementById('fc-' + favId(sym)); if (el) el.classList.add('active-sym');
+      
+      // Asegurar que el gráfico esté visible al cargar
+      const chartBody = document.getElementById('chartBody');
+      const btn = document.getElementById('btnToggleChart');
+      if (chartBody && chartBody.style.display === 'none') {
+        chartBody.style.display = 'block';
+        if (btn) btn.innerText = '▲ Cerrar gráfico';
+      }
+
       document.getElementById('loadWrap').style.display = 'flex';
       try {
         const data = await fetchData(sym);
         lastData = data;
         document.getElementById('loadWrap').style.display = 'none';
-
-        // Forzar visibilidad del gráfico
-        const chartBody = document.getElementById('chartBody');
-        if (chartBody) {
-          chartBody.style.display = 'block';
-          const btn = document.getElementById('btnToggleChart');
-          if (btn) btn.innerText = '▲ Cerrar gráfico';
-        }
-
         renderPlotly(data);
         updateSidebar(data);
         renderCurrentAlerts();
