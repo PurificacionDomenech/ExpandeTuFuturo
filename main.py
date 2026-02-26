@@ -6,6 +6,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+import psycopg2.extras
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
 from indicators import clean_df, calcular_indicadores, detectar_alertas
 import cron_scanner
@@ -360,6 +361,28 @@ async def notification_status():
     except Exception as e:
         print(f"ERROR in notification_status: {e}")
         return {"error": str(e)}
+
+
+@app.get("/api/vip/etf-details")
+async def get_etf_details(user_id: str = "default"):
+    prefs = load_prefs(user_id)
+    if not prefs.get("is_vip"):
+        return {"ok": False, "error": "Acceso exclusivo para usuarios VIP/PRO"}
+    
+    watchlist = prefs.get("watchlist", "")
+    if not watchlist:
+        return {"ok": True, "details": []}
+    
+    tickers = [t.strip().upper() for t in watchlist.split(",") if t.strip()]
+    
+    try:
+        with get_db() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM etf_details WHERE ticker = ANY(%s)", (tickers,))
+                rows = cur.fetchall()
+                return {"ok": True, "details": [dict(r) for r in rows]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @app.post("/api/telegram/webhook")
