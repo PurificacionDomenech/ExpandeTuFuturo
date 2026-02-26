@@ -1327,7 +1327,7 @@ async function loadNotifPrefs(){
   }catch(e){ console.error("Error loading prefs:", e); }
 }
 
-async function redeemVipCode(explicitCode) {
+async window.redeemVipCode = async function(explicitCode) {
     const codeInput = document.getElementById('vipCodeInput');
     const codeInputUpgrade = document.getElementById('vipCodeInputUpgrade');
     let code = explicitCode || (codeInput ? codeInput.value.trim() : '') || (codeInputUpgrade ? codeInputUpgrade.value.trim() : '');
@@ -1397,7 +1397,7 @@ function openUpgradeModal() {
                 <p style="color:#fff;font-size:13px;margin-bottom:12px;font-weight:700">¿Ya tienes un código VIP?</p>
                 <div style="display:flex;gap:8px">
                     <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce tu código" style="flex:1;padding:10px;border-radius:6px;background:#000;border:1px solid var(--gold);color:#fff;font-family:var(--font-mono);font-size:13px">
-                    <button id="btnRedeemUpgrade" onclick="redeemVipCode()" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
+                    <button id="btnRedeemUpgrade" onclick="window.redeemVipCode()" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
                 </div>
             </div>
 
