@@ -25,12 +25,17 @@ async def scan_and_notify():
             
             for t in tickers:
                 try:
-                    df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+                    # Usar un periodo más corto para evitar timeouts y asegurar datos frescos
+                    df = yf.download(t.upper(), period="5d", interval="1h", progress=False)
                     if not df.empty:
                         df = clean_df(df)
-                        df = calcular_indicadores(df)
-                        alerts = detectar_alertas(df, ticker=t.upper())
-                        all_alerts.extend(alerts)
+                        # Para calcular indicadores de largo plazo (SMA200) necesitamos más datos
+                        df_full = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+                        if not df_full.empty:
+                            df_full = clean_df(df_full)
+                            df_full = calcular_indicadores(df_full)
+                            alerts = detectar_alertas(df_full, ticker=t.upper())
+                            all_alerts.extend(alerts)
                 except Exception as e:
                     print(f"Error escaneando {t}: {e}")
             

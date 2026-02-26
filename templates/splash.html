@@ -564,6 +564,11 @@ async function checkSession() {
   if (!sb) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
+    
+    // Si hay un parámetro 'select_account', no redirigimos
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('select_account')) return;
+
     if (session && session.user) {
       const name = session.user.user_metadata?.full_name || session.user.email;
       // Actualizar botones si ya hay sesión
@@ -589,7 +594,8 @@ checkSession();
 async function doLogout() {
   if (!sb) return;
   await sb.auth.signOut();
-  window.location.reload();
+  // Al cerrar sesión, recargamos con el parámetro para que no vuelva a entrar
+  window.location.href = '/?select_account=true';
 }
 
 /* ─── AUTH HANDLERS ─── */
