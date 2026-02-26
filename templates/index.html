@@ -168,7 +168,7 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
     <span id="hdr-title"><span style="color:#c9a84c">E</span>XPANDE <span style="color:#c9a84c">T</span>U <span style="color:#c9a84c">F</span>UTURO</span>
     <span id="hdr-badge" style="background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.3); border:1px solid rgba(255,255,255,0.1);">FREE · 1D · SMAs</span>
     <button id="notifBtn" onclick="openNotifModal()" style="margin-right:5px">🔔 Alertas</button>
-    <button id="proBtn" onclick="openUpgradeModal()" style="padding:6px 12px;border-radius:7px;background:linear-gradient(135deg,#c9a84c,#e8c96d);border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap">👑 Planes PRO</button>
+    <button id="proBtn" onclick="openUpgradeModal()" style="display:block !important; padding:6px 12px; border-radius:7px; background:linear-gradient(135deg,#c9a84c,#e8c96d); border:none; color:#000; font-size:11px; font-weight:800; cursor:pointer; font-family:var(--font-mono); transition:all .2s; white-space:nowrap">👑 Planes PRO</button>
     <button id="logoutBtn" onclick="handleLogout()" style="padding:6px 12px;border-radius:7px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap">Cerrar sesión</button>
     <div id="hdr-search" style="margin-left:auto">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
@@ -614,11 +614,28 @@ function refreshStars(){
 }
 
 function toggleWatch(ticker,e){
-  e.stopPropagation();
-  if(watchlist.has(ticker)){watchlist.delete(ticker);showToast(`Eliminado de vigilancia: ${ticker}`,'info',2500);}
-  else{watchlist.add(ticker);showToast(`⭐ ${ticker} añadido a vigilancia`,'info',2500);}
-  saveWL();refreshStars();updateWatchingCount();renderWatchPanel();
-}
+    if(e) e.stopPropagation();
+    const isW=watchlist.has(ticker);
+    
+    // Check VIP status from the global variable updated by loadNotifPrefs
+    if(!window.isVip && !isW && watchlist.size >= 3) {
+      showToast("Plan FREE limitado a 3 activos", "info");
+      openUpgradeModal();
+      return;
+  }
+    
+    if(isW){
+      watchlist.delete(ticker);
+      showToast("Eliminado de vigilancia: " + ticker, "info", 2000);
+    } else {
+      watchlist.add(ticker);
+      showToast("⭐ " + ticker + " añadido a vigilancia", "info", 2000);
+    }
+    saveWL();
+    refreshStars();
+    updateWatchingCount();
+    if(typeof renderWatchPanel === 'function') renderWatchPanel();
+  }
 
 function updateWatchingCount(){
   const n=watchlist.size;
@@ -1101,10 +1118,13 @@ function showToast(msg,nivel,ms=6000){
 /* Obtiene/genera un user_id persistente en localStorage.
    Si el usuario está autenticado con Supabase, se usará su email. */
 function getNotifUserId(){
-  let uid = localStorage.getItem('etf_user_id');
-  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
-  return uid;
-}
+    let uid = localStorage.getItem('etf_user_id');
+    if(!uid){
+      uid='user_'+Math.random().toString(36).slice(2,15)+Date.now().toString(36);
+      localStorage.setItem('etf_user_id',uid);
+    }
+    return uid;
+  }
 function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
 
 function openNotifModal(){
@@ -1252,19 +1272,22 @@ function toggleFavs(){
 let isVip = false;
 
 function handleLogout() {
-  if (confirm("¿Estás seguro de que deseas cerrar la sesión?")) {
-    localStorage.removeItem('etf_user_id');
-    localStorage.removeItem('etf_watchlist');
-    location.reload();
+    if (confirm("¿Estás seguro de que deseas cerrar la sesión? Se borrarán tus favoritos y configuración.")) {
+      localStorage.clear();
+      // Forzamos un ID nuevo al recargar para que no use el anterior
+      const newId = 'user_' + Math.random().toString(36).slice(2, 15);
+      localStorage.setItem('etf_user_id', newId);
+      location.href = '/'; 
+    }
   }
-}
+  }
 
 async function loadNotifPrefs(){
   try{
     const userId = getNotifUserId();
     const r=await fetch(`/api/notifications/prefs?user_id=${userId}`);
     const p=await r.json();
-    isVip = !!p.is_vip;
+    window.isVip = !!p.is_vip; isVip = window.isVip;
     console.log("VIP Status loaded:", isVip, "for user:", userId);
     
     // UI VIP Status
@@ -1393,13 +1416,17 @@ function updateWatchlistUI() {
 }
 
 function abrirTradingView() {
-    if(!isVip) {
-        openUpgradeModal();
-        return;
-    }
-    const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
-    window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
-}
+      if(!window.isVip) {
+          showToast("Función exclusiva de Planes PRO", "info");
+          openUpgradeModal();
+          return;
+      }
+      const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+      window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+  }
+      const symbol = typeof currentSymbol !== 'undefined' ? currentSymbol : 'AAPL';
+      window.open(`https://es.tradingview.com/chart/?symbol=${symbol}`, '_blank');
+  }
 
 function openUpgradeModal() {
     const modal = document.createElement('div');
