@@ -324,6 +324,26 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
           <tbody id="favItems"></tbody>
         </table>
       </div>
+      <!-- AVISO LEGAL Y CERRAR SESIÓN -->
+      <div style="padding:24px; border-top:1px solid rgba(255,255,255,0.06); margin-top:15px; background:rgba(255,255,255,0.02); border-radius:0 0 14px 14px;">
+        <div style="background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.3); border-radius:14px; padding:24px; color:#ffffff; font-size:14px; line-height:1.7; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+          <strong style="color:#e8c96d; display:block; margin-bottom:12px; font-size:16px; text-transform:uppercase; letter-spacing:1.5px; font-weight:800;">⚠️ Aviso Legal</strong>
+          <span style="display:inline-block; max-width:500px;">
+            LC Market Scanner / Expande Tu Futuro es una herramienta de análisis técnico automatizado. 
+            Los datos y alertas mostrados son meramente informativos y representan momentos que identificamos como técnicamente favorables según nuestros algoritmos. 
+            <br><br>
+            <strong style="color:#e8c96d; font-weight:800; border-bottom:1px solid rgba(232,201,109,0.3); padding-bottom:2px;">No somos asesores financieros ni recomendamos inversiones específicas.</strong> 
+            <br><br>
+            Usted es el único responsable de sus decisiones de inversión y del riesgo asumido. 
+            Invertir en mercados financieros conlleva riesgo de pérdida de capital.
+          </span>
+        </div>
+        <div style="margin-top:25px; text-align:center;">
+          <button onclick="doLogout()" style="background:linear-gradient(135deg, rgba(240,88,88,0.2), rgba(240,88,88,0.1)); border:1px solid rgba(240,88,88,0.5); color:#ff5252; padding:14px 32px; border-radius:12px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:800; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; box-shadow:0 4px 15px rgba(240,88,88,0.15);">
+            🚪 Cerrar Sesión Segura
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1037,6 +1057,20 @@ function getNotifUserId(){
   let uid = localStorage.getItem('etf_user_id');
   if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('etf_user_id',uid);}
   return uid;
+}
+
+async function doLogout() {
+  const SUPABASE_URL = 'https://fhuijfysfqzjmzadsace.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
+  if(typeof supabase !== 'undefined') {
+    try {
+      const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await sb.auth.signOut();
+    } catch(e) { console.error('Logout error:', e); }
+  }
+  // Limpiar ID local también para asegurar cambio de cuenta
+  localStorage.removeItem('etf_user_id');
+  window.location.href = '/?select_account=true';
 }
 function notifUrl(path){return path+'?user_id='+encodeURIComponent(getNotifUserId());}
 
