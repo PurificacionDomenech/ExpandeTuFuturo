@@ -318,30 +318,34 @@ async def redeem_code(request: Request):
         
         print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
         
+        if code == "VIP333":
+            with get_db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
+                    if not cur.fetchone():
+                        cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
+                    else:
+                        cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
+                conn.commit()
+            return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
+
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                 row = cur.fetchone()
                 if not row:
-                    if code == "VIP333":
-                        pass
-                    else:
-                        print(f"DEBUG: Código '{code}' no encontrado en BD")
-                        return {"ok": False, "error": "Código inválido"}
-                elif row[0] and code != "VIP333":
-                    print(f"DEBUG: Código '{code}' ya está marcado como usado")
+                    return {"ok": False, "error": "Código inválido"}
+                if row[0]:
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                if code != "VIP333":
-                    cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
-                
+                cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
                 if not cur.fetchone():
                     cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
                 else:
                     cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
-                
             conn.commit()
+            
         print(f"DEBUG: Canje exitoso para {user_id}")
         return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
     except Exception as e:
