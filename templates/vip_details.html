@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle Favoritos PRO - Expande Tu Futuro</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #060810; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #c9a84c; font-size: 24px; border-bottom: 1px solid rgba(201,168,76,0.2); padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: rgba(255,255,255,0.02); border-radius: 8px; overflow: hidden; }
+        th { text-align: left; padding: 15px; background: rgba(201,168,76,0.1); color: #c9a84c; font-weight: 700; text-transform: uppercase; font-size: 12px; }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .ticker { font-weight: 700; color: #fff; }
+        .ratio { color: #e8c96d; }
+        .yield { color: #00e676; }
+        .empty { text-align: center; padding: 40px; color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Detalle de Activos Favoritos (PRO)</h1>
+        <div id="content">Cargando datos...</div>
+    </div>
+    <script>
+        async function loadData() {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('user_id') || 'default';
+            try {
+                const res = await fetch(`/api/vip/etf-details?user_id=${encodeURIComponent(userId)}`);
+                const data = await res.json();
+                const container = document.getElementById('content');
+                if (data.ok && data.details && data.details.length > 0) {
+                    let html = '<table><thead><tr><th>Ticker</th><th>Nombre</th><th>Gestor</th><th>Ratio Gastos</th><th>Rendimiento 5a</th><th>Antigüedad</th><th>País</th></tr></thead><tbody>';
+                    data.details.forEach(d => {
+                        html += `<tr>
+                            <td class="ticker">${d.ticker}</td>
+                            <td>${d.name || '—'}</td>
+                            <td>${d.manager || '—'}</td>
+                            <td class="ratio">${d.expense_ratio || '—'}</td>
+                            <td class="yield">${d.yield_5y || '—'}</td>
+                            <td>${d.age || '—'}</td>
+                            <td>${d.country || '—'}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty">No tienes activos favoritos guardados o no hay datos PRO disponibles.</div>';
+                }
+            } catch (e) {
+                document.getElementById('content').innerHTML = '<div class="empty">Error al cargar los datos.</div>';
+            }
+        }
+        loadData();
+    </script>
+</body>
+</html>

@@ -109,6 +109,10 @@ async def sparkline(ticker: str):
         return {"closes": [float(c) for c in closes], "pct": round((closes[-1]-closes[0])/closes[0]*100, 2) if len(closes)>1 else 0}
     except: return {"closes": [], "pct": 0}
 
+@app.get("/api/vip/details-view")
+async def vip_details_view():
+    return FileResponse("templates/vip_details.html")
+
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):
     body = await request.json()
