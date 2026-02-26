@@ -1221,7 +1221,10 @@
           fetch(`/api/row/${encodeURIComponent(ticker)}`),
           fetch(`/api/sparkline/${encodeURIComponent(ticker)}`)
         ]);
-        const d = await rowRes.json(), spk = await spkRes.json();
+        if (!rowRes.ok || !spkRes.ok) return;
+        const rt = await rowRes.text(), st = await spkRes.text();
+        if (!rt || rt.startsWith('<!') || !st || st.startsWith('<!')) return;
+        const d = JSON.parse(rt), spk = JSON.parse(st);
         if (d.error) return;
         const id = favId(ticker);
 
@@ -1330,7 +1333,10 @@
       const tickers = [...watchlist].join(',');
       try {
         const r = await fetch(`/api/watch?tickers=${encodeURIComponent(tickers)}`);
-        const d = await r.json();
+        if (!r.ok) { setWatchStatus('idle'); return; }
+        const wt = await r.text();
+        if (!wt || wt.startsWith('<!')) { setWatchStatus('idle'); return; }
+        const d = JSON.parse(wt);
         const now = Date.now();
         (d.alertas || []).forEach(a => {
           const m = a.msg.match(/^\[([^\]]+)\]/), t = m ? m[1] : '?';
@@ -1405,7 +1411,10 @@
     ───────────────────────────────────────────── */
     async function fetchData(sym) {
       const r = await fetch(`/api/chart/${encodeURIComponent(sym)}?interval=1d`);
-      const d = await r.json(); if (d.error) throw new Error(d.error); return d;
+      if (!r.ok) throw new Error("Server error " + r.status);
+      const t = await r.text();
+      if (!t || t.startsWith('<!')) throw new Error("Server unavailable");
+      const d = JSON.parse(t); if (d.error) throw new Error(d.error); return d;
     }
 
     const BG = '#060810';
@@ -1867,7 +1876,10 @@
       try {
         const userId = getNotifUserId();
         const r = await fetch(`/api/notifications/prefs?user_id=${userId}`);
-        const p = await r.json();
+        if (!r.ok) { console.warn("Prefs endpoint returned", r.status); return; }
+        const text = await r.text();
+        if (!text || text.startsWith('<!')) { console.warn("Non-JSON prefs response"); return; }
+        const p = JSON.parse(text);
         isVip = !!p.is_vip;
         console.log("VIP Status loaded:", isVip, "for user:", userId);
 
@@ -1955,7 +1967,10 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({code})
         });
-        const d = await r.json();
+        if (!r.ok) { showToast("Error del servidor, intenta de nuevo", "bearish"); return; }
+        const txt = await r.text();
+        if (!txt || txt.startsWith('<!')) { showToast("Servidor no disponible", "bearish"); return; }
+        const d = JSON.parse(txt);
         if (d.ok) {
           showToast(d.msg, "bullish");
           setTimeout(() => location.reload(), 1000);
@@ -2154,7 +2169,10 @@
     async function loadNotifStatus() {
       try {
         const r = await fetch('/api/notifications/status');
-        const s = await r.json();
+        if (!r.ok) return;
+        const st = await r.text();
+        if (!st || st.startsWith('<!')) return;
+        const s = JSON.parse(st);
         const chk = (ok, label) => `${ok ? '<span style="color:#2dd47e">✅</span>' : '<span style="color:#f05858">⚠️</span>'} <span style="color:var(--text)">${label}</span>`;
         document.getElementById('notifStatus').innerHTML =
           '<div style="display:flex;flex-direction:column;gap:5px">' +
@@ -2169,7 +2187,10 @@
       showToast('Enviando prueba de ' + channel + '...', 'info', 3000);
       try {
         const r = await fetch(notifUrl('/api/notifications/test'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({channel})});
-        const d = await r.json();
+        if (!r.ok) { showToast('❌ Error del servidor', 'bearish'); return; }
+        const tt = await r.text();
+        if (!tt || tt.startsWith('<!')) { showToast('❌ Servidor no disponible', 'bearish'); return; }
+        const d = JSON.parse(tt);
         const res = d.results[channel];
         if (res && res.ok) showToast('✅ Prueba ' + channel + ' enviada correctamente', 'bullish');
         else showToast('❌ ' + (res?.error || 'No se pudo enviar. Revisa la configuración del servidor.'), 'bearish', 8000);
@@ -2182,7 +2203,10 @@
       showToast('Analizando ' + watchlist.size + ' activos...', 'info', 4000);
       try {
         const r = await fetch(notifUrl('/api/notifications/send'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({tickers})});
-        const d = await r.json();
+        if (!r.ok) { showToast('❌ Error del servidor', 'bearish'); return; }
+        const st2 = await r.text();
+        if (!st2 || st2.startsWith('<!')) { showToast('❌ Servidor no disponible', 'bearish'); return; }
+        const d = JSON.parse(st2);
         if (d.alertas_count > 0) showToast(`✅ ${d.alertas_count} alertas enviadas por los canales activos`, 'bullish');
         else showToast('Sin alertas activas en tus activos vigilados ahora', 'info');
       } catch (e) {showToast('❌ Error enviando alertas', 'bearish');}

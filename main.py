@@ -3,17 +3,33 @@ import pandas as pd
 import numpy as np
 import asyncio
 import os
+import traceback
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
 
 app = FastAPI()
+
+class CatchAllMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as e:
+            print(f"UNHANDLED ERROR on {request.url.path}: {e}")
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Internal server error", "detail": str(e)}
+            )
+
+app.add_middleware(CatchAllMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 async def startup_event():
-    # Lazy import to avoid circular dependency
     import cron_scanner
     asyncio.create_task(cron_scanner.main())
     print("Background scanner task started")
