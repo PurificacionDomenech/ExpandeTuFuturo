@@ -7,15 +7,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
-from indicators import clean_df, calcular_indicadores, detectar_alertas
-import cron_scanner
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 async def startup_event():
-    # Iniciar el escáner automático en segundo plano
+    # Lazy import to avoid circular dependency
+    import cron_scanner
     asyncio.create_task(cron_scanner.main())
     print("Background scanner task started")
 
@@ -25,33 +24,120 @@ INTERVAL_MAP = {
     "1mo": ("1mo", "max"),
 }
 
+def clean_df(df):
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    return df
+
+def calcular_indicadores(df):
+    df["SMA20"]  = df["Close"].rolling(20).mean()
+    df["SMA50"]  = df["Close"].rolling(50).mean()
+    df["SMA100"] = df["Close"].rolling(100).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
+
+    delta = df["Close"].diff()
+    gain  = delta.where(delta > 0, 0).rolling(14).mean()
+    loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df["RSI"] = 100 - (100 / (1 + gain / loss))
+
+    df["TR"] = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - df["Close"].shift()).abs(),
+        (df["Low"]  - df["Close"].shift()).abs()
+    ], axis=1).max(axis=1)
+    df["ATR"] = df["TR"].rolling(7).mean()
+    hl2 = (df["High"] + df["Low"]) / 2
+    df["UB"] = hl2 + 3.0 * df["ATR"]
+    df["LB"] = hl2 - 3.0 * df["ATR"]
+    df["ST"]  = np.nan
+    df["Dir"] = 0
+
+    for i in range(1, len(df)):
+        ps  = df.iloc[i-1]["ST"]
+        pd_ = df.iloc[i-1]["Dir"]
+        cl  = float(df.iloc[i]["LB"])
+        cu  = float(df.iloc[i]["UB"])
+        cc  = float(df.iloc[i]["Close"])
+        if np.isnan(ps):
+            df.iloc[i, df.columns.get_loc("ST")]  = cl
+            df.iloc[i, df.columns.get_loc("Dir")] = 1
+            continue
+        st = max(cl, ps) if pd_ == 1 else min(cu, ps)
+        df.iloc[i, df.columns.get_loc("ST")]  = st
+        df.iloc[i, df.columns.get_loc("Dir")] = 1 if cc > st else -1
+
+    return df
+
+def detectar_alertas(df, ticker=""):
+    alertas = []
+    n = len(df) - 1
+    if n < 2:
+        return alertas
+
+    precio_now  = float(df["Close"].iloc[n])
+    precio_prev = float(df["Close"].iloc[n - 1])
+    
+    ticker_clean = str(ticker).upper().strip()
+    prefix = f"[{ticker_clean}] " if ticker_clean else ""
+
+    smas = {
+        "SMA20":  (df["SMA20"].iloc[n],  df["SMA20"].iloc[n-1]),
+        "SMA50":  (df["SMA50"].iloc[n],  df["SMA50"].iloc[n-1]),
+        "SMA100": (df["SMA100"].iloc[n], df["SMA100"].iloc[n-1]),
+        "SMA200": (df["SMA200"].iloc[n], df["SMA200"].iloc[n-1]),
+    }
+
+    for nombre, (sma_now, sma_prev) in smas.items():
+        if not (pd.notna(sma_now) and pd.notna(sma_prev)):
+            continue
+        if precio_prev < sma_prev and precio_now >= sma_now:
+            alertas.append({"nivel": "bullish",
+                "msg": prefix + "Precio cruza " + nombre + " al alza $" + str(round(precio_now, 2))})
+        elif precio_prev > sma_prev and precio_now <= sma_now:
+            alertas.append({"nivel": "bearish",
+                "msg": prefix + "Precio cruza " + nombre + " a la baja $" + str(round(precio_now, 2))})
+        elif sma_now > 0 and abs(precio_now - sma_now) / sma_now * 100 <= 0.4:
+            alertas.append({"nivel": "info",
+                "msg": prefix + "Precio tocando " + nombre + " $" + str(round(precio_now, 2))})
+
+    s100_n, s100_p = smas["SMA100"]
+    s200_n, s200_p = smas["SMA200"]
+    if pd.notna(s100_n) and pd.notna(s200_n) and pd.notna(s100_p) and pd.notna(s200_p):
+        if s100_p < s200_p and s100_n >= s200_n:
+            alertas.append({"nivel": "bullish", "msg": prefix + "Golden Cross SMA100/200"})
+        elif s100_p > s200_p and s100_n <= s200_n:
+            alertas.append({"nivel": "bearish", "msg": prefix + "Death Cross SMA100/200"})
+
+    s20_n, s20_p = smas["SMA20"]
+    s50_n, s50_p = smas["SMA50"]
+    if pd.notna(s20_n) and pd.notna(s50_n) and pd.notna(s20_p) and pd.notna(s50_p):
+        if s20_p < s50_p and s20_n >= s50_n:
+            alertas.append({"nivel": "bullish", "msg": prefix + "SMA20 cruza sobre SMA50"})
+        elif s20_p > s50_p and s20_n <= s50_n:
+            alertas.append({"nivel": "bearish", "msg": prefix + "SMA20 cruza bajo SMA50"})
+
+    return alertas
 
 def safe(v):
     return float(v) if pd.notna(v) else None
 
-
 def ts_ms(idx):
     return [int(t.timestamp() * 1000) for t in idx]
-
 
 @app.get("/")
 async def splash():
     return FileResponse("templates/splash.html")
 
-
 @app.get("/app")
 async def index():
     return FileResponse("templates/index.html")
-
 
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, interval: str = "1d"):
     try:
         yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "1y"))
-        # Forzar un periodo razonable si 'max' falla
         df = yf.download(ticker.upper(), period=yf_period, interval=yf_interval, progress=False)
         if df.empty:
-            # Reintentar con 1y por si acaso
             df = yf.download(ticker.upper(), period="1y", interval=yf_interval, progress=False)
             if df.empty:
                 return {"error": "Simbolo no encontrado o sin datos: " + ticker}
@@ -129,7 +215,6 @@ async def get_chart(ticker: str, interval: str = "1d"):
     except Exception as e:
         return {"error": str(e)}
 
-
 @app.get("/api/row/{ticker}")
 async def get_row(ticker: str):
     try:
@@ -167,7 +252,6 @@ async def get_row(ticker: str):
     except Exception as e:
         return {"error": str(e)}
 
-
 @app.get("/api/watch")
 async def watch_favorites(tickers: str = ""):
     all_alertas = []
@@ -185,7 +269,6 @@ async def watch_favorites(tickers: str = ""):
             pass
     return {"alertas": all_alertas}
 
-
 @app.get("/api/sparkline/{ticker}")
 async def sparkline(ticker: str):
     try:
@@ -199,10 +282,8 @@ async def sparkline(ticker: str):
     except Exception:
         return {"closes": [], "pct": 0}
 
-
 @app.post("/api/admin/set-vip")
 async def set_vip_status(request: Request):
-    # Endpoint simple para que el admin dé acceso VIP
     body = await request.json()
     user_id = body.get("user_id")
     is_vip = body.get("is_vip", True)
@@ -214,12 +295,10 @@ async def set_vip_status(request: Request):
     save_prefs(prefs, user_id)
     return {"ok": True, "user_id": user_id, "is_vip": is_vip}
 
-
 @app.post("/api/admin/generate-code")
 async def generate_code():
     import secrets
     import string
-    # Solo el admin debería poder llamar a esto, por ahora es libre para que tú lo uses
     code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     try:
         with get_db() as conn:
@@ -230,7 +309,6 @@ async def generate_code():
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):
     body = await request.json()
@@ -238,27 +316,20 @@ async def redeem_code(request: Request, user_id: str = "default"):
     if not code:
         return {"ok": False, "error": "Código vacío"}
     
-    # DEBUG: Imprimir para ver qué llega
-    print(f"DEBUG: Intentando canjear código '{code}' para usuario '{user_id}'")
-    
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                 row = cur.fetchone()
                 if not row:
-                    print(f"DEBUG: Código '{code}' no encontrado en BD")
                     return {"ok": False, "error": "Código inválido"}
                 if row[0]:
-                    print(f"DEBUG: Código '{code}' ya está marcado como usado")
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                # Marcar código como usado (excepto para VIP333 y los nuevos VIP001-VIP010)
                 special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 11)]
                 if code not in special_codes:
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
-                # ACTUALIZACIÓN DIRECTA DE VIP
                 cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
                 if not cur.fetchone():
                     cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
@@ -266,33 +337,26 @@ async def redeem_code(request: Request, user_id: str = "default"):
                     cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
                 
             conn.commit()
-        print(f"DEBUG: Canje exitoso para {user_id}")
         return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
     except Exception as e:
-        print(f"DEBUG: Error en redeem: {e}")
         return {"ok": False, "error": str(e)}
-
 
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
     try:
         prefs = load_prefs(user_id)
-        # Si NO es VIP, capamos las opciones para que el front lo sepa
         if not prefs.get("is_vip"):
             prefs["telegram_enabled"] = False
             prefs["email_enabled"] = False
         return prefs
     except Exception as e:
-        print(f"ERROR in get_notification_prefs: {e}")
         return {"is_vip": False, "error": str(e)}
-
 
 @app.post("/api/notifications/prefs")
 async def set_notification_prefs(request: Request, user_id: str = "default"):
     body = await request.json()
     prefs = load_prefs(user_id)
     
-    # Impedir que un no-vip active notificaciones vía API
     if not prefs.get("is_vip"):
         body["telegram_enabled"] = False
         body["email_enabled"] = False
@@ -301,7 +365,6 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
     save_prefs(prefs, user_id)
     return {"ok": True}
 
-
 @app.post("/api/notifications/test")
 async def test_notification(request: Request, user_id: str = "default"):
     body = await request.json()
@@ -309,9 +372,9 @@ async def test_notification(request: Request, user_id: str = "default"):
     prefs = load_prefs(user_id)
 
     test_alertas = [
-        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $185.20"},
+        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza 85.20"},
         {"nivel": "bearish", "msg": "[BTC-USD] Death Cross SMA100/200 detectado"},
-        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $182.50"},
+        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 82.50"},
     ]
 
     test_prefs = dict(prefs)
@@ -322,7 +385,6 @@ async def test_notification(request: Request, user_id: str = "default"):
 
     results = await dispatch_notifications(test_prefs, test_alertas)
     return {"ok": True, "results": results}
-
 
 @app.post("/api/notifications/send")
 async def send_alerts_now(request: Request, user_id: str = "default"):
@@ -349,7 +411,6 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
         return {"ok": True, "alertas_count": len(all_alertas), "results": results}
     return {"ok": True, "alertas_count": 0, "msg": "Sin alertas activas para enviar"}
 
-
 @app.get("/api/notifications/status")
 async def notification_status():
     try:
@@ -362,9 +423,7 @@ async def notification_status():
             "email_configured":     has_smtp,
         }
     except Exception as e:
-        print(f"ERROR in notification_status: {e}")
         return {"error": str(e)}
-
 
 @app.post("/api/telegram/webhook")
 async def telegram_webhook(request: Request):
@@ -405,7 +464,6 @@ async def telegram_webhook(request: Request):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-
 @app.get("/api/telegram/setup-webhook")
 async def setup_telegram_webhook(request: Request):
     import httpx
@@ -425,7 +483,6 @@ async def setup_telegram_webhook(request: Request):
         )
         result = r.json()
     return {"ok": result.get("ok"), "webhook_url": webhook_url, "telegram_response": result}
-
 
 if __name__ == "__main__":
     import uvicorn
