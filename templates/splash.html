@@ -564,10 +564,33 @@ async function checkSession() {
   if (!sb) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) window.location.href = '/app';
+    if (session && session.user) {
+      const name = session.user.user_metadata?.full_name || session.user.email;
+      // Actualizar botones si ya hay sesión
+      const navCta = document.querySelector('.nav-cta');
+      if (navCta) {
+        navCta.innerHTML = `Entrar como ${name.split(' ')[0]} →`;
+        navCta.onclick = () => window.location.href = '/app';
+      }
+      const heroBtn = document.querySelector('.btn-primary');
+      if (heroBtn) {
+        heroBtn.innerHTML = `Continuar al Dashboard →`;
+        heroBtn.onclick = () => window.location.href = '/app';
+      }
+      const trialNote = document.querySelector('.trial-note');
+      if (trialNote) {
+        trialNote.innerHTML = `Sesión activa como <strong>${name}</strong><br><a href="#" onclick="doLogout()" style="color:var(--muted);text-decoration:underline">Cerrar sesión e iniciar con otra cuenta</a>`;
+      }
+    }
   } catch(e) {}
 }
 checkSession();
+
+async function doLogout() {
+  if (!sb) return;
+  await sb.auth.signOut();
+  window.location.reload();
+}
 
 /* ─── AUTH HANDLERS ─── */
 async function doRegister() {
