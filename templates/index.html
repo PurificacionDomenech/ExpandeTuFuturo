@@ -169,7 +169,8 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
     <span id="hdr-badge" style="background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.3); border:1px solid rgba(255,255,255,0.1);">FREE · 1D · SMAs</span>
     <button id="notifBtn" onclick="openNotifModal()" style="margin-right:5px">🔔 Alertas</button>
     <button id="proBtn" onclick="openUpgradeModal()" style="padding:6px 12px;border-radius:7px;background:linear-gradient(135deg,#c9a84c,#e8c96d);border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap">👑 Planes PRO</button>
-    <div id="hdr-search">
+    <button id="logoutBtn" onclick="handleLogout()" style="padding:6px 12px;border-radius:7px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-mono);transition:all .2s;white-space:nowrap">Cerrar sesión</button>
+    <div id="hdr-search" style="margin-left:auto">
       <input id="symbolInput" type="text" placeholder="AAPL · BTC-USD · ^GSPC · SPY…"
              autocomplete="off" autocorrect="off" autocapitalize="off"
              onkeydown="if(event.key==='Enter')doSearch()">
@@ -1249,6 +1250,14 @@ function toggleFavs(){
 }
 
 let isVip = false;
+
+function handleLogout() {
+  if (confirm("¿Estás seguro de que deseas cerrar la sesión?")) {
+    localStorage.removeItem('etf_user_id');
+    localStorage.removeItem('etf_watchlist');
+    location.reload();
+  }
+}
 
 async function loadNotifPrefs(){
   try{
