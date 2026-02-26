@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import time
-from main import calcular_indicadores, detectar_alertas, clean_df
+from indicators import calcular_indicadores, detectar_alertas, clean_df
 from notifications import dispatch_notifications, get_db
 
 async def scan_and_notify():
@@ -53,10 +53,14 @@ async def scan_and_notify():
         print(f"Error en scan_and_notify: {e}")
 
 async def main():
+    print("Scanner background loop active")
     while True:
-        await scan_and_notify()
-        # Esperar 1 hora entre escaneos (3600 segundos)
-        await asyncio.sleep(3600)
+        try:
+            await scan_and_notify()
+        except Exception as e:
+            print(f"Loop error: {e}")
+        # Reducir a 30 minutos para mayor frescura (1800 segundos)
+        await asyncio.sleep(1800)
 
 if __name__ == "__main__":
     asyncio.run(main())
