@@ -1124,7 +1124,15 @@
       const visible = body.style.display !== 'none';
       body.style.display = visible ? 'none' : 'block';
       btn.innerText = visible ? '▼ Abrir gráfico' : '▲ Cerrar gráfico';
-      if (!visible && lastData) renderPlotly(lastData);
+      
+      if (!visible) {
+        // Al abrir, forzar renderizado si hay datos
+        if (lastData) {
+          renderPlotly(lastData);
+        } else if (currentSymbol) {
+          loadSymbol(currentSymbol);
+        }
+      }
     }
 
     /* ─────────────────────────────────────────────
