@@ -45,8 +45,8 @@ body{font-family:'DM Sans',sans-serif;background:#060810;color:#e0e0e0;min-heigh
   font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.06em}
 #rsiRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #rsiBar{height:5px;border-radius:3px;position:relative;margin-top:5px;
-  background:linear-gradient(to right,rgba(0,230,118,.4) 0%,rgba(0,230,118,.4) 30%,
-    rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,rgba(255,68,68,.4) 70%,rgba(255,68,68,.4) 100%)}
+  background:linear-gradient(to right,rgba(255,68,68,.4) 0%,rgba(255,68,68,.4) 30%,
+    rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,rgba(0,230,118,.4) 70%,rgba(0,230,118,.4) 100%)}
 #rsiCursor{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:#fff;
   box-shadow:0 0 5px rgba(255,255,255,.5);transform:translate(-50%,-50%);transition:left .4s;left:50%}
 
@@ -805,11 +805,11 @@ function renderPlotly(apiData){
   if(indVisible.rsi&&cd.rsi_os&&cd.rsi_ob){
     const ros=xy(cd.rsi_os),rob=xy(cd.rsi_ob);
     if(ros.xs.length)traces.push({x:ros.xs,y:ros.ys,type:'scatter',mode:'markers',name:'RSI<30',
-      marker:{color:'#00e676',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
-      hovertemplate:'🟢 RSI Sobreventa<br>$%{y:,.2f}<extra></extra>'});
+      marker:{color:'#ff5252',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🔴 RSI Sobreventa (Bajo)<br>$%{y:,.2f}<extra></extra>'});
     if(rob.xs.length)traces.push({x:rob.xs,y:rob.ys,type:'scatter',mode:'markers',name:'RSI>70',
-      marker:{color:'#c9a84c',size:12,symbol:'triangle-down',line:{color:'#060810',width:1.5}},
-      hovertemplate:'🔴 RSI Sobrecompra<br>$%{y:,.2f}<extra></extra>'});
+      marker:{color:'#00e676',size:12,symbol:'triangle-up',line:{color:'#060810',width:1.5}},
+      hovertemplate:'🟢 RSI Sobrecompra (Alto)<br>$%{y:,.2f}<extra></extra>'});
   }
 
   // ── Smart Y-range: escala solo a las velas visibles (de Matrix) ──
@@ -1010,8 +1010,8 @@ function updateRSI(v){
   document.getElementById('rsiVal').innerText=v.toFixed(1);
   document.getElementById('rsiCursor').style.left=`calc(${Math.min(Math.max(v,0),100)}% - 5px)`;
   const lbl=document.getElementById('rsiLbl'),val=document.getElementById('rsiVal');
-  if(v<30){lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';val.style.color='#00e676';}
-  else if(v>70){lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';val.style.color='#ff5252';}
+  if(v<30){lbl.innerText='SV';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,68,68,.12);color:#ff5252;font-weight:700';val.style.color='#ff5252';}
+  else if(v>70){lbl.innerText='SC';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(0,230,118,.12);color:#00e676;font-weight:700';val.style.color='#00e676';}
   else{lbl.innerText='N';lbl.style.cssText='font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-weight:700';val.style.color='#fff';}
 }
 
