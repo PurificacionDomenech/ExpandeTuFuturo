@@ -817,9 +817,6 @@
             </div>
             <div id="watch-alerts-list"></div>
             <div id="watchCount" style="font-size:10px;margin-top:6px;color:rgba(255,0,127,.5);font-weight:600"></div>
-            <button id="btnVipDetails" onclick="openVipDetails()" style="display:none; width:100%; margin-top:10px; padding:8px; border-radius:8px; background:var(--gold-dim); border:1px solid var(--gold); color:var(--gold2); font-size:11px; font-weight:700; cursor:pointer; font-family:'DM Sans',sans-serif">
-              📊 Detalle Favoritos PRO
-            </button>
           </div>
         </div>
       </div>
@@ -1039,41 +1036,7 @@
     </div>
   </div>
 
-    <!-- MODAL DETALLES VIP -->
-    <div id="vipDetailsModal" class="modal-bg" onclick="closeVipDetailsOutside(event)">
-      <div class="modal" style="max-width:900px; width:95%; background:#0a0d18; border:1px solid var(--gold); border-radius:16px;">
-        <div class="modal-header" style="padding:24px;">
-          <div>
-            <div class="modal-title" style="font-size:20px; color:#fff;">Información Detallada de Favoritos</div>
-            <div class="modal-sub" style="font-size:12px; color:rgba(255,255,255,0.4);">Datos fundamentales y de gestión (Exclusivo PRO)</div>
-          </div>
-          <button class="modal-close" onclick="closeVipDetails()" style="background:none; border:none; color:#fff; cursor:pointer; font-size:20px;">✕</button>
-        </div>
-        <div class="modal-body" style="padding:0 24px 24px; overflow-x:auto">
-          <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:800px">
-            <thead>
-              <tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.1)">
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Ticker</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Nombre</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Gestor</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Ratio Gastos</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Rend. 5 años</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">Antigüedad</th>
-                <th style="text-align:left; font-weight:700; padding:12px; color:var(--gold);">País</th>
-              </tr>
-            </thead>
-            <tbody id="vipDetailsTableBody">
-              <!-- Se llena por JS -->
-            </tbody>
-          </table>
-          <div id="vipDetailsLoading" style="padding:40px; text-align:center; display:none">
-            <div class="spin" style="margin:0 auto"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="toasts"></div>
+  <div id="toasts"></div>
 
   <script>
     /* ─────────────────────────────────────────────
