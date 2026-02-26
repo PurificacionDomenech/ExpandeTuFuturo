@@ -1734,11 +1734,6 @@
       return uid;
     }
 
-    async function openVipDetails() {
-      const email = localStorage.getItem('etf_user_email') || 'default';
-      window.open('/api/vip/details-view?user_id=' + encodeURIComponent(email), '_blank');
-    }
-
     async function doLogout() {
       const SUPABASE_URL = 'https://fhuijfysfqzjmzadsace.supabase.co';
       const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
@@ -2225,11 +2220,6 @@
     /* ─── SUPABASE LOGOUT ─── */
     const SUPABASE_URL = 'https://fhuijfysfqzjmzadsace.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
-    async function openVipDetails() {
-      const email = localStorage.getItem('etf_user_email') || 'default';
-      window.open('/api/vip/details-view?user_id=' + encodeURIComponent(email), '_blank');
-    }
-
     async function doLogout() {
       try {
         const supabaseJS = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
