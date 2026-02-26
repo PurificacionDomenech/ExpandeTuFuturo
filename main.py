@@ -137,10 +137,14 @@ async def index():
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, interval: str = "1d"):
     try:
-        yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "max"))
+        yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "1y"))
+        # Forzar un periodo razonable si 'max' falla
         df = yf.download(ticker.upper(), period=yf_period, interval=yf_interval, progress=False)
         if df.empty:
-            return {"error": "Simbolo no encontrado: " + ticker}
+            # Reintentar con 1y por si acaso
+            df = yf.download(ticker.upper(), period="1y", interval=yf_interval, progress=False)
+            if df.empty:
+                return {"error": "Simbolo no encontrado o sin datos: " + ticker}
         df = clean_df(df)
         df = calcular_indicadores(df)
 
@@ -361,13 +365,16 @@ async def redeem_code(request: Request, user_id: str = "default"):
 
 @app.get("/api/notifications/prefs")
 async def get_notification_prefs(user_id: str = "default"):
-    prefs = load_prefs(user_id)
-    # Si NO es VIP, capamos las opciones para que el front lo sepa
-    if not prefs.get("is_vip"):
-        prefs["telegram_enabled"] = False
-        prefs["email_enabled"] = False
-    # Si ES VIP, devolvemos las prefs tal cual están en la BD (incluyendo telegram_enabled=True si el usuario lo activó)
-    return prefs
+    try:
+        prefs = load_prefs(user_id)
+        # Si NO es VIP, capamos las opciones para que el front lo sepa
+        if not prefs.get("is_vip"):
+            prefs["telegram_enabled"] = False
+            prefs["email_enabled"] = False
+        return prefs
+    except Exception as e:
+        print(f"ERROR in get_notification_prefs: {e}")
+        return {"is_vip": False, "error": str(e)}
 
 
 @app.post("/api/notifications/prefs")
@@ -435,14 +442,18 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
 
 @app.get("/api/notifications/status")
 async def notification_status():
-    has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
-    has_twilio   = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
-    has_smtp     = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
-    return {
-        "telegram_configured":  has_telegram,
-        "whatsapp_configured":  has_twilio,
-        "email_configured":     has_smtp,
-    }
+    try:
+        has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
+        has_twilio   = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
+        has_smtp     = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+        return {
+            "telegram_configured":  has_telegram,
+            "whatsapp_configured":  has_twilio,
+            "email_configured":     has_smtp,
+        }
+    except Exception as e:
+        print(f"ERROR in notification_status: {e}")
+        return {"error": str(e)}
 
 
 @app.post("/api/telegram/webhook")

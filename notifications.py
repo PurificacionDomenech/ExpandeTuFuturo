@@ -9,58 +9,63 @@ from email.mime.multipart import MIMEMultipart
 
 
 def get_db():
-    # Eliminamos sslmode=require porque causa errores en este entorno
+    # Usar un pool o asegurar cierre, pero aquí forzamos sslmode si es necesario o manejamos el error
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
-
 def load_prefs(user_id: str = "default") -> dict:
+    conn = None
     try:
-        with get_db() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT * FROM notification_prefs WHERE user_id = %s",
-                    (user_id,)
-                )
-                row = cur.fetchone()
-                if row:
-                    d = dict(row)
-                    d["is_vip"] = bool(d.get("is_vip", False))
-                    # NO SOBREESCRIBIR AQUÍ. Solo devolvemos lo que hay en BD.
-                    return d
-    except Exception:
-        pass
+        conn = get_db()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM notification_prefs WHERE user_id = %s",
+                (user_id,)
+            )
+            row = cur.fetchone()
+            if row:
+                d = dict(row)
+                d["is_vip"] = bool(d.get("is_vip", False))
+                return d
+    except Exception as e:
+        print(f"DEBUG: load_prefs error for {user_id}: {e}")
+    finally:
+        if conn: conn.close()
     return {"is_vip": False}
 
-
 def save_prefs(prefs: dict, user_id: str = "default"):
+    conn = None
     try:
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO notification_prefs
-                        (user_id, telegram_enabled, telegram_chat_id,
-                         email_enabled, email_address, watchlist, is_vip, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                    ON CONFLICT (user_id) DO UPDATE SET
-                        telegram_enabled = EXCLUDED.telegram_enabled,
-                        telegram_chat_id = EXCLUDED.telegram_chat_id,
-                        email_enabled    = EXCLUDED.email_enabled,
-                        email_address    = EXCLUDED.email_address,
-                        watchlist        = EXCLUDED.watchlist,
-                        is_vip           = COALESCE(notification_prefs.is_vip, EXCLUDED.is_vip),
-                        updated_at       = NOW()
-                """, (
-                    user_id,
-                    prefs.get("telegram_enabled", False),
-                    prefs.get("telegram_chat_id", ""),
-                    prefs.get("email_enabled", False),
-                    prefs.get("email_address", ""),
-                    prefs.get("watchlist", ""),
-                    prefs.get("is_vip", False),
-                ))
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO notification_prefs
+                    (user_id, telegram_enabled, telegram_chat_id,
+                     email_enabled, email_address, watchlist, is_vip, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    telegram_enabled = EXCLUDED.telegram_enabled,
+                    telegram_chat_id = EXCLUDED.telegram_chat_id,
+                    email_enabled    = EXCLUDED.email_enabled,
+                    email_address    = EXCLUDED.email_address,
+                    watchlist        = EXCLUDED.watchlist,
+                    is_vip           = COALESCE(notification_prefs.is_vip, EXCLUDED.is_vip),
+                    updated_at       = NOW()
+            """, (
+                user_id,
+                prefs.get("telegram_enabled", False),
+                prefs.get("telegram_chat_id", ""),
+                prefs.get("email_enabled", False),
+                prefs.get("email_address", ""),
+                prefs.get("watchlist", ""),
+                prefs.get("is_vip", False),
+            ))
             conn.commit()
     except Exception as e:
+        if conn: conn.rollback()
+        print(f"DEBUG: save_prefs error for {user_id}: {e}")
         raise RuntimeError(f"DB save error: {e}")
+    finally:
+        if conn: conn.close()
 
 
 def list_all_users_with_notifications() -> list:
