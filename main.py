@@ -311,7 +311,10 @@ async def generate_code():
 
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "error": "Invalid request"}
     code = body.get("code", "").upper().strip()
     if not code:
         return {"ok": False, "error": "Código vacío"}
@@ -326,7 +329,7 @@ async def redeem_code(request: Request, user_id: str = "default"):
                 if row[0]:
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 11)]
+                special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 12)]
                 if code not in special_codes:
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
@@ -354,7 +357,10 @@ async def get_notification_prefs(user_id: str = "default"):
 
 @app.post("/api/notifications/prefs")
 async def set_notification_prefs(request: Request, user_id: str = "default"):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "error": "Invalid request"}
     prefs = load_prefs(user_id)
     
     if not prefs.get("is_vip"):
@@ -367,7 +373,10 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
 
 @app.post("/api/notifications/test")
 async def test_notification(request: Request, user_id: str = "default"):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "error": "Invalid request"}
     channel = body.get("channel", "all")
     prefs = load_prefs(user_id)
 
@@ -388,7 +397,10 @@ async def test_notification(request: Request, user_id: str = "default"):
 
 @app.post("/api/notifications/send")
 async def send_alerts_now(request: Request, user_id: str = "default"):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "error": "Invalid request"}
     tickers_str = body.get("tickers", "")
     prefs = load_prefs(user_id)
 

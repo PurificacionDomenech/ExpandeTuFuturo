@@ -1,13 +1,11 @@
 import asyncio
 import yfinance as yf
-import pandas as pd
-import numpy as np
 import os
 import time
-from main import calcular_indicadores, detectar_alertas, clean_df
 from notifications import dispatch_notifications, get_db
 
 async def scan_and_notify():
+    from main import calcular_indicadores, detectar_alertas, clean_df
     print(f"[{time.ctime()}] Iniciando escaneo automático de vigilancia...")
     try:
         with get_db() as conn:
