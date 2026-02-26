@@ -18,6 +18,8 @@ class CatchAllMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except Exception as e:
+            if request.url.path == "/health":
+                return JSONResponse(status_code=200, content={"status": "ok"})
             print(f"UNHANDLED ERROR on {request.url.path}: {e}")
             traceback.print_exc()
             return JSONResponse(
@@ -139,6 +141,10 @@ def safe(v):
 
 def ts_ms(idx):
     return [int(t.timestamp() * 1000) for t in idx]
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.get("/")
 async def splash():

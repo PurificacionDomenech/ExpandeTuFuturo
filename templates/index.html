@@ -1831,6 +1831,7 @@
               badge.style.color = 'rgba(255,255,255,0.3)';
               badge.style.border = '1px solid rgba(255,255,255,0.1)';
             }
+            showVipBanner();
           }
         }
 
@@ -1878,12 +1879,34 @@
       } catch (e) {console.error("Error loading prefs:", e);}
     }
 
+    function showVipBanner() {
+      if (document.getElementById('vipBanner')) return;
+      const banner = document.createElement('div');
+      banner.id = 'vipBanner';
+      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#0a0a12 0%,#1a1520 100%);border-top:2px solid #c9a84c;padding:12px 20px;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap';
+      banner.innerHTML = `
+        <span style="color:#e8c96d;font-weight:700;font-size:13px">👑 ¿Tienes un código VIP?</span>
+        <input type="text" id="vipCodeBanner" placeholder="Ej: VIP001" style="padding:8px 12px;border-radius:6px;background:#000;border:1px solid #c9a84c;color:#fff;font-family:var(--font-mono);font-size:13px;width:130px;text-transform:uppercase">
+        <button onclick="redeemVipCode(document.getElementById('vipCodeBanner').value)" style="padding:8px 16px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR VIP</button>
+        <button onclick="document.getElementById('vipBanner').style.display='none'" style="padding:6px 10px;background:none;border:1px solid #333;border-radius:6px;color:#888;cursor:pointer;font-size:11px">Cerrar</button>
+      `;
+      document.body.appendChild(banner);
+    }
+
+    function hideVipBanner() {
+      const b = document.getElementById('vipBanner');
+      if (b) b.remove();
+    }
+
     async function redeemVipCode(explicitCode) {
       const codeInput = document.getElementById('vipCodeInput');
       const upgradeInput = document.getElementById('vipCodeInputUpgrade');
+      const bannerInput = document.getElementById('vipCodeBanner');
       let code = '';
       if (explicitCode && explicitCode.trim()) {
         code = explicitCode.trim();
+      } else if (bannerInput && bannerInput.value.trim()) {
+        code = bannerInput.value.trim();
       } else if (upgradeInput && upgradeInput.value.trim()) {
         code = upgradeInput.value.trim();
       } else if (codeInput && codeInput.value.trim()) {
@@ -1915,6 +1938,10 @@
           if (badge) { badge.innerText = 'PRO · 1D · SMAs'; badge.style.background = 'var(--gold)'; badge.style.color = '#000'; badge.style.border = 'none'; }
           const modal = document.getElementById('upgradeModal');
           if (modal) modal.remove();
+          hideVipBanner();
+          document.querySelectorAll('.notif-channel').forEach(el => { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; });
+          const statusBox = document.getElementById('notifStatus');
+          if (statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
           refreshStars();
           updateWatchingCount();
         } else {
