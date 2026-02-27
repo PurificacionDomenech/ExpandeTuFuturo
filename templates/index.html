@@ -1904,44 +1904,69 @@
       } else if (codeInput && codeInput.value.trim()) {
         code = codeInput.value.trim();
       }
+      
+      code = code.toUpperCase().replace(/\s/g, '');
+      
       if (!code) {
         showToast("Introduce un código VIP primero", "bearish");
         return;
       }
 
-      showToast("Verificando código...", "info");
+      showToast("Verificando código: " + code, "info");
       try {
         const userId = getNotifUserId();
-        const url = window.location.origin + '/api/notifications/redeem?user_id=' + encodeURIComponent(userId);
-        const r = await fetch(url, {
+        // Usamos ruta relativa para máxima compatibilidad
+        const r = await fetch('/api/notifications/redeem?user_id=' + encodeURIComponent(userId), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({code: code.toUpperCase()})
+          body: JSON.stringify({code: code})
         });
-        if (!r.ok) { showToast("Error del servidor (" + r.status + "), intenta de nuevo", "bearish"); return; }
-        const txt = await r.text();
-        if (!txt || txt.startsWith('<!')) { showToast("Servidor no disponible, intenta de nuevo", "bearish"); return; }
-        const d = JSON.parse(txt);
+        
+        if (!r.ok) { 
+          const errText = await r.text();
+          showToast("Error " + r.status + ": " + errText.substring(0, 50), "bearish"); 
+          return; 
+        }
+        
+        const d = await r.json();
         if (d.ok) {
           isVip = true;
           showToast("💎 ¡VIP ACTIVADO! Ya puedes añadir activos ilimitados", "bullish", 4000);
+          
+          // Actualizar UI
           const btn = document.getElementById('notifBtn');
           const badge = document.getElementById('hdr-badge');
-          if (btn) { btn.innerHTML = '💎 Acceso VIP'; btn.style.borderColor = '#c9a84c'; btn.style.color = '#c9a84c'; }
-          if (badge) { badge.innerText = 'PRO · 1D · SMAs'; badge.style.background = 'var(--gold)'; badge.style.color = '#000'; badge.style.border = 'none'; }
+          if (btn) { 
+            btn.innerHTML = '💎 Acceso VIP'; 
+            btn.style.borderColor = '#c9a84c'; 
+            btn.style.color = '#c9a84c'; 
+          }
+          if (badge) { 
+            badge.innerText = 'PRO · 1D · SMAs'; 
+            badge.style.background = 'var(--gold)'; 
+            badge.style.color = '#000'; 
+            badge.style.border = 'none'; 
+          }
+          
           const modal = document.getElementById('upgradeModal');
           if (modal) modal.remove();
           hideVipBanner();
-          document.querySelectorAll('.notif-channel').forEach(el => { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; });
+          
+          document.querySelectorAll('.notif-channel').forEach(el => { 
+            el.style.opacity = '1'; 
+            el.style.pointerEvents = 'auto'; 
+          });
+          
           const statusBox = document.getElementById('notifStatus');
           if (statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+          
           refreshStars();
           updateWatchingCount();
         } else {
           showToast(d.error || "Código inválido", "bearish", 5000);
         }
       } catch (e) {
-        showToast("Error al conectar: " + e.message, "bearish", 5000);
+        showToast("Error de conexión: " + e.message, "bearish", 5000);
       }
     }
 
