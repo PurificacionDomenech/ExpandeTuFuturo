@@ -1857,15 +1857,7 @@
             el.style.pointerEvents = 'none';
           });
           if (statusBox) {
-            statusBox.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:10px;padding:15px;background:rgba(201,168,76,0.05);border-radius:8px;border:1px solid rgba(201,168,76,0.2)">
-                    <div style="color:#e8c96d;text-align:center;font-weight:700">👑 Pásate a PRO para activar alertas</div>
-                    <div style="display:flex;gap:8px">
-                        <input type="text" id="vipCodeInput" placeholder="Introduce código VIP" style="flex:1;padding:8px;border-radius:6px;background:#111;border:1px solid #333;color:#fff;font-family:var(--font-mono);font-size:12px">
-                        <button onclick="redeemVipCode()" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px">Canjear</button>
-                    </div>
-                </div>
-            `;
+            statusBox.innerHTML = '<div style="color:#e8c96d;text-align:center;padding:10px;font-size:12px">👑 Activa tu código VIP abajo para desbloquear alertas</div>';
           }
         } else {
           document.querySelectorAll('.notif-channel').forEach(el => {
@@ -1992,14 +1984,6 @@
             <div style="font-size:40px;margin-bottom:15px">👑</div>
             <h2 style="color:var(--gold2);margin-bottom:20px;font-family:var(--font-display)">Planes PRO</h2>
             
-            <div style="padding:15px;background:rgba(201,168,76,0.1);border:1px solid var(--gold);border-radius:10px;margin-bottom:25px">
-                <p style="color:#fff;font-size:13px;margin-bottom:12px;font-weight:700">¿Ya tienes un código VIP?</p>
-                <div style="display:flex;gap:8px">
-                    <input type="text" id="vipCodeInputUpgrade" placeholder="Introduce tu código" style="flex:1;padding:10px;border-radius:6px;background:#000;border:1px solid var(--gold);color:#fff;font-family:var(--font-mono);font-size:13px">
-                    <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:10px 16px;background:var(--gold);border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR</button>
-                </div>
-            </div>
-
             <div style="display:flex;flex-direction:column;gap:15px;margin-bottom:25px">
                 <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">

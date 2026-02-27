@@ -585,15 +585,16 @@ try {
 async function checkSession() {
   if (!sb) return;
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    
-    // Si hay un parámetro 'select_account', no redirigimos
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('select_account')) return;
+    if (urlParams.has('select_account')) {
+      await sb.auth.signOut();
+      return;
+    }
+
+    const { data: { session } } = await sb.auth.getSession();
 
     if (session && session.user) {
       const name = session.user.user_metadata?.full_name || session.user.email;
-      // Actualizar botones si ya hay sesión
       const navCta = document.querySelector('.nav-cta');
       if (navCta) {
         navCta.innerHTML = `Entrar como ${name.split(' ')[0]} →`;
