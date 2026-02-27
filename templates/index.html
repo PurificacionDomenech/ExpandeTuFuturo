@@ -990,12 +990,17 @@
             </label>
           </div>
           <div id="tgFields" style="display:none">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-              <label for="tgChatId">Para obtener tu ID, busca a <a href="https://t.me/ExpandeTuFuturoBot"
-                  target="_blank" style="color:var(--gold)">@ExpandeTuFuturoBot</a> y dale a
-                <strong>/start</strong></label>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.7;background:rgba(255,255,255,.03);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,.06)">
+              <label for="tgChatId" style="display:block;margin-bottom:6px;color:#e8c96d;font-weight:700;font-size:12px">Pasos para conectar Telegram:</label>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span>1. Abre Telegram en tu movil o PC</span>
+                <span>2. Pulsa este enlace: <a href="https://t.me/ExpandeTuFuturoBot" target="_blank" style="color:var(--gold);font-weight:700">Abrir Bot en Telegram</a></span>
+                <span>3. Dale al boton <strong style="color:#fff">Iniciar</strong> (o escribe <strong style="color:#fff">/start</strong>)</span>
+                <span>4. El bot te responde con un numero (tu Chat ID)</span>
+                <span>5. Copia ese numero y pegalo aqui abajo</span>
+              </div>
             </div>
-            <input type="text" id="tgChatId" placeholder="Tu Chat ID (ej: 123456789)" onchange="saveNotifPrefs()"
+            <input type="text" id="tgChatId" placeholder="Pega aqui tu Chat ID (ej: 123456789)" onchange="saveNotifPrefs()"
               style="width:100%;padding:10px 14px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none">
             <button onclick="testChannel('telegram')" class="notif-test-btn">Enviar prueba</button>
           </div>

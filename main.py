@@ -35,6 +35,32 @@ async def startup_event():
     import cron_scanner
     asyncio.create_task(cron_scanner.main())
     print("Background scanner task started")
+    asyncio.create_task(auto_setup_telegram_webhook())
+
+async def auto_setup_telegram_webhook():
+    import httpx
+    await asyncio.sleep(5)
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        print("TELEGRAM: No bot token, skipping webhook setup")
+        return
+    domain = os.environ.get("REPLIT_DEPLOYMENT_URL", "") or os.environ.get("REPLIT_DEV_DOMAIN", "")
+    if not domain:
+        print("TELEGRAM: No domain detected, skipping webhook setup")
+        return
+    if not domain.startswith("http"):
+        domain = f"https://{domain}"
+    webhook_url = f"{domain}/api/telegram/webhook"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{token}/setWebhook",
+                json={"url": webhook_url, "allowed_updates": ["message"]}
+            )
+            result = r.json()
+            print(f"TELEGRAM: Webhook set to {webhook_url} -> {result}")
+    except Exception as e:
+        print(f"TELEGRAM: Webhook setup error: {e}")
 
 INTERVAL_MAP = {
     "1d":  ("1d",  "max"),
@@ -513,11 +539,13 @@ async def setup_telegram_webhook(request: Request):
     if not token:
         return {"ok": False, "error": "TELEGRAM_BOT_TOKEN no configurado"}
 
-    domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+    domain = os.environ.get("REPLIT_DEPLOYMENT_URL", "") or os.environ.get("REPLIT_DEV_DOMAIN", "")
     if not domain:
         return {"ok": False, "error": "Dominio no detectado"}
+    if not domain.startswith("http"):
+        domain = f"https://{domain}"
 
-    webhook_url = f"https://{domain}/api/telegram/webhook"
+    webhook_url = f"{domain}/api/telegram/webhook"
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
             f"https://api.telegram.org/bot{token}/setWebhook",
