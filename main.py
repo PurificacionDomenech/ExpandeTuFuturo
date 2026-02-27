@@ -148,11 +148,17 @@ async def health():
 
 @app.get("/")
 async def splash():
-    return FileResponse("templates/splash.html")
+    from starlette.responses import HTMLResponse
+    with open("templates/splash.html", "r") as f:
+        content = f.read()
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
 
 @app.get("/app")
 async def index():
-    return FileResponse("templates/index.html")
+    from starlette.responses import HTMLResponse
+    with open("templates/index.html", "r") as f:
+        content = f.read()
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
 
 @app.get("/api/chart/{ticker}")
 async def get_chart(ticker: str, interval: str = "1d"):
