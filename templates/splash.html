@@ -585,31 +585,7 @@ try {
 async function checkSession() {
   if (!sb) return;
   try {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('select_account')) {
-      await sb.auth.signOut();
-      return;
-    }
-
-    const { data: { session } } = await sb.auth.getSession();
-
-    if (session && session.user) {
-      const name = session.user.user_metadata?.full_name || session.user.email;
-      const navCta = document.querySelector('.nav-cta');
-      if (navCta) {
-        navCta.innerHTML = `Entrar como ${name.split(' ')[0]} →`;
-        navCta.onclick = () => window.location.href = '/app';
-      }
-      const heroBtn = document.querySelector('.btn-primary');
-      if (heroBtn) {
-        heroBtn.innerHTML = `Continuar al Dashboard →`;
-        heroBtn.onclick = () => window.location.href = '/app';
-      }
-      const trialNote = document.querySelector('.trial-note');
-      if (trialNote) {
-        trialNote.innerHTML = `Sesión activa como <strong>${name}</strong><br><a href="#" onclick="doLogout()" style="color:var(--muted);text-decoration:underline">Cerrar sesión e iniciar con otra cuenta</a>`;
-      }
-    }
+    await sb.auth.signOut();
   } catch(e) {}
 }
 checkSession();
