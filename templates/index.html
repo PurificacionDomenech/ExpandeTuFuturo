@@ -1657,7 +1657,7 @@
       localStorage.removeItem('etf_user_id');
       window.location.href = '/?select_account=true';
     }
-    function notifUrl(path) {return path + '?user_id=' + encodeURIComponent(getNotifUserId());}
+    function notifUrl(path) {return window.location.origin + path + '?user_id=' + encodeURIComponent(getNotifUserId());}
 
     function openNotifModal() {
       const m = document.getElementById('notifModal');
@@ -1799,7 +1799,7 @@
     async function loadNotifPrefs() {
       try {
         const userId = getNotifUserId();
-        const r = await fetch(`/api/notifications/prefs?user_id=${userId}`);
+        const r = await fetch(window.location.origin + '/api/notifications/prefs?user_id=' + encodeURIComponent(userId));
         if (!r.ok) { console.warn("Prefs endpoint returned", r.status); return; }
         const text = await r.text();
         if (!text || text.startsWith('<!')) { console.warn("Non-JSON prefs response"); return; }
@@ -1849,24 +1849,19 @@
         const emF = document.getElementById('emFields');
         if (emF) emF.style.display = p.email_enabled ? 'block' : 'none';
 
-        // Bloqueo visual si no es VIP
+        document.querySelectorAll('.notif-channel').forEach(el => {
+          el.style.opacity = '1';
+          el.style.pointerEvents = 'auto';
+        });
         const statusBox = document.getElementById('notifStatus');
-        if (!isVip) {
-          document.querySelectorAll('.notif-channel').forEach(el => {
-            el.style.opacity = '0.5';
-            el.style.pointerEvents = 'none';
-          });
-          if (statusBox) {
-            statusBox.innerHTML = '<div style="color:#e8c96d;text-align:center;padding:10px;font-size:12px">👑 Activa tu código VIP abajo para desbloquear alertas</div>';
+        if (statusBox) {
+          if (isVip) {
+            statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
+          } else {
+            statusBox.innerHTML = '';
           }
-        } else {
-          document.querySelectorAll('.notif-channel').forEach(el => {
-            el.style.opacity = '1';
-            el.style.pointerEvents = 'auto';
-          });
-          if (statusBox) statusBox.innerHTML = '<div style="color:#2dd47e;text-align:center;padding:10px;font-size:12px">💎 Beneficios VIP Activos</div>';
-          loadNotifStatus();
         }
+        loadNotifStatus();
         updateWatchlistUI();
       } catch (e) {console.error("Error loading prefs:", e);}
     }
@@ -1891,12 +1886,12 @@
     }
 
     async function redeemVipCode(explicitCode) {
-      const codeInput = document.getElementById('vipCodeInput');
-      const upgradeInput = document.getElementById('vipCodeInputUpgrade');
       const bannerInput = document.getElementById('vipCodeBanner');
+      const upgradeInput = document.getElementById('vipCodeInputUpgrade');
+      const codeInput = document.getElementById('vipCodeInput');
       let code = '';
-      if (explicitCode && explicitCode.trim()) {
-        code = explicitCode.trim();
+      if (explicitCode && String(explicitCode).trim()) {
+        code = String(explicitCode).trim();
       } else if (bannerInput && bannerInput.value.trim()) {
         code = bannerInput.value.trim();
       } else if (upgradeInput && upgradeInput.value.trim()) {
@@ -1912,14 +1907,15 @@
       showToast("Verificando código...", "info");
       try {
         const userId = getNotifUserId();
-        const r = await fetch(`/api/notifications/redeem?user_id=${userId}`, {
+        const url = window.location.origin + '/api/notifications/redeem?user_id=' + encodeURIComponent(userId);
+        const r = await fetch(url, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({code})
+          body: JSON.stringify({code: code.toUpperCase()})
         });
-        if (!r.ok) { showToast("Error del servidor, intenta de nuevo", "bearish"); return; }
+        if (!r.ok) { showToast("Error del servidor (" + r.status + "), intenta de nuevo", "bearish"); return; }
         const txt = await r.text();
-        if (!txt || txt.startsWith('<!')) { showToast("Servidor no disponible", "bearish"); return; }
+        if (!txt || txt.startsWith('<!')) { showToast("Servidor no disponible, intenta de nuevo", "bearish"); return; }
         const d = JSON.parse(txt);
         if (d.ok) {
           isVip = true;
@@ -1937,10 +1933,10 @@
           refreshStars();
           updateWatchingCount();
         } else {
-          showToast(d.error || "Código inválido", "bearish");
+          showToast(d.error || "Código inválido", "bearish", 5000);
         }
       } catch (e) {
-        showToast("Error al conectar con el servidor", "bearish");
+        showToast("Error al conectar: " + e.message, "bearish", 5000);
       }
     }
 
@@ -2122,7 +2118,7 @@
 
     async function loadNotifStatus() {
       try {
-        const r = await fetch('/api/notifications/status');
+        const r = await fetch(window.location.origin + '/api/notifications/status');
         if (!r.ok) return;
         const st = await r.text();
         if (!st || st.startsWith('<!')) return;
