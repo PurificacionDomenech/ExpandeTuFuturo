@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Expande Tu Futuro</title>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM Sans:wght@400;600;700;800&display=swap"
     rel="stylesheet">
@@ -1110,6 +1111,21 @@
        INIT
     ───────────────────────────────────────────── */
     window.onload = async () => {
+      try {
+        const sbApp = supabase.createClient(
+          'https://fhuijfysfqzjmzadsace.supabase.co',
+          'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF'
+        );
+        const { data: { session } } = await sbApp.auth.getSession();
+        if (session && session.user) {
+          const email = session.user.email;
+          if (email) {
+            localStorage.setItem('etf_user_id', email);
+            console.log('Supabase session detected, user:', email);
+          }
+        }
+      } catch(e) { console.warn('Session check:', e); }
+
       loadWL();
       await loadNotifPrefs();
       initNotifListeners();
@@ -1686,15 +1702,13 @@
     }
 
     async function doLogout() {
-      const SUPABASE_URL = 'https://fhuijfysfqzjmzadsace.supabase.co';
-      const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
-      if (typeof supabase !== 'undefined') {
-        try {
-          const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-          await sb.auth.signOut();
-        } catch (e) {console.error('Logout error:', e);}
-      }
-      // Limpiar ID local también para asegurar cambio de cuenta
+      try {
+        const sb = supabase.createClient(
+          'https://fhuijfysfqzjmzadsace.supabase.co',
+          'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF'
+        );
+        await sb.auth.signOut();
+      } catch (e) {console.error('Logout error:', e);}
       localStorage.removeItem('etf_user_id');
       window.location.href = '/?select_account=true';
     }
@@ -2222,20 +2236,6 @@
       } catch (e) {showToast('❌ Error enviando alertas', 'bearish');}
     }
 
-    /* ─── SUPABASE LOGOUT ─── */
-    const SUPABASE_URL = 'https://fhuijfysfqzjmzadsace.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
-    async function doLogout() {
-      try {
-        const supabaseJS = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-        const sb = supabaseJS.createClient(SUPABASE_URL, SUPABASE_KEY);
-        await sb.auth.signOut();
-        window.location.href = '/?select_account=true';
-      } catch (e) {
-        console.error('Logout error:', e);
-        window.location.href = '/?select_account=true';
-      }
-    }
   </script>
   <footer style="margin-top:20px;padding:20px 12px;border-top:1px solid rgba(255,255,255,0.05);text-align:center">
     <p
