@@ -38,9 +38,8 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 - Códigos permanentes reutilizables: VIP001-VIP011, VIP333
 - Usuarios Free: máximo 3 activos en vigilancia, sin alertas
 - Usuarios VIP/PRO: activos ilimitados, alertas Telegram/Email
-- Precios PRO: 10€/mes, 42€ semestral (7€/mes), 60€ anual (5€/mes)
-- Banner dorado visible al pie para usuarios Free con campo de activación VIP
-- Modal Planes PRO con campo para código y tabla comparativa
+- Precios PRO: 17€/mes, 57€ semestral (9,50€/mes, 44% dto.), 87€ anual (7,25€/mes, 57% dto.)
+- Modal Planes PRO con campo unico para codigo VIP y tabla comparativa
 - Los controles de notificaciones (Telegram/Email) están activos para todos los usuarios
 - Las llamadas API usan URLs absolutas (window.location.origin) para compatibilidad con despliegue
 

@@ -1100,6 +1100,8 @@
     let shownToasts = new Set();
     let savedXRange = null;
     let watchPanelOpen = false;
+    let assetStateData = {};
+    let loadedCount = 0;
 
     function saveWL() {try {localStorage.setItem('etf_wl', JSON.stringify([...watchlist]))} catch (e) { } }
     function loadWL() {try {const s = localStorage.getItem('etf_wl'); if (s) watchlist = new Set(JSON.parse(s))} catch (e) { } }
@@ -1116,7 +1118,6 @@
       buildFavGrid();
       updateWatchingCount();
       ALL_ASSETS.forEach(f => loadRowData(f.ticker));
-      loadSymbol('^NDX');
       startWatcher();
     };
 
@@ -1156,11 +1157,11 @@
           fetch(`/api/row/${encodeURIComponent(ticker)}`),
           fetch(`/api/sparkline/${encodeURIComponent(ticker)}`)
         ]);
-        if (!rowRes.ok || !spkRes.ok) return;
+        if (!rowRes.ok || !spkRes.ok) { loadedCount++; if (loadedCount >= ALL_ASSETS.length) sortAssetGrid(); return; }
         const rt = await rowRes.text(), st = await spkRes.text();
-        if (!rt || rt.startsWith('<!') || !st || st.startsWith('<!')) return;
+        if (!rt || rt.startsWith('<!') || !st || st.startsWith('<!')) { loadedCount++; if (loadedCount >= ALL_ASSETS.length) sortAssetGrid(); return; }
         const d = JSON.parse(rt), spk = JSON.parse(st);
-        if (d.error) return;
+        if (d.error) { loadedCount++; if (loadedCount >= ALL_ASSETS.length) sortAssetGrid(); return; }
         const id = favId(ticker);
 
         drawSparkline(id, spk);
@@ -1221,11 +1222,18 @@
 
         const esEl = document.getElementById(`tes-${id}`);
         if (esEl) esEl.innerHTML = calcularEstado(d);
-      } catch (e) { }
+
+        assetStateData[ticker] = d;
+        loadedCount++;
+        if (loadedCount >= ALL_ASSETS.length) sortAssetGrid();
+      } catch (e) {
+        loadedCount++;
+        if (loadedCount >= ALL_ASSETS.length) sortAssetGrid();
+      }
     }
 
-    function calcularEstado(d) {
-      if (d.rsi != null && d.rsi > 68) return '<span class="badge no_favorable">No ahora</span>';
+    function calcularEstadoPts(d) {
+      if (d.rsi != null && d.rsi > 68) return -1;
       let pts = 0;
       if (d.rsi != null) {
         if (d.rsi < 30) pts += 3; else if (d.rsi < 40) pts += 2; else if (d.rsi < 50) pts += 1;
@@ -1235,10 +1243,42 @@
       else if (d.sma50 && Math.abs(d.price - d.sma50) / d.sma50 * 100 <= 0.8) pts += 2;
       else if (d.sma20 && Math.abs(d.price - d.sma20) / d.sma20 * 100 <= 0.8) pts += 1;
       if (d.sma200 && d.price < d.sma200) pts += 1;
+      return pts;
+    }
+
+    function calcularEstado(d) {
+      const pts = calcularEstadoPts(d);
+      if (pts < 0) return '<span class="badge no_favorable">No ahora</span>';
       if (pts >= 5) return '<span class="badge favorable">Favorable</span>';
       if (pts >= 3) return '<span class="badge interesante">Interesante</span>';
       if (pts >= 2) return '<span class="badge considerar">Considerar</span>';
       return '<span class="badge no_favorable">No ahora</span>';
+    }
+
+    function getStatePriority(ticker) {
+      const d = assetStateData[ticker];
+      if (!d) return 99;
+      const pts = calcularEstadoPts(d);
+      if (pts >= 5) return 0;
+      if (pts >= 3) return 1;
+      if (pts >= 2) return 2;
+      return 3;
+    }
+
+    function sortAssetGrid() {
+      const tbody = document.getElementById('favItems');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr.asset-row'));
+      rows.sort((a, b) => {
+        const tA = ALL_ASSETS.find(f => 'fc-' + favId(f.ticker) === a.id);
+        const tB = ALL_ASSETS.find(f => 'fc-' + favId(f.ticker) === b.id);
+        if (!tA || !tB) return 0;
+        const wA = watchlist.has(tA.ticker) ? 0 : 1;
+        const wB = watchlist.has(tB.ticker) ? 0 : 1;
+        if (wA !== wB) return wA - wB;
+        return getStatePriority(tA.ticker) - getStatePriority(tB.ticker);
+      });
+      rows.forEach(r => tbody.appendChild(r));
     }
 
     function drawSparkline(id, spk) {
@@ -1559,20 +1599,16 @@
       document.querySelectorAll('.asset-row').forEach(r => r.classList.remove('active-sym'));
       const el = document.getElementById('fc-' + favId(sym)); if (el) el.classList.add('active-sym');
       
-      // Asegurar que el gráfico esté visible al cargar
       const chartBody = document.getElementById('chartBody');
       const btn = document.getElementById('btnToggleChart');
-      if (chartBody && chartBody.style.display === 'none') {
-        chartBody.style.display = 'block';
-        if (btn) btn.innerText = '▲ Cerrar gráfico';
-      }
+      const chartOpen = chartBody && chartBody.style.display !== 'none';
 
-      document.getElementById('loadWrap').style.display = 'flex';
+      if (chartOpen) document.getElementById('loadWrap').style.display = 'flex';
       try {
         const data = await fetchData(sym);
         lastData = data;
         document.getElementById('loadWrap').style.display = 'none';
-        renderPlotly(data);
+        if (chartOpen) renderPlotly(data);
         updateSidebar(data);
         renderCurrentAlerts();
       } catch (e) {
@@ -1776,6 +1812,7 @@
       }
       saveWL(); refreshStars(); updateWatchingCount();
       if (typeof renderWatchPanel === 'function') renderWatchPanel();
+      sortAssetGrid();
     }
 
     function updateWatchingCount() {
@@ -1836,7 +1873,6 @@
               badge.style.color = 'rgba(255,255,255,0.3)';
               badge.style.border = '1px solid rgba(255,255,255,0.1)';
             }
-            showVipBanner();
           }
         }
 
@@ -1871,20 +1907,7 @@
       } catch (e) {console.error("Error loading prefs:", e);}
     }
 
-    function showVipBanner() {
-      if (document.getElementById('vipBanner')) return;
-      const banner = document.createElement('div');
-      banner.id = 'vipBanner';
-      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#0a0a12 0%,#1a1520 100%);border-top:2px solid #c9a84c;padding:12px 20px;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap';
-      banner.innerHTML = `
-        <span style="color:#e8c96d;font-weight:700;font-size:13px">👑 ¿Tienes un código VIP?</span>
-        <input type="text" id="vipCodeBanner" placeholder="Ej: VIP001" style="padding:8px 12px;border-radius:6px;background:#000;border:1px solid #c9a84c;color:#fff;font-family:var(--font-mono);font-size:13px;width:130px;text-transform:uppercase">
-        <button onclick="redeemVipCode(document.getElementById('vipCodeBanner').value)" style="padding:8px 16px;background:#c9a84c;border:none;border-radius:6px;color:#000;font-weight:800;cursor:pointer;font-size:13px">ACTIVAR VIP</button>
-        <button onclick="document.getElementById('vipBanner').style.display='none'" style="padding:6px 10px;background:none;border:1px solid #333;border-radius:6px;color:#888;cursor:pointer;font-size:11px">Cerrar</button>
-      `;
-      document.body.appendChild(banner);
-    }
-
+    function showVipBanner() {}
     function hideVipBanner() {
       const b = document.getElementById('vipBanner');
       if (b) b.remove();
@@ -2014,37 +2037,37 @@
                 <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                         <div style="font-weight:700;color:#fff">Mensual</div>
-                        <div style="font-size:18px;color:var(--gold)">10€ <span style="font-size:12px;color:var(--muted)">/ mes</span></div>
+                        <div style="font-size:18px;color:var(--gold)">17€ <span style="font-size:12px;color:var(--muted)">/ mes</span></div>
                     </div>
                     <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
                         <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ Acceso directo TradingView </li>
+                        <li>✅ Acceso directo TradingView</li>
                         <li>✅ Todos los Activos</li>
                         <li>✅ Soporte 24/7</li>
                     </ul>
                 </div>
                 <div style="background:rgba(201,168,76,0.05);padding:15px;border-radius:10px;border:1px solid var(--gold);text-align:left">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div style="font-weight:700;color:#fff">Semestral <span style="font-size:10px;color:var(--gold2)">(Ahorro 30%)</span></div>
-                        <div style="font-size:18px;color:var(--gold)">42€ <span style="font-size:12px;color:var(--muted)">(7€/mes)</span></div>
+                        <div style="font-weight:700;color:#fff">Semestral <span style="font-size:10px;color:var(--gold2)">(Ahorro 44%)</span></div>
+                        <div style="font-size:18px;color:var(--gold)">57€ <span style="font-size:12px;color:var(--muted)">(9,50€/mes)</span></div>
                     </div>
                     <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
                         <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ Acceso directo TradingView </li>
+                        <li>✅ Acceso directo TradingView</li>
                         <li>✅ Todos los Activos</li>
-                        <li>✅ Ahorro 18€</li>
+                        <li>✅ Ahorro 45€</li>
                     </ul>
                 </div>
                 <div style="background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:left">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div style="font-weight:700;color:#fff">Anual <span style="font-size:10px;color:#2dd47e">(Mejor Valor)</span></div>
-                        <div style="font-size:18px;color:var(--gold)">60€ <span style="font-size:12px;color:var(--muted)">(5€/mes)</span></div>
+                        <div style="font-weight:700;color:#fff">Anual <span style="font-size:10px;color:#2dd47e">(Mejor Valor · 57% dto.)</span></div>
+                        <div style="font-size:18px;color:var(--gold)">87€ <span style="font-size:12px;color:var(--muted)">(7,25€/mes)</span></div>
                     </div>
                     <ul style="margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:5px">
                         <li>✅ Alertas Ilimitadas</li>
-                        <li>✅ Acceso directo TradingView </li>
+                        <li>✅ Acceso directo TradingView</li>
                         <li>✅ Todos los Activos</li>
-                        <li>✅ Ahorro 60€</li>
+                        <li>✅ Ahorro 117€</li>
                     </ul>
                 </div>
             </div>
@@ -2117,8 +2140,15 @@
                 </div>
             </div>
 
-            <p style="color:var(--muted);font-size:12px;margin-top:20px;margin-bottom:10px">Contacta con soporte o admin para recibir tu código de activación tras el pago.</p>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin-bottom:20px;text-align:left">
+            <div style="margin-top:20px;padding:15px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px">
+                <p style="color:#e8c96d;font-size:13px;font-weight:700;margin:0 0 10px 0;text-align:center">👑 ¿Ya tienes un codigo VIP?</p>
+                <div style="display:flex;gap:8px">
+                    <input type="text" id="vipCodeInputUpgrade" placeholder="Ej: VIP001" style="flex:1;padding:10px 14px;border-radius:7px;background:#000;border:1px solid #c9a84c;color:#fff;font-family:var(--font-mono);font-size:13px;text-transform:uppercase">
+                    <button onclick="redeemVipCode(document.getElementById('vipCodeInputUpgrade').value)" style="padding:10px 20px;background:#c9a84c;border:none;border-radius:7px;color:#000;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap">ACTIVAR</button>
+                </div>
+                <p style="color:var(--muted);font-size:10px;margin:8px 0 0 0;text-align:center">Contacta con soporte para recibir tu codigo tras el pago</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin:15px 0;text-align:left">
                 <p style="color:var(--muted);font-size:10px;line-height:1.4;margin:0">
                     <strong>Descargo de responsabilidad:</strong> Los análisis y alertas proporcionados por esta plataforma son meramente informativos y basados en indicadores técnicos. No constituyen asesoramiento financiero ni recomendaciones de inversión. Usted es el único responsable de sus decisiones financieras y del riesgo asumido en sus operaciones. El rendimiento pasado no garantiza resultados futuros.
                 </p>
