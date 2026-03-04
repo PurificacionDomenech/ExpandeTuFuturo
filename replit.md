@@ -35,7 +35,7 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 
 ## Sistema VIP
 
-- Códigos permanentes reutilizables: VIP001-VIP011, VIP333
+- Códigos permanentes reutilizables: VIP001-VIP033, VIP333
 - Usuarios Free: máximo 3 activos en vigilancia, sin alertas
 - Usuarios VIP/PRO: activos ilimitados, alertas Telegram/Email
 - Precios PRO: 17€/mes, 57€ semestral (9,50€/mes, 44% dto.), 87€ anual (7,25€/mes, 57% dto.)

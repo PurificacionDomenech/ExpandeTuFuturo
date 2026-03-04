@@ -385,7 +385,7 @@ async def redeem_code(request: Request, user_id: str = "default"):
                 if row[0]:
                     return {"ok": False, "error": "Código ya utilizado"}
                 
-                special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 12)]
+                special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 34)]
                 if code not in special_codes:
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
