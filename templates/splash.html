@@ -577,8 +577,9 @@ const SUPABASE_KEY = 'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF';
 let sb = null;
 try {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('Supabase client initialized:', !!sb);
 } catch(e) {
-  console.warn('Supabase init error:', e);
+  console.error('Supabase init error:', e);
 }
 
 /* ─── CHECK SESSION ─── */
@@ -652,13 +653,27 @@ async function doLogin() {
 }
 
 async function doGoogleAuth() {
-  if (!sb) return;
+  const msgReg = document.getElementById('msgRegister');
+  const msgLog = document.getElementById('msgLogin');
+  const msg = msgReg && msgReg.closest('#formRegister') && msgReg.closest('#formRegister').style.display !== 'none' ? msgReg : msgLog;
+
+  if (!sb) {
+    if (msg) showMsg(msg, 'err', 'Error: No se pudo conectar con el servidor de autenticación.');
+    return;
+  }
   try {
-    await sb.auth.signInWithOAuth({
+    const { data, error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + '/app' }
     });
-  } catch(e) { console.error(e); }
+    if (error) {
+      console.error('Google Auth error:', error);
+      if (msg) showMsg(msg, 'err', 'Error con Google: ' + error.message);
+    }
+  } catch(e) {
+    console.error('Google Auth exception:', e);
+    if (msg) showMsg(msg, 'err', 'Error inesperado: ' + e.message);
+  }
 }
 
 async function doForgotPassword() {
