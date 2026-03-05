@@ -425,6 +425,10 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
     if "watchlist" in body:
         prefs["watchlist"] = body["watchlist"]
     
+    # Asegurar que is_vip se mantenga si viene en el body o si ya es VIP
+    if body.get("is_vip") or prefs.get("is_vip"):
+        prefs["is_vip"] = True
+        
     if not prefs.get("is_vip"):
         body["telegram_enabled"] = False
         body["email_enabled"] = False

@@ -16,6 +16,7 @@ async def scan_and_notify():
         
         for user in users:
             uid, tg_en, tg_id, em_en, em_adr, wl_str = user
+            print(f"Procesando usuario {uid} (TG: {tg_en}, EM: {em_en}, WL: {wl_str})")
             if not wl_str: continue
             if not tg_en and not em_en: continue
             
