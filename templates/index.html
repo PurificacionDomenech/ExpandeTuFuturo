@@ -2183,11 +2183,18 @@
         email_enabled: document.getElementById('emEnabled').checked,
         email_address: document.getElementById('emAddress').value.trim(),
         watchlist: [...watchlist].join(','),
+        is_vip: isVip
       };
       try {
-        fetch(notifUrl('/api/notifications/prefs'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(prefs)});
+        fetch(notifUrl('/api/notifications/prefs'), {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(prefs)
+        });
         showToast('✅ Preferencias guardadas', 'bullish', 2000);
-      } catch (e) {showToast('❌ Error guardando preferencias', 'bearish');}
+      } catch (e) {
+        showToast('❌ Error guardando preferencias', 'bearish');
+      }
     }
 
     async function loadNotifStatus() {

@@ -417,7 +417,13 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
         body = await request.json()
     except Exception:
         return {"ok": False, "error": "Invalid request"}
+    
+    # Aseguramos que el watchlist esté en las preferencias
     prefs = load_prefs(user_id)
+    
+    # Forzar actualización de watchlist si viene en el body
+    if "watchlist" in body:
+        prefs["watchlist"] = body["watchlist"]
     
     if not prefs.get("is_vip"):
         body["telegram_enabled"] = False

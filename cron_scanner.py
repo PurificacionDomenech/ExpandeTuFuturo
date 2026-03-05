@@ -24,7 +24,7 @@ async def scan_and_notify():
             
             for t in tickers:
                 try:
-                    df_full = yf.download(t.upper(), period="6mo", interval="1d", progress=False)
+                    df_full = yf.download(t.upper(), period="5d", interval="1d", progress=False)
                     if not df_full.empty:
                         df_full = clean_df(df_full)
                         df_full = calcular_indicadores(df_full)
