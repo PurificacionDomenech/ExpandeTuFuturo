@@ -447,9 +447,9 @@ async def test_notification(request: Request, user_id: str = "default"):
     prefs = load_prefs(user_id)
 
     test_alertas = [
-        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza 85.20"},
-        {"nivel": "bearish", "msg": "[BTC-USD] Death Cross SMA100/200 detectado"},
-        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 82.50"},
+        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $215.40 [🟢 Favorable]"},
+        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $2150.80 [🟡 Interesante]"},
+        {"nivel": "info",    "msg": "[BTC-USD] Precio tocando SMA100 $84200.50 [🟠 Considerar]"},
     ]
 
     test_prefs = dict(prefs)
