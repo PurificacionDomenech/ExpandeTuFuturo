@@ -230,12 +230,10 @@
     }
 
     #watchDot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .15);
+      font-size: 11px;
       display: inline-block;
-      flex-shrink: 0
+      flex-shrink: 0;
+      transition: color .3s
     }
 
     #watch-alerts-list {
@@ -806,7 +804,7 @@
           <div id="watch-hdr" onclick="toggleWatchPanel()" style="cursor:pointer;user-select:none">
             <div style="display:flex;align-items:center;gap:6px">
               <span style="font-size:11px;font-weight:700">🔔 Vigilancia</span>
-              <span id="watchDot"></span>
+              <span id="watchDot">★</span>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
               <span id="watchLabel" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.2)">--</span>
@@ -1354,8 +1352,8 @@
 
     function setWatchStatus(s) {
       const dot = document.getElementById('watchDot'), lbl = document.getElementById('watchLabel');
-      const m = {ok: ['#00e676', 'Activa'], alert: ['#c9a84c', '¡Alerta!'], err: ['#555', 'Error'], idle: ['rgba(255,255,255,.15)', 'En espera']};
-      const [c, t] = m[s] || m.ok; dot.style.background = c; lbl.style.color = c; lbl.innerText = t;
+      const m = {ok: ['#00e676', 'Activa'], alert: ['#c9a84c', '¡Alerta!'], err: ['#555', 'Error'], idle: ['rgba(255,255,255,.25)', 'En espera']};
+      const [c, t] = m[s] || m.ok; dot.style.color = c; lbl.style.color = c; lbl.innerText = t;
     }
 
     function toggleWatchPanel() {
