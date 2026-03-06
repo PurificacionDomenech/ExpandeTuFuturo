@@ -1107,6 +1107,16 @@
     function saveWL() {try {localStorage.setItem('etf_wl', JSON.stringify([...watchlist]))} catch (e) { } }
     function loadWL() {try {const s = localStorage.getItem('etf_wl'); if (s) watchlist = new Set(JSON.parse(s))} catch (e) { } }
 
+    function syncWatchlistToServer() {
+      const userId = getNotifUserId();
+      if (!userId) return;
+      fetch(notifUrl('/api/notifications/prefs'), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({watchlist: [...watchlist].join(',')})
+      }).catch(() => {});
+    }
+
     /* ─────────────────────────────────────────────
        INIT
     ───────────────────────────────────────────── */
@@ -1824,7 +1834,7 @@
         watchlist.add(ticker);
         showToast(`⭐ ${ticker} añadido a vigilancia`, 'info', 2500);
       }
-      saveWL(); refreshStars(); updateWatchingCount();
+      saveWL(); syncWatchlistToServer(); refreshStars(); updateWatchingCount();
       if (typeof renderWatchPanel === 'function') renderWatchPanel();
       sortAssetGrid();
     }

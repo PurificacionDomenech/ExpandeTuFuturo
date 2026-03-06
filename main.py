@@ -417,22 +417,34 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
         body = await request.json()
     except Exception:
         return {"ok": False, "error": "Invalid request"}
-    
-    # Aseguramos que el watchlist esté en las preferencias
+
     prefs = load_prefs(user_id)
-    
-    # Forzar actualización de watchlist si viene en el body
-    if "watchlist" in body:
-        prefs["watchlist"] = body["watchlist"]
-    
-    # Asegurar que is_vip se mantenga si viene en el body o si ya es VIP
+
+    # is_vip nunca se puede bajar — solo subir
     if body.get("is_vip") or prefs.get("is_vip"):
         prefs["is_vip"] = True
-        
+
+    # Si el body solo trae el watchlist (sincronización silenciosa desde favoritos),
+    # solo actualizamos el watchlist y no tocamos telegram/email
+    watchlist_only = set(body.keys()) <= {"watchlist", "is_vip"}
+    if watchlist_only:
+        if "watchlist" in body:
+            prefs["watchlist"] = body["watchlist"]
+        save_prefs(prefs, user_id)
+        return {"ok": True}
+
+    # Guardado completo desde el modal de configuración
     if not prefs.get("is_vip"):
         body["telegram_enabled"] = False
         body["email_enabled"] = False
-        
+    else:
+        # Para usuarios VIP: telegram/email solo se desactivan si el usuario
+        # lo hace explícitamente — nunca desde un guardado accidental
+        if "telegram_enabled" not in body:
+            body["telegram_enabled"] = prefs.get("telegram_enabled", False)
+        if "email_enabled" not in body:
+            body["email_enabled"] = prefs.get("email_enabled", False)
+
     prefs.update(body)
     save_prefs(prefs, user_id)
     return {"ok": True}
