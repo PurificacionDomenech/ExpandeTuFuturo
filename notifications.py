@@ -151,7 +151,7 @@ def _send_smtp(host, port, user, password, from_addr, to_addr, msg):
 def format_alerts_text(alertas: list) -> str:
     if not alertas:
         return "Sin alertas activas."
-    icon_map = {"bullish": "🟢", "bearish": "🔴", "info": "🟡"}
+    icon_map = {"bullish": "★", "bearish": "★", "info": "★"}
     from datetime import datetime
     # Usar Madrid/Europe para la hora local
     try:
@@ -172,7 +172,7 @@ def format_alerts_html(alertas: list) -> str:
     if not alertas:
         return "<p>Sin alertas activas.</p>"
     color_map = {"bullish": "#2dd47e", "bearish": "#f05858", "info": "#e8c96d"}
-    icon_map  = {"bullish": "🟢",      "bearish": "🔴",       "info": "🟡"}
+    icon_map  = {"bullish": "★",  "bearish": "★",  "info": "★"}
     from datetime import datetime
     try:
         import pytz
