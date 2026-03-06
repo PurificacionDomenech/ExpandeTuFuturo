@@ -25,7 +25,7 @@ async def scan_and_notify():
             
             for t in tickers:
                 try:
-                    df_full = yf.download(t.upper(), period="5d", interval="1d", progress=False)
+                    df_full = yf.download(t.upper(), period="1y", interval="1d", progress=False)
                     if not df_full.empty:
                         df_full = clean_df(df_full)
                         df_full = calcular_indicadores(df_full)
@@ -38,6 +38,7 @@ async def scan_and_notify():
             
             gc.collect()
             
+            print(f"  → {len(all_alerts)} alertas detectadas para {uid}")
             if all_alerts:
                 prefs = {
                     "telegram_enabled": tg_en,
@@ -46,7 +47,9 @@ async def scan_and_notify():
                     "email_address": em_adr
                 }
                 await dispatch_notifications(prefs, all_alerts)
-                print(f"Enviadas {len(all_alerts)} alertas al usuario {uid}")
+                print(f"  ✓ Enviadas {len(all_alerts)} alertas al usuario {uid}")
+            else:
+                print(f"  – Sin alertas activas para {uid} en este ciclo")
                 
     except Exception as e:
         print(f"Error en scan_and_notify: {e}")
