@@ -505,6 +505,8 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
 
             estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
             for alert in detectar_alertas(df, ticker=t.upper()):
+                if alert.get("nivel") == "bearish":
+                    continue
                 original_msg = alert["msg"]
                 if cron_scanner._already_sent(user_id, original_msg):
                     continue

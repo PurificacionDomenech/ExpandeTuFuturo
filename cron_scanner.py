@@ -145,10 +145,14 @@ async def scan_and_notify():
 
                     raw_alerts = detectar_alertas(df_full, ticker=t.upper())
 
+                    estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
+
                     for alert in raw_alerts:
+                        # Solo señales alcistas e informativas — NO señales de caída
+                        if alert.get("nivel") == "bearish":
+                            continue
+
                         original_msg = alert["msg"]
-                        # Añadir badge de estado al mensaje
-                        estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
                         enriched_msg = f"{original_msg} [{estado_icon} {estado}]"
 
                         # Deduplicación: no reenviar si ya se mandó en las últimas 4h
