@@ -470,24 +470,53 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
     tickers_str = body.get("tickers", "")
     prefs = load_prefs(user_id)
 
-    all_alertas = []
+    import cron_scanner
+    filtered_alertas = []
     for t in tickers_str.split(","):
         t = t.strip()
         if not t:
             continue
         try:
             df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
-            if not df.empty:
-                df = clean_df(df)
-                df = calcular_indicadores(df)
-                all_alertas.extend(detectar_alertas(df, ticker=t.upper()))
+            if df.empty:
+                continue
+            df = clean_df(df)
+            df = calcular_indicadores(df)
+            n = len(df) - 1
+            if n < 2:
+                continue
+
+            price  = cron_scanner.safe_float(df["Close"].iloc[n])
+            sma20  = cron_scanner.safe_float(df["SMA20"].iloc[n])
+            sma50  = cron_scanner.safe_float(df["SMA50"].iloc[n])
+            sma100 = cron_scanner.safe_float(df["SMA100"].iloc[n])
+            sma200 = cron_scanner.safe_float(df["SMA200"].iloc[n])
+            rsi_s  = df["RSI"].dropna() if "RSI" in df.columns else None
+            rsi    = cron_scanner.safe_float(rsi_s.iloc[-1]) if rsi_s is not None and not rsi_s.empty else None
+
+            if price is None:
+                continue
+
+            pts = cron_scanner.calcular_estado_pts(price, sma20, sma50, sma100, sma200, rsi)
+            estado = cron_scanner.get_estado_label(pts)
+
+            if estado == "No ahora":
+                continue
+
+            estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
+            for alert in detectar_alertas(df, ticker=t.upper()):
+                original_msg = alert["msg"]
+                if cron_scanner._already_sent(user_id, original_msg):
+                    continue
+                filtered_alertas.append({**alert, "msg": f"{original_msg} [{estado_icon} {estado}]"})
+                cron_scanner._mark_sent(user_id, original_msg)
         except Exception:
             pass
 
-    if all_alertas:
-        results = await dispatch_notifications(prefs, all_alertas)
-        return {"ok": True, "alertas_count": len(all_alertas), "results": results}
-    return {"ok": True, "alertas_count": 0, "msg": "Sin alertas activas para enviar"}
+    if filtered_alertas:
+        results = await dispatch_notifications(prefs, filtered_alertas)
+        return {"ok": True, "alertas_count": len(filtered_alertas), "results": results}
+    return {"ok": True, "alertas_count": 0, "msg": "Sin alertas nuevas para enviar"}
 
 @app.get("/api/notifications/status")
 async def notification_status():
