@@ -1110,6 +1110,8 @@
     function syncWatchlistToServer() {
       const userId = getNotifUserId();
       if (!userId) return;
+      const cached = loadPrefsCacheLocal();
+      if (cached) { cached.watchlist = [...watchlist].join(','); savePrefsCacheLocal(cached); }
       fetch(notifUrl('/api/notifications/prefs'), {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -1719,7 +1721,6 @@
         );
         await sb.auth.signOut();
       } catch (e) {console.error('Logout error:', e);}
-      localStorage.removeItem('etf_user_id');
       window.location.href = '/?select_account=true';
     }
     function notifUrl(path) {return window.location.origin + path + '?user_id=' + encodeURIComponent(getNotifUserId());}
@@ -1862,14 +1863,34 @@
 
     let isVip = false;
 
+    function savePrefsCacheLocal(p) {
+      try { localStorage.setItem('etf_prefs_cache', JSON.stringify(p)); } catch(e) {}
+    }
+    function loadPrefsCacheLocal() {
+      try { const s = localStorage.getItem('etf_prefs_cache'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+    }
+
     async function loadNotifPrefs() {
       try {
         const userId = getNotifUserId();
-        const r = await fetch(window.location.origin + '/api/notifications/prefs?user_id=' + encodeURIComponent(userId));
-        if (!r.ok) { console.warn("Prefs endpoint returned", r.status); return; }
-        const text = await r.text();
-        if (!text || text.startsWith('<!')) { console.warn("Non-JSON prefs response"); return; }
-        const p = JSON.parse(text);
+        let p = null;
+        try {
+          const r = await fetch(window.location.origin + '/api/notifications/prefs?user_id=' + encodeURIComponent(userId));
+          if (r.ok) {
+            const text = await r.text();
+            if (text && !text.startsWith('<!')) {
+              p = JSON.parse(text);
+              savePrefsCacheLocal(p);
+            }
+          }
+        } catch(fetchErr) {
+          console.warn("Prefs fetch failed, using cache:", fetchErr);
+        }
+        if (!p) {
+          p = loadPrefsCacheLocal();
+          if (!p) { console.warn("No prefs available (no server response, no cache)"); return; }
+          console.log("Prefs loaded from local cache for user:", userId);
+        }
         isVip = !!p.is_vip;
         console.log("VIP Status loaded:", isVip, "for user:", userId);
 
@@ -2195,6 +2216,7 @@
         watchlist: [...watchlist].join(','),
         is_vip: isVip
       };
+      savePrefsCacheLocal(prefs);
       try {
         fetch(notifUrl('/api/notifications/prefs'), {
           method: 'POST',
