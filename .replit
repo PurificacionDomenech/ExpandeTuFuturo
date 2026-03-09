@@ -40,7 +40,7 @@ externalPort = 3000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--worker-class=uvicorn.workers.UvicornWorker", "-w", "1", "main:app"]
+run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--worker-class=uvicorn.workers.UvicornWorker", "-w", "1", "--timeout", "120", "--keep-alive", "5", "main:app"]
 
 [userenv]
 
