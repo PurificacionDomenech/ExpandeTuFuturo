@@ -1122,12 +1122,102 @@
     /* ─────────────────────────────────────────────
        INIT
     ───────────────────────────────────────────── */
+    let sbApp = null;
+
+    function showPasswordResetModal() {
+      const existing = document.getElementById('resetPassModal');
+      if (existing) existing.remove();
+      const modal = document.createElement('div');
+      modal.id = 'resetPassModal';
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:10001;backdrop-filter:blur(8px)';
+      modal.innerHTML = `
+        <div style="background:#0d1117;border:1px solid rgba(255,255,255,0.1);padding:30px;border-radius:16px;max-width:400px;width:90%;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.5)">
+          <div style="font-size:36px;margin-bottom:12px">🔐</div>
+          <h2 style="color:#fff;margin:0 0 8px 0;font-size:20px;font-family:var(--font-display)">Nueva Contraseña</h2>
+          <p style="color:var(--muted);font-size:13px;margin:0 0 24px 0">Escribe tu nueva contraseña para actualizar tu cuenta</p>
+          <form onsubmit="event.preventDefault();doUpdatePassword()">
+            <div style="position:relative;margin-bottom:12px">
+              <input type="password" id="newPass1" placeholder="Nueva contraseña (mínimo 6 caracteres)" autocomplete="new-password" style="width:100%;padding:12px 14px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="position:relative;margin-bottom:20px">
+              <input type="password" id="newPass2" placeholder="Confirmar contraseña" autocomplete="new-password" style="width:100%;padding:12px 14px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box">
+            </div>
+            <div id="resetPassMsg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px;font-size:12px"></div>
+            <button type="submit" id="btnUpdatePass" style="width:100%;padding:12px;background:var(--gold);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer;font-size:14px">Actualizar contraseña</button>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.getElementById('newPass1').focus();
+    }
+
+    async function doUpdatePassword() {
+      const pass1 = document.getElementById('newPass1').value;
+      const pass2 = document.getElementById('newPass2').value;
+      const msg = document.getElementById('resetPassMsg');
+      const btn = document.getElementById('btnUpdatePass');
+
+      if (!pass1 || pass1.length < 6) {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(255,68,68,0.15)';
+        msg.style.color = '#ff6b6b';
+        msg.textContent = 'La contraseña debe tener al menos 6 caracteres';
+        return;
+      }
+      if (pass1 !== pass2) {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(255,68,68,0.15)';
+        msg.style.color = '#ff6b6b';
+        msg.textContent = 'Las contraseñas no coinciden';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Actualizando...';
+
+      try {
+        const { data, error } = await sbApp.auth.updateUser({ password: pass1 });
+        if (error) {
+          msg.style.display = 'block';
+          msg.style.background = 'rgba(255,68,68,0.15)';
+          msg.style.color = '#ff6b6b';
+          msg.textContent = error.message;
+          btn.disabled = false;
+          btn.textContent = 'Actualizar contraseña';
+          return;
+        }
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(45,212,126,0.15)';
+        msg.style.color = '#2dd47e';
+        msg.textContent = '¡Contraseña actualizada correctamente!';
+        btn.textContent = '¡Listo!';
+        setTimeout(() => {
+          const modal = document.getElementById('resetPassModal');
+          if (modal) modal.remove();
+        }, 2000);
+      } catch(e) {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(255,68,68,0.15)';
+        msg.style.color = '#ff6b6b';
+        msg.textContent = 'Error: ' + e.message;
+        btn.disabled = false;
+        btn.textContent = 'Actualizar contraseña';
+      }
+    }
+
     window.onload = async () => {
       try {
-        const sbApp = supabase.createClient(
+        sbApp = supabase.createClient(
           'https://fhuijfysfqzjmzadsace.supabase.co',
           'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF'
         );
+
+        sbApp.auth.onAuthStateChange((event, session) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            showPasswordResetModal();
+          }
+        });
+
         const { data: { session } } = await sbApp.auth.getSession();
         if (session && session.user) {
           const email = session.user.email;
@@ -1715,11 +1805,7 @@
 
     async function doLogout() {
       try {
-        const sb = supabase.createClient(
-          'https://fhuijfysfqzjmzadsace.supabase.co',
-          'sb_publishable_TEj5FnpX_bQeIwTODoA8_Q_JFfpIIaF'
-        );
-        await sb.auth.signOut();
+        if (sbApp) await sbApp.auth.signOut();
       } catch (e) {console.error('Logout error:', e);}
       window.location.href = '/?select_account=true';
     }
