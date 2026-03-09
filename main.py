@@ -44,21 +44,42 @@ async def auto_setup_telegram_webhook():
     if not token:
         print("TELEGRAM: No bot token, skipping webhook setup")
         return
-    domain = os.environ.get("REPLIT_DEPLOYMENT_URL", "") or os.environ.get("REPLIT_DEV_DOMAIN", "")
-    if not domain:
-        print("TELEGRAM: No domain detected, skipping webhook setup")
-        return
-    if not domain.startswith("http"):
-        domain = f"https://{domain}"
-    webhook_url = f"{domain}/api/telegram/webhook"
+
+    deployment_url = os.environ.get("REPLIT_DEPLOYMENT_URL", "")
+    dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{token}/setWebhook",
-                json={"url": webhook_url, "allowed_updates": ["message"]}
-            )
-            result = r.json()
-            print(f"TELEGRAM: Webhook set to {webhook_url} -> {result}")
+            # Si estamos en producción, siempre actualizamos el webhook
+            if deployment_url:
+                domain = deployment_url if deployment_url.startswith("http") else f"https://{deployment_url}"
+                webhook_url = f"{domain}/api/telegram/webhook"
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/setWebhook",
+                    json={"url": webhook_url, "allowed_updates": ["message"]}
+                )
+                print(f"TELEGRAM: Webhook set to {webhook_url} -> {r.json()}")
+                return
+
+            # En desarrollo: solo cambiamos el webhook si no hay ya uno de producción activo
+            if dev_domain:
+                info_r = await client.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+                info = info_r.json().get("result", {})
+                current_url = info.get("url", "")
+                # Si el webhook actual apunta a una URL de producción, no lo sobreescribimos
+                if current_url and ".replit.app" in current_url:
+                    print(f"TELEGRAM: Webhook de producción activo ({current_url}), no se sobreescribe desde dev")
+                    return
+                domain = dev_domain if dev_domain.startswith("http") else f"https://{dev_domain}"
+                webhook_url = f"{domain}/api/telegram/webhook"
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/setWebhook",
+                    json={"url": webhook_url, "allowed_updates": ["message"]}
+                )
+                print(f"TELEGRAM: Webhook (dev) set to {webhook_url} -> {r.json()}")
+                return
+
+        print("TELEGRAM: No domain detected, skipping webhook setup")
     except Exception as e:
         print(f"TELEGRAM: Webhook setup error: {e}")
 
