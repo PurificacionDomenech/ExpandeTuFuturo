@@ -578,12 +578,15 @@ async def telegram_webhook(request: Request):
             )
 
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(
+            resp = await client.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"}
             )
+            result = resp.json()
+            print(f"TELEGRAM BOT reply to {chat_id}: ok={result.get('ok')}, error={result.get('description','')}")
         return {"ok": True}
     except Exception as e:
+        print(f"TELEGRAM BOT ERROR: {e}")
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/telegram/setup-webhook")
