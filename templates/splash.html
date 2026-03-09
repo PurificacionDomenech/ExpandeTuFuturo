@@ -688,8 +688,10 @@ async function doForgotPassword() {
   const email = document.getElementById('logEmail').value.trim();
   const msg = document.getElementById('msgLogin');
   if (!email) { showMsg(msg,'info','Escribe tu email arriba y presiona este enlace'); return; }
+  if (!sb) { showMsg(msg,'err','Error de conexión. Recarga la página.'); return; }
   try {
-    await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app' });
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app' });
+    if (error) { showMsg(msg,'err', error.message); return; }
     showMsg(msg,'ok','✓ Email de recuperación enviado. Revisa tu bandeja.');
   } catch(e) { showMsg(msg,'err', e.message); }
 }

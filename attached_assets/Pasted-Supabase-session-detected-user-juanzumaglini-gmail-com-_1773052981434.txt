@@ -1,0 +1,25 @@
+Supabase session detected, user: juanzumaglini@gmail.com
+app:1895 VIP Status loaded: false for user: juanzumaglini@gmail.com
+/api/chart/%5ENDX?interval=1d:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+app:1895 VIP Status loaded: false for user: juanzumaglini@gmail.com
+/api/chart/BTC-USD?interval=1d:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/chart/%5ENDX?interval=1d:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/IAU:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/SPYM:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/URNM:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/URA:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/GDX:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/REMX:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/COPX:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/GLD:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/UGL:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/URNM:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/UGL:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/COPX:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/IOO:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/VHT:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/row/FEPI:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/FEPI:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/DIA:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/URA:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/sparkline/AAPL:1  Failed to load resource: the server responded with a status of 500 ()Understand this error

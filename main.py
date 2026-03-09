@@ -375,18 +375,19 @@ async def redeem_code(request: Request, user_id: str = "default"):
     if not code:
         return {"ok": False, "error": "Código vacío"}
     
+    special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 34)]
+    is_special = code in special_codes
+    
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
-                row = cur.fetchone()
-                if not row:
-                    return {"ok": False, "error": "Código inválido"}
-                if row[0]:
-                    return {"ok": False, "error": "Código ya utilizado"}
-                
-                special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 34)]
-                if code not in special_codes:
+                if not is_special:
+                    cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
+                    row = cur.fetchone()
+                    if not row:
+                        return {"ok": False, "error": "Código inválido"}
+                    if row[0]:
+                        return {"ok": False, "error": "Código ya utilizado"}
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
                 cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
