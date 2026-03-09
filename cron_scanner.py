@@ -208,6 +208,10 @@ def _mark_radar_sent(user_id):
     except Exception:
         pass
 
+def _esc_html(text):
+    import html
+    return html.escape(str(text)) if text else ""
+
 async def send_daily_radar():
     from notifications import send_telegram
     print(f"[{time.ctime()}] Enviando resumen diario de Radar Financiero...")
@@ -298,10 +302,12 @@ async def send_daily_radar():
                             url = click["url"]
                         elif canon and canon.get("url"):
                             url = canon["url"]
+                        safe_title = _esc_html(title_es)
                         if url:
-                            msg_parts.append(f"  • <a href=\"{url}\">{title_es}</a>")
+                            safe_url = url.replace("&", "&amp;").replace('"', "%22")
+                            msg_parts.append(f'  • <a href="{safe_url}">{safe_title}</a>')
                         else:
-                            msg_parts.append(f"  • {title_es}")
+                            msg_parts.append(f"  • {safe_title}")
                         count += 1
                     if count == 0:
                         msg_parts.pop()
@@ -314,7 +320,13 @@ async def send_daily_radar():
                 msg_parts.append("\n<i>ETF · Expande Tu Futuro</i>")
                 full_msg = "\n".join(msg_parts)
                 if len(full_msg) > 4000:
-                    full_msg = full_msg[:3950] + "\n\n<i>… (mensaje recortado)</i>"
+                    import re
+                    trimmed = full_msg[:3900]
+                    trimmed = re.sub(r'<[^>]*$', '', trimmed)
+                    last_nl = trimmed.rfind('\n')
+                    if last_nl > 2000:
+                        trimmed = trimmed[:last_nl]
+                    full_msg = trimmed + "\n\n<i>… (mensaje recortado)</i>"
                 try:
                     r = await send_telegram(token, str(chat_id), full_msg)
                     if r.get("ok"):
