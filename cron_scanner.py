@@ -242,11 +242,13 @@ def _get_epicentro_data():
 
 
 def _format_epicentro_telegram(epi_data: list) -> str:
+    import html as _html
     lines = ["📊 <b>Indicadores del Epicentro</b>\n"]
     for d in epi_data:
         arrow = ("📉" if d["chg"] >= 0 else "📈") if d["is_vix"] else ("📈" if d["chg"] >= 0 else "📉")
         sign = "↑" if d["chg"] >= 0 else "↓"
-        lines.append(f"{arrow} <b>{d['name']}</b>  {d['price']:,.2f}  {sign}{abs(d['chg']):.2f}%")
+        safe_name = _html.escape(d['name'])
+        lines.append(f"{arrow} <b>{safe_name}</b>  {d['price']:,.2f}  {sign}{abs(d['chg']):.2f}%")
     lines.append("\n<i>ETF · Expande Tu Futuro</i>")
     return "\n".join(lines)
 
@@ -355,7 +357,9 @@ async def send_daily_radar():
                     # 1) Mensaje del Epicentro
                     if epi_data:
                         epi_msg = f"📡 <b>Radar Financiero Diario</b>\n\n{_format_epicentro_telegram(epi_data)}"
-                        await send_telegram(token, str(chat_id), epi_msg)
+                        r_epi = await send_telegram(token, str(chat_id), epi_msg)
+                        if not r_epi.get("ok"):
+                            print(f"    ✗ Epicentro TG rechazado para {uid}: {r_epi.get('description','?')}")
                         await asyncio.sleep(0.5)
 
                     # 2) Un mensaje por ticker
