@@ -539,10 +539,19 @@ async def notification_status():
         has_telegram = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
         has_twilio   = bool(os.environ.get("TWILIO_ACCOUNT_SID") and os.environ.get("TWILIO_AUTH_TOKEN"))
         has_smtp     = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+        total_users = 0
+        try:
+            with get_db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) FROM notification_prefs")
+                    total_users = cur.fetchone()[0]
+        except Exception:
+            pass
         return {
             "telegram_configured":  has_telegram,
             "whatsapp_configured":  has_twilio,
             "email_configured":     has_smtp,
+            "total_users":          total_users,
         }
     except Exception as e:
         return {"error": str(e)}
