@@ -691,8 +691,15 @@ async function doForgotPassword() {
   if (!sb) { showMsg(msg,'err','Error de conexión. Recarga la página.'); return; }
   try {
     const { data, error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app' });
-    if (error) { showMsg(msg,'err', error.message); return; }
-    showMsg(msg,'ok','✓ Email de recuperación enviado. Revisa tu bandeja.');
+    if (error) {
+      if (error.status === 429 || (error.message && error.message.toLowerCase().includes('rate'))) {
+        showMsg(msg,'err','Demasiados intentos. Espera unos minutos e inténtalo de nuevo.');
+      } else {
+        showMsg(msg,'err', error.message);
+      }
+      return;
+    }
+    showMsg(msg,'ok','✓ Email de recuperación enviado. Revisa tu bandeja y la carpeta de spam.');
   } catch(e) { showMsg(msg,'err', e.message); }
 }
 
