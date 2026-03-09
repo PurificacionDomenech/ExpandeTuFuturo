@@ -375,7 +375,7 @@ async def redeem_code(request: Request, user_id: str = "default"):
     if not code:
         return {"ok": False, "error": "Código vacío"}
     
-    special_codes = ["VIP333"] + [f"VIP{i:03d}" for i in range(1, 34)]
+    special_codes = ["VIP333", "VIP777"] + [f"VIP{i:03d}" for i in range(1, 45)]
     is_special = code in special_codes
     
     try:
