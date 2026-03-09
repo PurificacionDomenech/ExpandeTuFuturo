@@ -435,6 +435,45 @@ async def get_radar_batch(tickers: str):
     results_list = await asyncio.gather(*tasks)
     return {"results": dict(results_list)}
 
+def _fetch_epicentro():
+    indices = [
+        {"ticker": "^VIX", "name": "VIX", "icon": "🌡️"},
+        {"ticker": "^GSPC", "name": "S&P 500", "icon": "📊"},
+        {"ticker": "^DJI", "name": "Dow Jones", "icon": "📊"},
+        {"ticker": "^IXIC", "name": "Nasdaq", "icon": "📊"},
+        {"ticker": "^RUT", "name": "Russell 2000", "icon": "📊"},
+    ]
+    results = []
+    for idx in indices:
+        try:
+            tk = yf.Ticker(idx["ticker"])
+            h = tk.history(period="2d")
+            if h.empty:
+                continue
+            price = float(h["Close"].iloc[-1])
+            change_pct = 0.0
+            if len(h) >= 2:
+                prev = float(h["Close"].iloc[-2])
+                if prev > 0:
+                    change_pct = ((price - prev) / prev) * 100
+            results.append({
+                "name": idx["name"],
+                "icon": idx["icon"],
+                "price": round(price, 2),
+                "change_pct": round(change_pct, 2),
+            })
+        except Exception:
+            pass
+    return results
+
+@app.get("/api/radar/epicentro")
+async def get_epicentro():
+    try:
+        data = await asyncio.to_thread(_fetch_epicentro)
+        return {"indicators": data}
+    except Exception as e:
+        return {"indicators": [], "error": str(e)}
+
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):
     try:

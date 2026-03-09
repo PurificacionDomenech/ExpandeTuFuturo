@@ -922,6 +922,15 @@
         </div>
       </button>
       <div id="radarBody" class="acc-body closed">
+        <div id="epicentroPanel" style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="font-size:13px">📊</span>
+            <span style="font-size:12px;font-weight:700;color:var(--gold2)">Indicadores del Epicentro</span>
+          </div>
+          <div id="epicentroGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+            <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.2);padding:12px">Cargando datos…</div>
+          </div>
+        </div>
         <div id="radarLoading" style="text-align:center;padding:20px;display:none">
           <div class="spin"></div>
           <span style="font-size:11px;color:var(--muted);margin-top:8px;display:block">Buscando noticias…</span>
@@ -1976,6 +1985,7 @@
 
     let radarOpen = false;
     let radarLoaded = false;
+    let epicentroLoaded = false;
     function toggleRadar() {
       radarOpen = !radarOpen;
       const body = document.getElementById('radarBody');
@@ -1983,7 +1993,45 @@
       body.classList.toggle('open', radarOpen);
       body.classList.toggle('closed', !radarOpen);
       chev.style.transform = radarOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
-      if (radarOpen && !radarLoaded) loadRadar();
+      if (radarOpen) {
+        if (!epicentroLoaded) loadEpicentro();
+        if (!radarLoaded) loadRadar();
+      }
+    }
+
+    async function loadEpicentro() {
+      const grid = document.getElementById('epicentroGrid');
+      try {
+        const resp = await fetch('/api/radar/epicentro');
+        const data = await resp.json();
+        const indicators = data.indicators || [];
+        if (indicators.length === 0) {
+          grid.innerHTML = '<div style="text-align:center;font-size:10px;color:rgba(255,255,255,.2);padding:8px">Sin datos disponibles</div>';
+          return;
+        }
+        let html = '';
+        for (const ind of indicators) {
+          const isUp = ind.change_pct >= 0;
+          const isVix = ind.name === 'VIX';
+          const arrow = isUp ? '↑' : '↓';
+          const color = isVix ? (isUp ? '#ff5252' : '#00e676') : (isUp ? '#00e676' : '#ff5252');
+          const bgColor = isVix ? (isUp ? 'rgba(255,82,82,.08)' : 'rgba(0,230,118,.08)') : (isUp ? 'rgba(0,230,118,.08)' : 'rgba(255,82,82,.08)');
+          const icon = isVix ? '🌡️' : (isUp ? '📈' : '📉');
+          const priceStr = ind.price >= 10000 ? ind.price.toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) : ind.price.toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2});
+          html += '<div style="padding:8px 10px;border-radius:6px;background:' + bgColor + ';border:1px solid rgba(255,255,255,.05)">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+          html += '<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7)">' + icon + ' ' + ind.name + '</span>';
+          html += '<span style="font-size:9px;font-weight:700;color:' + color + '">' + arrow + ' ' + Math.abs(ind.change_pct).toFixed(2) + '%</span>';
+          html += '</div>';
+          html += '<div style="font-size:13px;font-weight:700;color:' + color + '">' + priceStr + '</div>';
+          html += '</div>';
+        }
+        grid.innerHTML = html;
+        epicentroLoaded = true;
+        setTimeout(() => { epicentroLoaded = false; }, 300000);
+      } catch (e) {
+        grid.innerHTML = '<div style="text-align:center;font-size:10px;color:rgba(255,82,82,.5);padding:8px">Error al cargar indicadores</div>';
+      }
     }
 
     async function loadRadar() {
