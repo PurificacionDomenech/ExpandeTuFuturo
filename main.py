@@ -375,12 +375,20 @@ async def redeem_code(request: Request, user_id: str = "default"):
     if not code:
         return {"ok": False, "error": "Código vacío"}
     
-    special_codes = ["VIP333", "VIP777"] + [f"VIP{i:03d}" for i in range(1, 45)]
-    is_special = code in special_codes
+    permanent_codes = ["VIP001", "VIP002", "VIP003", "VIP004", "VIP005", "VIP333", "VIP777"]
+    trial_codes = [f"VIP{i:03d}" for i in range(6, 45)]
+    all_special = permanent_codes + trial_codes
+    is_special = code in all_special
+    is_trial = code in trial_codes
     
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
+                cur.execute("SELECT user_id, vip_code FROM notification_prefs WHERE user_id = %s", (user_id,))
+                existing = cur.fetchone()
+                if existing and existing[1] in permanent_codes:
+                    return {"ok": True, "msg": "Ya tienes acceso VIP permanente"}
+                
                 if not is_special:
                     cur.execute("SELECT is_used FROM access_codes WHERE code = %s", (code,))
                     row = cur.fetchone()
@@ -390,14 +398,18 @@ async def redeem_code(request: Request, user_id: str = "default"):
                         return {"ok": False, "error": "Código ya utilizado"}
                     cur.execute("UPDATE access_codes SET is_used = TRUE WHERE code = %s", (code,))
                 
-                cur.execute("SELECT user_id FROM notification_prefs WHERE user_id = %s", (user_id,))
-                if not cur.fetchone():
-                    cur.execute("INSERT INTO notification_prefs (user_id, is_vip, updated_at) VALUES (%s, TRUE, NOW())", (user_id,))
+                expires_sql = "NOW() + INTERVAL '3 months'" if is_trial else "NULL"
+                
+                if not existing:
+                    cur.execute(f"INSERT INTO notification_prefs (user_id, is_vip, vip_code, vip_expires_at, updated_at) VALUES (%s, TRUE, %s, {expires_sql}, NOW())", (user_id, code))
                 else:
-                    cur.execute("UPDATE notification_prefs SET is_vip = TRUE, updated_at = NOW() WHERE user_id = %s", (user_id,))
+                    cur.execute(f"UPDATE notification_prefs SET is_vip = TRUE, vip_code = %s, vip_expires_at = {expires_sql}, updated_at = NOW() WHERE user_id = %s", (code, user_id))
                 
             conn.commit()
-        return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP"}
+        
+        if is_trial:
+            return {"ok": True, "msg": "¡Acceso VIP activado! Tienes 3 meses de prueba gratuita"}
+        return {"ok": True, "msg": "¡Felicidades! Ahora tienes acceso VIP permanente"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -421,8 +433,7 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
 
     prefs = load_prefs(user_id)
 
-    # is_vip nunca se puede bajar — solo subir
-    if body.get("is_vip") or prefs.get("is_vip"):
+    if prefs.get("is_vip"):
         prefs["is_vip"] = True
 
     # Si el body solo trae el watchlist (sincronización silenciosa desde favoritos),

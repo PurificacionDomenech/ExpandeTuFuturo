@@ -25,6 +25,21 @@ def load_prefs(user_id: str = "default") -> dict:
             if row:
                 d = dict(row)
                 d["is_vip"] = bool(d.get("is_vip", False))
+                from datetime import datetime
+                expires = d.get("vip_expires_at")
+                if d["is_vip"] and expires and datetime.now() > expires:
+                    d["is_vip"] = False
+                    d["telegram_enabled"] = False
+                    d["email_enabled"] = False
+                    d["vip_expired"] = True
+                    try:
+                        cur.execute(
+                            "UPDATE notification_prefs SET is_vip = FALSE, telegram_enabled = FALSE, email_enabled = FALSE, updated_at = NOW() WHERE user_id = %s",
+                            (user_id,)
+                        )
+                        conn.commit()
+                    except Exception:
+                        pass
                 return d
     except Exception as e:
         print(f"DEBUG: load_prefs error for {user_id}: {e}")

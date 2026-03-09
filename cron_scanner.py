@@ -97,7 +97,7 @@ async def scan_and_notify():
                 cur.execute(
                     "SELECT user_id, telegram_enabled, telegram_chat_id, "
                     "email_enabled, email_address, watchlist "
-                    "FROM notification_prefs WHERE is_vip = TRUE"
+                    "FROM notification_prefs WHERE is_vip = TRUE AND (vip_expires_at IS NULL OR vip_expires_at > NOW())"
                 )
                 users = cur.fetchall()
 
