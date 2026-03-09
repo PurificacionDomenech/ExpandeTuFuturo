@@ -212,57 +212,127 @@ def _esc_html(text):
     import html
     return html.escape(str(text)) if text else ""
 
+def _get_epicentro_data():
+    """Obtiene los indicadores del Epicentro. Retorna lista de dicts."""
+    epi_indices = [
+        ("^VIX",  "VIX",         "🌡️", True),
+        ("^GSPC", "S&P 500",     "📊", False),
+        ("^DJI",  "Dow Jones",   "📊", False),
+        ("^IXIC", "Nasdaq",      "📊", False),
+        ("^RUT",  "Russell 2000","📊", False),
+    ]
+    results = []
+    for sym, name, icon, is_vix in epi_indices:
+        try:
+            tk = yf.Ticker(sym)
+            h = tk.history(period="2d")
+            if h.empty:
+                continue
+            price = float(h["Close"].iloc[-1])
+            chg = 0.0
+            if len(h) >= 2:
+                prev = float(h["Close"].iloc[-2])
+                if prev > 0:
+                    chg = ((price - prev) / prev) * 100
+            results.append({"sym": sym, "name": name, "icon": icon,
+                             "is_vix": is_vix, "price": price, "chg": chg})
+        except Exception:
+            pass
+    return results
+
+
+def _format_epicentro_telegram(epi_data: list) -> str:
+    lines = ["📊 <b>Indicadores del Epicentro</b>\n"]
+    for d in epi_data:
+        arrow = ("📉" if d["chg"] >= 0 else "📈") if d["is_vix"] else ("📈" if d["chg"] >= 0 else "📉")
+        sign = "↑" if d["chg"] >= 0 else "↓"
+        lines.append(f"{arrow} <b>{d['name']}</b>  {d['price']:,.2f}  {sign}{abs(d['chg']):.2f}%")
+    lines.append("\n<i>ETF · Expande Tu Futuro</i>")
+    return "\n".join(lines)
+
+
+def _format_epicentro_html(epi_data: list) -> str:
+    rows = ""
+    for d in epi_data:
+        color = "#ef4444" if (d["chg"] >= 0 and d["is_vix"]) or (d["chg"] < 0 and not d["is_vix"]) else "#22c55e"
+        arrow = "↓" if d["chg"] < 0 else "↑"
+        rows += (f'<tr><td style="padding:6px 10px;color:#e8c96d;font-weight:700">{d["name"]}</td>'
+                 f'<td style="padding:6px 10px;font-family:monospace">{d["price"]:,.2f}</td>'
+                 f'<td style="padding:6px 10px;color:{color};font-weight:700">{arrow}{abs(d["chg"]):.2f}%</td></tr>')
+    return (f'<table style="width:100%;border-collapse:collapse;margin-bottom:20px">'
+            f'<tr><th style="text-align:left;padding:6px 10px;color:rgba(232,228,217,.5);font-size:11px">ÍNDICE</th>'
+            f'<th style="text-align:left;padding:6px 10px;color:rgba(232,228,217,.5);font-size:11px">PRECIO</th>'
+            f'<th style="text-align:left;padding:6px 10px;color:rgba(232,228,217,.5);font-size:11px">CAMBIO</th></tr>'
+            f'{rows}</table>')
+
+
+async def _get_ticker_news(ticker: str) -> list:
+    """Retorna lista de {title_es, url} para un ticker (max 3 noticias)."""
+    try:
+        t = yf.Ticker(ticker)
+        news_raw = t.news or []
+        items = []
+        for n in news_raw[:3]:
+            c = n.get("content", {})
+            title = c.get("title", "")
+            if not title:
+                continue
+            try:
+                from deep_translator import GoogleTranslator
+                title_es = GoogleTranslator(source='en', target='es').translate(title[:400]) or title
+            except Exception:
+                title_es = title
+            click = c.get("clickThroughUrl", {})
+            canon = c.get("canonicalUrl", {})
+            url = (click.get("url") if click else None) or (canon.get("url") if canon else None) or ""
+            items.append({"title_es": title_es, "url": url})
+        return items
+    except Exception:
+        return []
+
+
 async def send_daily_radar():
-    from notifications import send_telegram
+    from notifications import send_telegram, send_email
+    import re
     print(f"[{time.ctime()}] Enviando resumen diario de Radar Financiero...")
 
+    # ── Credenciales ──────────────────────────────────────────────────────────
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user)
+
     try:
+        # ── Obtener usuarios VIP activos (telegram O email) ───────────────────
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT user_id, telegram_chat_id, watchlist "
-                    "FROM notification_prefs WHERE is_vip = TRUE AND telegram_enabled = TRUE "
-                    "AND telegram_chat_id IS NOT NULL AND telegram_chat_id != '' "
+                    "SELECT user_id, telegram_enabled, telegram_chat_id, "
+                    "email_enabled, email_address, watchlist "
+                    "FROM notification_prefs WHERE is_vip = TRUE "
+                    "AND (vip_expires_at IS NULL OR vip_expires_at > NOW()) "
                     "AND watchlist IS NOT NULL AND watchlist != '' "
-                    "AND (vip_expires_at IS NULL OR vip_expires_at > NOW())"
+                    "AND (telegram_enabled = TRUE OR email_enabled = TRUE)"
                 )
                 users = cur.fetchall()
 
-        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        if not token:
-            print("  TELEGRAM_BOT_TOKEN no configurado, omitiendo radar diario")
+        if not users:
+            print("  Sin usuarios VIP con notificaciones activas")
             return
 
-        epicentro_text = ""
+        # ── Epicentro (una sola vez) ──────────────────────────────────────────
+        epi_data = []
         try:
-            epi_indices = [("^VIX","VIX","🌡️"),("^GSPC","S&P 500","📊"),("^DJI","Dow Jones","📊"),("^IXIC","Nasdaq","📊"),("^RUT","Russell 2000","📊")]
-            epi_lines = ["📊 <b>Indicadores del Epicentro</b>\n"]
-            for sym, name, icon in epi_indices:
-                try:
-                    tk = yf.Ticker(sym)
-                    h = tk.history(period="2d")
-                    if h.empty:
-                        continue
-                    price = float(h["Close"].iloc[-1])
-                    chg = 0.0
-                    if len(h) >= 2:
-                        prev = float(h["Close"].iloc[-2])
-                        if prev > 0:
-                            chg = ((price - prev) / prev) * 100
-                    is_vix = name == "VIX"
-                    arrow = "📈" if chg >= 0 else "📉"
-                    if is_vix:
-                        arrow = "📉" if chg >= 0 else "📈"
-                    sign = "↑" if chg >= 0 else "↓"
-                    epi_lines.append(f"{arrow} <b>{name}</b>  {price:,.2f}  {sign}{abs(chg):.2f}%")
-                except Exception:
-                    pass
-            if len(epi_lines) > 1:
-                epicentro_text = "\n".join(epi_lines)
+            epi_data = _get_epicentro_data()
         except Exception as e:
             print(f"  Error obteniendo epicentro: {e}")
 
-        for uid, chat_id, wl_str in users:
+        # ── Caché de noticias por ticker ──────────────────────────────────────
+        news_cache: dict = {}
+
+        for uid, tg_on, chat_id, em_on, em_addr, wl_str in users:
             if _radar_already_sent_today(uid):
                 print(f"  – Radar ya enviado hoy a {uid}, omitiendo")
                 continue
@@ -271,71 +341,114 @@ async def send_daily_radar():
             if not tickers:
                 continue
 
-            msg_parts = ["📡 <b>Radar Financiero Diario</b>\n"]
-            if epicentro_text:
-                msg_parts.append(epicentro_text)
-                msg_parts.append("")
-
+            # Obtener noticias de todos los tickers del usuario
             for ticker in tickers:
-                try:
-                    t = yf.Ticker(ticker)
-                    news_raw = t.news or []
-                    if not news_raw:
-                        continue
+                if ticker not in news_cache:
+                    news_cache[ticker] = await _get_ticker_news(ticker)
+                    await asyncio.sleep(0.3)
 
-                    msg_parts.append(f"\n<b>🔸 {ticker}</b>")
-                    count = 0
-                    for n in news_raw[:3]:
-                        c = n.get("content", {})
-                        title = c.get("title", "")
-                        if not title:
+            sent_ok = False
+
+            # ── TELEGRAM: un mensaje por ticker ──────────────────────────────
+            if tg_on and chat_id and token:
+                try:
+                    # 1) Mensaje del Epicentro
+                    if epi_data:
+                        epi_msg = f"📡 <b>Radar Financiero Diario</b>\n\n{_format_epicentro_telegram(epi_data)}"
+                        await send_telegram(token, str(chat_id), epi_msg)
+                        await asyncio.sleep(0.5)
+
+                    # 2) Un mensaje por ticker
+                    for ticker in tickers:
+                        items = news_cache.get(ticker, [])
+                        if not items:
                             continue
-                        try:
-                            from deep_translator import GoogleTranslator
-                            title_es = GoogleTranslator(source='en', target='es').translate(title[:400]) or title
-                        except Exception:
-                            title_es = title
-                        click = c.get("clickThroughUrl", {})
-                        canon = c.get("canonicalUrl", {})
-                        url = ""
-                        if click and click.get("url"):
-                            url = click["url"]
-                        elif canon and canon.get("url"):
-                            url = canon["url"]
-                        safe_title = _esc_html(title_es)
-                        if url:
-                            safe_url = url.replace("&", "&amp;").replace('"', "%22")
-                            msg_parts.append(f'  • <a href="{safe_url}">{safe_title}</a>')
-                        else:
-                            msg_parts.append(f"  • {safe_title}")
-                        count += 1
-                    if count == 0:
-                        msg_parts.pop()
+                        lines = [f"🔸 <b>{ticker}</b>"]
+                        for item in items:
+                            safe_title = _esc_html(item["title_es"])
+                            url = item["url"]
+                            if url:
+                                safe_url = url.replace("&", "&amp;").replace('"', "%22")
+                                lines.append(f'  • <a href="{safe_url}">{safe_title}</a>')
+                            else:
+                                lines.append(f"  • {safe_title}")
+                        lines.append("\n<i>ETF · Expande Tu Futuro</i>")
+                        ticker_msg = "\n".join(lines)
+                        r = await send_telegram(token, str(chat_id), ticker_msg)
+                        if not r.get("ok"):
+                            print(f"    ✗ TG ticker {ticker} para {uid}: {r.get('description','?')}")
+                        await asyncio.sleep(0.5)
+
+                    sent_ok = True
+                    print(f"  ✓ Radar Telegram enviado a {uid} ({len(tickers)} tickers)")
                 except Exception as e:
-                    print(f"  Error obteniendo noticias de {ticker}: {e}")
+                    print(f"  ✗ Error Telegram radar para {uid}: {e}")
 
-                await asyncio.sleep(0.3)
-
-            if len(msg_parts) > 1:
-                msg_parts.append("\n<i>ETF · Expande Tu Futuro</i>")
-                full_msg = "\n".join(msg_parts)
-                if len(full_msg) > 4000:
-                    import re
-                    trimmed = full_msg[:3900]
-                    trimmed = re.sub(r'<[^>]*$', '', trimmed)
-                    last_nl = trimmed.rfind('\n')
-                    if last_nl > 2000:
-                        trimmed = trimmed[:last_nl]
-                    full_msg = trimmed + "\n\n<i>… (mensaje recortado)</i>"
+            # ── EMAIL: un único correo HTML con todo ─────────────────────────
+            if em_on and em_addr and smtp_user and smtp_pass:
                 try:
-                    r = await send_telegram(token, str(chat_id), full_msg)
+                    from datetime import datetime
+                    try:
+                        import pytz
+                        now_str = datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m/%Y %H:%M")
+                    except Exception:
+                        now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+                    html_parts = [f"""
+<div style="font-family:'DM Sans',Arial,sans-serif;background:#060810;color:#e8e4d9;
+            padding:30px;border-radius:12px;max-width:600px;margin:0 auto">
+  <div style="border-bottom:1px solid rgba(201,168,76,.3);padding-bottom:15px;margin-bottom:20px">
+    <h2 style="color:#e8c96d;margin:0;font-size:18px">📡 Radar Financiero Diario</h2>
+    <p style="color:rgba(232,228,217,.5);font-size:12px;margin:4px 0 0">
+      ETF · Expande Tu Futuro · {now_str}</p>
+  </div>"""]
+
+                    if epi_data:
+                        html_parts.append('<h3 style="color:#e8c96d;font-size:14px;margin:0 0 10px">📊 Indicadores del Epicentro</h3>')
+                        html_parts.append(_format_epicentro_html(epi_data))
+
+                    for ticker in tickers:
+                        items = news_cache.get(ticker, [])
+                        if not items:
+                            continue
+                        html_parts.append(f'<h3 style="color:#e8c96d;font-size:14px;margin:16px 0 8px">🔸 {ticker}</h3>')
+                        for item in items:
+                            url = item["url"]
+                            title = item["title_es"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                            if url:
+                                safe_url = url.replace("&", "&amp;").replace('"', "%22")
+                                html_parts.append(
+                                    f'<div style="padding:8px 12px;margin:4px 0;border-radius:6px;'
+                                    f'background:rgba(255,255,255,.03);border-left:3px solid rgba(201,168,76,.4);font-size:13px">'
+                                    f'• <a href="{safe_url}" style="color:#e8c96d;text-decoration:none">{title}</a></div>')
+                            else:
+                                html_parts.append(
+                                    f'<div style="padding:8px 12px;margin:4px 0;border-radius:6px;'
+                                    f'background:rgba(255,255,255,.03);border-left:3px solid rgba(201,168,76,.4);font-size:13px">'
+                                    f'• {title}</div>')
+
+                    html_parts.append("""
+  <div style="margin-top:25px;padding-top:15px;border-top:1px solid rgba(201,168,76,.15);
+              font-size:10px;color:rgba(232,228,217,.3)">
+    Enviado por ETF · Expande Tu Futuro
+  </div>
+</div>""")
+
+                    full_html = "\n".join(html_parts)
+                    r = await send_email(smtp_host, smtp_port, smtp_user, smtp_pass,
+                                         smtp_from, em_addr,
+                                         "📡 Radar Financiero Diario · ETF Expande Tu Futuro",
+                                         full_html)
                     if r.get("ok"):
-                        _mark_radar_sent(uid)
-                        print(f"  ✓ Radar diario enviado a {uid}")
+                        sent_ok = True
+                        print(f"  ✓ Radar Email enviado a {uid} ({em_addr})")
                     else:
-                        print(f"  ✗ Telegram rechazó radar para {uid}: {r.get('description', 'unknown')}")
+                        print(f"  ✗ Error Email radar para {uid}: {r.get('error','?')}")
                 except Exception as e:
-                    print(f"  ✗ Error enviando radar a {uid}: {e}")
+                    print(f"  ✗ Error Email radar para {uid}: {e}")
+
+            if sent_ok:
+                _mark_radar_sent(uid)
 
     except Exception as e:
         print(f"Error en send_daily_radar: {e}")
