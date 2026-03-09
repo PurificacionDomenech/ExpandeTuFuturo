@@ -365,6 +365,63 @@ async def generate_code():
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+def _parse_news(news_list, max_items=8, include_thumb=False):
+    items = []
+    for n in news_list[:max_items]:
+        c = n.get("content", {})
+        title = c.get("title", "")
+        if not title:
+            continue
+        summary = c.get("summary", "")
+        pub = c.get("pubDate", "")
+        provider = c.get("provider", {}).get("displayName", "")
+        click = c.get("clickThroughUrl", {})
+        canon = c.get("canonicalUrl", {})
+        url = ""
+        if click and click.get("url"):
+            url = click["url"]
+        elif canon and canon.get("url"):
+            url = canon["url"]
+        item = {"title": title, "summary": summary[:200], "url": url, "date": pub, "source": provider}
+        if include_thumb:
+            thumb = ""
+            tn = c.get("thumbnail")
+            if tn and tn.get("resolutions"):
+                for r in tn["resolutions"]:
+                    if r.get("tag") == "original":
+                        thumb = r.get("url", "")
+                        break
+                if not thumb:
+                    thumb = tn["resolutions"][0].get("url", "")
+            item["thumb"] = thumb
+        items.append(item)
+    return items
+
+def _fetch_ticker_news(ticker, max_items=8, include_thumb=False):
+    t = yf.Ticker(ticker)
+    news = t.news or []
+    return _parse_news(news, max_items, include_thumb)
+
+@app.get("/api/radar/{ticker}")
+async def get_radar_news(ticker: str):
+    try:
+        items = await asyncio.to_thread(_fetch_ticker_news, ticker, 8, True)
+        return {"ticker": ticker.upper(), "news": items}
+    except Exception as e:
+        return {"ticker": ticker.upper(), "news": [], "error": str(e)}
+
+@app.get("/api/radar/batch/{tickers}")
+async def get_radar_batch(tickers: str):
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:10]
+    async def fetch_one(tk):
+        try:
+            return tk, await asyncio.to_thread(_fetch_ticker_news, tk, 5, False)
+        except Exception:
+            return tk, []
+    tasks = [fetch_one(tk) for tk in ticker_list]
+    results_list = await asyncio.gather(*tasks)
+    return {"results": dict(results_list)}
+
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):
     try:

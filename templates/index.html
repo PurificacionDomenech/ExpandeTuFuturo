@@ -908,6 +908,31 @@
       </div><!-- fin chart-card -->
     </div><!-- fin #main -->
 
+    <!-- ── RADAR FINANCIERO ── -->
+    <div class="card" id="radar-panel">
+      <button id="radar-hdr" onclick="toggleRadar()" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:none;padding:10px 12px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px">📡</span>
+          <span style="font-size:13px;font-weight:700;color:var(--gold2)">Radar Financiero</span>
+          <span id="radarCount" style="font-size:10px;color:var(--muted)"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:var(--muted)">Noticias de tus activos favoritos</span>
+          <span id="radarChevron" style="color:var(--gold);font-size:11px;transition:transform .3s;transform:rotate(-90deg)">▼</span>
+        </div>
+      </button>
+      <div id="radarBody" class="acc-body closed">
+        <div id="radarLoading" style="text-align:center;padding:20px;display:none">
+          <div class="spin"></div>
+          <span style="font-size:11px;color:var(--muted);margin-top:8px;display:block">Buscando noticias…</span>
+        </div>
+        <div id="radarEmpty" style="font-size:11px;line-height:1.6;color:rgba(255,255,255,.25);padding:12px;text-align:center">
+          Marca ★ en activos para ver noticias relacionadas de Yahoo Finance, EarningsWhispers y DataRoma.
+        </div>
+        <div id="radarContent" style="display:none"></div>
+      </div>
+    </div>
+
     <!-- ── TABLA ACTIVOS: abierta por defecto ── -->
     <div class="card" id="favs-panel">
       <button id="favs-hdr" onclick="toggleFavs()">
@@ -1923,6 +1948,8 @@
       }
       saveWL(); syncWatchlistToServer(); refreshStars(); updateWatchingCount();
       if (typeof renderWatchPanel === 'function') renderWatchPanel();
+      radarLoaded = false;
+      if (radarOpen) loadRadar();
       sortAssetGrid();
     }
 
@@ -1945,6 +1972,114 @@
         b.classList.remove('open'); b.classList.add('closed');
         if (c) c.style.transform = 'rotate(-90deg)';
       }
+    }
+
+    let radarOpen = false;
+    let radarLoaded = false;
+    function toggleRadar() {
+      radarOpen = !radarOpen;
+      const body = document.getElementById('radarBody');
+      const chev = document.getElementById('radarChevron');
+      body.classList.toggle('open', radarOpen);
+      body.classList.toggle('closed', !radarOpen);
+      chev.style.transform = radarOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+      if (radarOpen && !radarLoaded) loadRadar();
+    }
+
+    async function loadRadar() {
+      const wl = Array.from(watchlist);
+      const empty = document.getElementById('radarEmpty');
+      const loading = document.getElementById('radarLoading');
+      const content = document.getElementById('radarContent');
+      const countEl = document.getElementById('radarCount');
+
+      if (wl.length === 0) {
+        empty.style.display = 'block'; content.style.display = 'none'; loading.style.display = 'none';
+        return;
+      }
+
+      empty.style.display = 'none'; loading.style.display = 'block'; content.style.display = 'none';
+
+      try {
+        const resp = await fetch('/api/radar/batch/' + wl.join(','));
+        const data = await resp.json();
+        const results = data.results || {};
+
+        let html = '';
+        let totalNews = 0;
+
+        for (const ticker of wl) {
+          const news = results[ticker] || [];
+          totalNews += news.length;
+          const yahooUrl = 'https://finance.yahoo.com/quote/' + ticker + '/';
+          const ewUrl = 'https://www.earningswhispers.com/stocks/' + ticker;
+          const drUrl = 'https://www.dataroma.com/m/stock.php?sym=' + ticker;
+
+          html += '<div style="margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:12px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">';
+          html += '<span style="font-size:13px;font-weight:700;color:var(--gold)">' + ticker + '</span>';
+          html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+          html += '<a href="' + yahooUrl + '" target="_blank" rel="noopener" style="font-size:9px;padding:3px 8px;border-radius:4px;background:rgba(106,27,154,.2);color:#ce93d8;text-decoration:none;border:1px solid rgba(106,27,154,.3)">Yahoo Finance</a>';
+          html += '<a href="' + ewUrl + '" target="_blank" rel="noopener" style="font-size:9px;padding:3px 8px;border-radius:4px;background:rgba(0,150,136,.15);color:#80cbc4;text-decoration:none;border:1px solid rgba(0,150,136,.3)">EarningsWhispers</a>';
+          html += '<a href="' + drUrl + '" target="_blank" rel="noopener" style="font-size:9px;padding:3px 8px;border-radius:4px;background:rgba(33,150,243,.15);color:#90caf9;text-decoration:none;border:1px solid rgba(33,150,243,.3)">DataRoma</a>';
+          html += '</div></div>';
+
+          if (news.length > 0) {
+            for (const n of news) {
+              const ago = timeAgo(n.date);
+              const safeUrl = sanitizeUrl(n.url);
+              html += '<a href="' + safeUrl + '" target="_blank" rel="noopener" style="display:block;padding:6px 8px;margin:4px 0;border-radius:6px;background:rgba(255,255,255,.03);text-decoration:none;transition:background .2s" onmouseenter="this.style.background=\'rgba(255,255,255,.07)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.03)\'">';
+              html += '<div style="font-size:11px;color:rgba(255,255,255,.85);line-height:1.4;font-weight:500">' + escapeHtml(n.title) + '</div>';
+              if (n.summary) html += '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.3">' + escapeHtml(n.summary) + '</div>';
+              html += '<div style="font-size:9px;color:rgba(255,255,255,.2);margin-top:3px">' + escapeHtml(n.source || '') + (ago ? ' · ' + ago : '') + '</div>';
+              html += '</a>';
+            }
+          } else {
+            html += '<div style="font-size:10px;color:rgba(255,255,255,.2);padding:4px 8px">Sin noticias recientes en Yahoo Finance</div>';
+          }
+
+          html += '</div>';
+        }
+
+        content.innerHTML = html;
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        if (countEl) countEl.innerText = totalNews > 0 ? totalNews + ' noticias' : '';
+        radarLoaded = true;
+        setTimeout(() => { radarLoaded = false; }, 300000);
+      } catch (e) {
+        loading.style.display = 'none';
+        content.innerHTML = '<div style="text-align:center;padding:12px;font-size:11px;color:rgba(255,0,127,.5)">Error al cargar noticias</div>';
+        content.style.display = 'block';
+      }
+    }
+
+    function escapeHtml(t) {
+      const d = document.createElement('div'); d.textContent = t; return d.innerHTML;
+    }
+
+    function sanitizeUrl(url) {
+      if (!url) return '#';
+      try {
+        const u = new URL(url);
+        if (u.protocol === 'https:' || u.protocol === 'http:') return u.href;
+      } catch (e) {}
+      return '#';
+    }
+
+    function timeAgo(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 0) return '';
+        if (diff < 60) return 'ahora';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+        return Math.floor(diff / 86400) + 'd';
+      } catch (e) { return ''; }
     }
 
     let isVip = false;
