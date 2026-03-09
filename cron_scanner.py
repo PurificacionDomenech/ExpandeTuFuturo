@@ -190,6 +190,115 @@ async def scan_and_notify():
         traceback.print_exc()
 
 
+def _radar_already_sent_today(user_id):
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM radar_daily_log WHERE sent_date = CURRENT_DATE AND user_id = %s", (user_id,))
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
+def _mark_radar_sent(user_id):
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO radar_daily_log (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (user_id,))
+            conn.commit()
+    except Exception:
+        pass
+
+async def send_daily_radar():
+    from notifications import send_telegram
+    print(f"[{time.ctime()}] Enviando resumen diario de Radar Financiero...")
+
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT user_id, telegram_chat_id, watchlist "
+                    "FROM notification_prefs WHERE is_vip = TRUE AND telegram_enabled = TRUE "
+                    "AND telegram_chat_id IS NOT NULL AND telegram_chat_id != '' "
+                    "AND watchlist IS NOT NULL AND watchlist != '' "
+                    "AND (vip_expires_at IS NULL OR vip_expires_at > NOW())"
+                )
+                users = cur.fetchall()
+
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if not token:
+            print("  TELEGRAM_BOT_TOKEN no configurado, omitiendo radar diario")
+            return
+
+        for uid, chat_id, wl_str in users:
+            if _radar_already_sent_today(uid):
+                print(f"  – Radar ya enviado hoy a {uid}, omitiendo")
+                continue
+
+            tickers = [t.strip().upper() for t in wl_str.split(",") if t.strip()][:10]
+            if not tickers:
+                continue
+
+            msg_parts = ["📡 <b>Radar Financiero Diario</b>\n"]
+
+            for ticker in tickers:
+                try:
+                    t = yf.Ticker(ticker)
+                    news_raw = t.news or []
+                    if not news_raw:
+                        continue
+
+                    msg_parts.append(f"\n<b>🔸 {ticker}</b>")
+                    count = 0
+                    for n in news_raw[:3]:
+                        c = n.get("content", {})
+                        title = c.get("title", "")
+                        if not title:
+                            continue
+                        try:
+                            from deep_translator import GoogleTranslator
+                            title_es = GoogleTranslator(source='en', target='es').translate(title[:400]) or title
+                        except Exception:
+                            title_es = title
+                        click = c.get("clickThroughUrl", {})
+                        canon = c.get("canonicalUrl", {})
+                        url = ""
+                        if click and click.get("url"):
+                            url = click["url"]
+                        elif canon and canon.get("url"):
+                            url = canon["url"]
+                        if url:
+                            msg_parts.append(f"  • <a href=\"{url}\">{title_es}</a>")
+                        else:
+                            msg_parts.append(f"  • {title_es}")
+                        count += 1
+                    if count == 0:
+                        msg_parts.pop()
+                except Exception as e:
+                    print(f"  Error obteniendo noticias de {ticker}: {e}")
+
+                await asyncio.sleep(0.3)
+
+            if len(msg_parts) > 1:
+                msg_parts.append("\n<i>ETF · Expande Tu Futuro</i>")
+                full_msg = "\n".join(msg_parts)
+                if len(full_msg) > 4000:
+                    full_msg = full_msg[:3950] + "\n\n<i>… (mensaje recortado)</i>"
+                try:
+                    r = await send_telegram(token, str(chat_id), full_msg)
+                    if r.get("ok"):
+                        _mark_radar_sent(uid)
+                        print(f"  ✓ Radar diario enviado a {uid}")
+                    else:
+                        print(f"  ✗ Telegram rechazó radar para {uid}: {r.get('description', 'unknown')}")
+                except Exception as e:
+                    print(f"  ✗ Error enviando radar a {uid}: {e}")
+
+    except Exception as e:
+        print(f"Error en send_daily_radar: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 async def main():
     print("Scanner background loop active")
     await asyncio.sleep(60)
@@ -198,6 +307,14 @@ async def main():
             await scan_and_notify()
         except Exception as e:
             print(f"Loop error: {e}")
+
+        now = datetime.now()
+        if now.hour >= 8:
+            try:
+                await send_daily_radar()
+            except Exception as e:
+                print(f"Radar daily error: {e}")
+
         await asyncio.sleep(1800)
 
 

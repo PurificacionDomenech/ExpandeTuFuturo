@@ -10,7 +10,8 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 - Indicador SuperTrend
 - Alertas automáticas por cruces de SMAs y toques de precio
 - Panel de vigilancia (watchlist)
-- Radar Financiero: noticias de Yahoo Finance + enlaces a EarningsWhispers y DataRoma por ticker
+- Radar Financiero: noticias de Yahoo Finance (traducidas al español) + enlaces a EarningsWhispers y DataRoma por ticker
+- Resumen diario por Telegram: noticias de los tickers favoritos enviadas una vez al día (8am+) a usuarios VIP con Telegram activado
 - Página de inicio (splash) con autenticación vía Supabase
 - Sistema de notificaciones multicanal (Telegram, Email)
 - Sistema VIP/Free con códigos de acceso reutilizables

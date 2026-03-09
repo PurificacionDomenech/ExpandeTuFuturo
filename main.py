@@ -365,7 +365,16 @@ async def generate_code():
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-def _parse_news(news_list, max_items=8, include_thumb=False):
+def _translate_text(text, max_len=500):
+    if not text:
+        return text
+    try:
+        from deep_translator import GoogleTranslator
+        return GoogleTranslator(source='en', target='es').translate(text[:max_len]) or text
+    except Exception:
+        return text
+
+def _parse_news(news_list, max_items=8, include_thumb=False, translate=False):
     items = []
     for n in news_list[:max_items]:
         c = n.get("content", {})
@@ -382,6 +391,10 @@ def _parse_news(news_list, max_items=8, include_thumb=False):
             url = click["url"]
         elif canon and canon.get("url"):
             url = canon["url"]
+        if translate:
+            title = _translate_text(title)
+            if summary:
+                summary = _translate_text(summary, 300)
         item = {"title": title, "summary": summary[:200], "url": url, "date": pub, "source": provider}
         if include_thumb:
             thumb = ""
@@ -397,15 +410,15 @@ def _parse_news(news_list, max_items=8, include_thumb=False):
         items.append(item)
     return items
 
-def _fetch_ticker_news(ticker, max_items=8, include_thumb=False):
+def _fetch_ticker_news(ticker, max_items=8, include_thumb=False, translate=False):
     t = yf.Ticker(ticker)
     news = t.news or []
-    return _parse_news(news, max_items, include_thumb)
+    return _parse_news(news, max_items, include_thumb, translate)
 
 @app.get("/api/radar/{ticker}")
 async def get_radar_news(ticker: str):
     try:
-        items = await asyncio.to_thread(_fetch_ticker_news, ticker, 8, True)
+        items = await asyncio.to_thread(_fetch_ticker_news, ticker, 8, True, True)
         return {"ticker": ticker.upper(), "news": items}
     except Exception as e:
         return {"ticker": ticker.upper(), "news": [], "error": str(e)}
@@ -415,7 +428,7 @@ async def get_radar_batch(tickers: str):
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:10]
     async def fetch_one(tk):
         try:
-            return tk, await asyncio.to_thread(_fetch_ticker_news, tk, 5, False)
+            return tk, await asyncio.to_thread(_fetch_ticker_news, tk, 5, False, True)
         except Exception:
             return tk, []
     tasks = [fetch_one(tk) for tk in ticker_list]

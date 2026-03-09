@@ -10,3 +10,5 @@ gunicorn
 httpx
 twilio
 psycopg2-binary
+deep-translator
+starlette
