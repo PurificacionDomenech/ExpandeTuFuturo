@@ -59,8 +59,9 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 - `POST /api/notifications/prefs?user_id=X` — Guardar preferencias
 - `POST /api/notifications/redeem?user_id=X` — Canjear código VIP
 - `POST /api/notifications/send?user_id=X` — Enviar alertas manuales
-- `GET /api/radar/{ticker}` — Noticias de Yahoo Finance para un ticker (max 8)
-- `GET /api/radar/batch/{tickers}` — Noticias en lote para múltiples tickers (max 5 cada uno, paralelo)
+- `GET /api/radar/epicentro` — Indicadores del Epicentro (VIX, S&P 500, Dow Jones, Nasdaq, Russell 2000)
+- `GET /api/radar/{ticker}` — Noticias de Yahoo Finance para un ticker (max 8, traducidas al español)
+- `GET /api/radar/batch/{tickers}` — Noticias en lote para múltiples tickers (max 5 cada uno, paralelo, traducidas)
 - `GET /api/notifications/status` — Estado del sistema de alertas
 
 ## Workflow

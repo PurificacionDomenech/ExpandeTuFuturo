@@ -415,26 +415,6 @@ def _fetch_ticker_news(ticker, max_items=8, include_thumb=False, translate=False
     news = t.news or []
     return _parse_news(news, max_items, include_thumb, translate)
 
-@app.get("/api/radar/{ticker}")
-async def get_radar_news(ticker: str):
-    try:
-        items = await asyncio.to_thread(_fetch_ticker_news, ticker, 8, True, True)
-        return {"ticker": ticker.upper(), "news": items}
-    except Exception as e:
-        return {"ticker": ticker.upper(), "news": [], "error": str(e)}
-
-@app.get("/api/radar/batch/{tickers}")
-async def get_radar_batch(tickers: str):
-    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:10]
-    async def fetch_one(tk):
-        try:
-            return tk, await asyncio.to_thread(_fetch_ticker_news, tk, 5, False, True)
-        except Exception:
-            return tk, []
-    tasks = [fetch_one(tk) for tk in ticker_list]
-    results_list = await asyncio.gather(*tasks)
-    return {"results": dict(results_list)}
-
 def _fetch_epicentro():
     indices = [
         {"ticker": "^VIX", "name": "VIX", "icon": "🌡️"},
@@ -473,6 +453,26 @@ async def get_epicentro():
         return {"indicators": data}
     except Exception as e:
         return {"indicators": [], "error": str(e)}
+
+@app.get("/api/radar/batch/{tickers}")
+async def get_radar_batch(tickers: str):
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:10]
+    async def fetch_one(tk):
+        try:
+            return tk, await asyncio.to_thread(_fetch_ticker_news, tk, 5, False, True)
+        except Exception:
+            return tk, []
+    tasks = [fetch_one(tk) for tk in ticker_list]
+    results_list = await asyncio.gather(*tasks)
+    return {"results": dict(results_list)}
+
+@app.get("/api/radar/{ticker}")
+async def get_radar_news(ticker: str):
+    try:
+        items = await asyncio.to_thread(_fetch_ticker_news, ticker, 8, True, True)
+        return {"ticker": ticker.upper(), "news": items}
+    except Exception as e:
+        return {"ticker": ticker.upper(), "news": [], "error": str(e)}
 
 @app.post("/api/notifications/redeem")
 async def redeem_code(request: Request, user_id: str = "default"):

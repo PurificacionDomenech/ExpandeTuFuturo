@@ -229,6 +229,35 @@ async def send_daily_radar():
             print("  TELEGRAM_BOT_TOKEN no configurado, omitiendo radar diario")
             return
 
+        epicentro_text = ""
+        try:
+            epi_indices = [("^VIX","VIX","🌡️"),("^GSPC","S&P 500","📊"),("^DJI","Dow Jones","📊"),("^IXIC","Nasdaq","📊"),("^RUT","Russell 2000","📊")]
+            epi_lines = ["📊 <b>Indicadores del Epicentro</b>\n"]
+            for sym, name, icon in epi_indices:
+                try:
+                    tk = yf.Ticker(sym)
+                    h = tk.history(period="2d")
+                    if h.empty:
+                        continue
+                    price = float(h["Close"].iloc[-1])
+                    chg = 0.0
+                    if len(h) >= 2:
+                        prev = float(h["Close"].iloc[-2])
+                        if prev > 0:
+                            chg = ((price - prev) / prev) * 100
+                    is_vix = name == "VIX"
+                    arrow = "📈" if chg >= 0 else "📉"
+                    if is_vix:
+                        arrow = "📉" if chg >= 0 else "📈"
+                    sign = "↑" if chg >= 0 else "↓"
+                    epi_lines.append(f"{arrow} <b>{name}</b>  {price:,.2f}  {sign}{abs(chg):.2f}%")
+                except Exception:
+                    pass
+            if len(epi_lines) > 1:
+                epicentro_text = "\n".join(epi_lines)
+        except Exception as e:
+            print(f"  Error obteniendo epicentro: {e}")
+
         for uid, chat_id, wl_str in users:
             if _radar_already_sent_today(uid):
                 print(f"  – Radar ya enviado hoy a {uid}, omitiendo")
@@ -239,6 +268,9 @@ async def send_daily_radar():
                 continue
 
             msg_parts = ["📡 <b>Radar Financiero Diario</b>\n"]
+            if epicentro_text:
+                msg_parts.append(epicentro_text)
+                msg_parts.append("")
 
             for ticker in tickers:
                 try:
