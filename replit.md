@@ -70,9 +70,10 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 
 ## Despliegue
 
-Configurado para despliegue autoscale con gunicorn:
-- `gunicorn --bind=0.0.0.0:5000 --timeout=120 --workers=2 --worker-class=uvicorn.workers.UvicornWorker main:app`
+Configurado para despliegue VM (always-on) con gunicorn:
+- `gunicorn --bind=0.0.0.0:5000 --timeout=120 -w 1 --worker-class=uvicorn.workers.UvicornWorker main:app`
 - Health check en `/health`
+- Todas las llamadas a yfinance y deep_translator se ejecutan en thread executor (`run_in_executor`) para no bloquear el event loop y evitar WORKER TIMEOUT
 
 ## Secretos configurados
 

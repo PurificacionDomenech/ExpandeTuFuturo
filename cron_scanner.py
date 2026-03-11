@@ -5,7 +5,15 @@ import os
 import time
 import hashlib
 from datetime import datetime, timedelta
+from functools import partial
 from notifications import dispatch_notifications, get_db
+
+
+async def _run_blocking(func, *args, **kwargs):
+    loop = asyncio.get_event_loop()
+    if kwargs:
+        return await loop.run_in_executor(None, partial(func, *args, **kwargs))
+    return await loop.run_in_executor(None, partial(func, *args))
 
 # ── Deduplicación en memoria: {alert_hash -> datetime_sent} ──────────────────
 _sent_alerts: dict = {}
@@ -114,7 +122,7 @@ async def scan_and_notify():
 
             for t in tickers:
                 try:
-                    df_full = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+                    df_full = await _run_blocking(yf.download, t.upper(), period="1y", interval="1d", progress=False)
                     if df_full.empty:
                         continue
 
@@ -212,8 +220,8 @@ def _esc_html(text):
     import html
     return html.escape(str(text)) if text else ""
 
-def _get_epicentro_data():
-    """Obtiene los indicadores del Epicentro. Retorna lista de dicts."""
+def _get_epicentro_data_sync():
+    """Obtiene los indicadores del Epicentro (sync). Retorna lista de dicts."""
     epi_indices = [
         ("^VIX",  "VIX",         "🌡️", True),
         ("^GSPC", "S&P 500",     "📊", False),
@@ -239,6 +247,10 @@ def _get_epicentro_data():
         except Exception:
             pass
     return results
+
+
+async def _get_epicentro_data():
+    return await _run_blocking(_get_epicentro_data_sync)
 
 
 def _format_epicentro_telegram(epi_data: list) -> str:
@@ -268,8 +280,8 @@ def _format_epicentro_html(epi_data: list) -> str:
             f'{rows}</table>')
 
 
-async def _get_ticker_news(ticker: str) -> list:
-    """Retorna lista de {title_es, url} para un ticker (max 3 noticias)."""
+def _get_ticker_news_sync(ticker: str) -> list:
+    """Retorna lista de {title_es, url} para un ticker (max 3 noticias). SYNC."""
     try:
         t = yf.Ticker(ticker)
         news_raw = t.news or []
@@ -291,6 +303,10 @@ async def _get_ticker_news(ticker: str) -> list:
         return items
     except Exception:
         return []
+
+
+async def _get_ticker_news(ticker: str) -> list:
+    return await _run_blocking(_get_ticker_news_sync, ticker)
 
 
 async def send_daily_radar():
@@ -327,7 +343,7 @@ async def send_daily_radar():
         # ── Epicentro (una sola vez) ──────────────────────────────────────────
         epi_data = []
         try:
-            epi_data = _get_epicentro_data()
+            epi_data = await _get_epicentro_data()
         except Exception as e:
             print(f"  Error obteniendo epicentro: {e}")
 

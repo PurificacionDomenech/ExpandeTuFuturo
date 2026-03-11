@@ -4,11 +4,17 @@ import numpy as np
 import asyncio
 import os
 import traceback
+from functools import partial
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
+
+
+async def _run_blocking(func, *args, **kwargs):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, partial(func, *args, **kwargs))
 
 app = FastAPI()
 
@@ -213,9 +219,9 @@ async def index():
 async def get_chart(ticker: str, interval: str = "1d"):
     try:
         yf_interval, yf_period = INTERVAL_MAP.get(interval, ("1d", "1y"))
-        df = yf.download(ticker.upper(), period=yf_period, interval=yf_interval, progress=False)
+        df = await _run_blocking(yf.download, ticker.upper(), period=yf_period, interval=yf_interval, progress=False)
         if df.empty:
-            df = yf.download(ticker.upper(), period="1y", interval=yf_interval, progress=False)
+            df = await _run_blocking(yf.download, ticker.upper(), period="1y", interval=yf_interval, progress=False)
             if df.empty:
                 return {"error": "Simbolo no encontrado o sin datos: " + ticker}
         df = clean_df(df)
@@ -295,7 +301,7 @@ async def get_chart(ticker: str, interval: str = "1d"):
 @app.get("/api/row/{ticker}")
 async def get_row(ticker: str):
     try:
-        df = yf.download(ticker.upper(), period="1y", interval="1d", progress=False)
+        df = await _run_blocking(yf.download, ticker.upper(), period="1y", interval="1d", progress=False)
         if df.empty:
             return {"error": "not found"}
         df = clean_df(df)
@@ -337,7 +343,7 @@ async def watch_favorites(tickers: str = ""):
         if not t:
             continue
         try:
-            df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+            df = await _run_blocking(yf.download, t.upper(), period="1y", interval="1d", progress=False)
             if not df.empty:
                 df = clean_df(df)
                 df = calcular_indicadores(df)
@@ -349,7 +355,7 @@ async def watch_favorites(tickers: str = ""):
 @app.get("/api/sparkline/{ticker}")
 async def sparkline(ticker: str):
     try:
-        df = yf.download(ticker.upper(), period="1mo", interval="1d", progress=False)
+        df = await _run_blocking(yf.download, ticker.upper(), period="1mo", interval="1d", progress=False)
         if df.empty:
             return {"closes": [], "pct": 0}
         df = clean_df(df)
@@ -631,7 +637,7 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
         if not t:
             continue
         try:
-            df = yf.download(t.upper(), period="1y", interval="1d", progress=False)
+            df = await _run_blocking(yf.download, t.upper(), period="1y", interval="1d", progress=False)
             if df.empty:
                 continue
             df = clean_df(df)
