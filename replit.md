@@ -74,6 +74,7 @@ Configurado para despliegue VM (always-on) con gunicorn:
 - `gunicorn --bind=0.0.0.0:5000 --timeout=120 -w 1 --worker-class=uvicorn.workers.UvicornWorker main:app`
 - Health check en `/health`
 - Todas las llamadas a yfinance y deep_translator se ejecutan en thread executor (`run_in_executor`) para no bloquear el event loop y evitar WORKER TIMEOUT
+- Keep-alive ping cada 10 min a la URL de producción para evitar que la VM se apague por inactividad
 
 ## Secretos configurados
 

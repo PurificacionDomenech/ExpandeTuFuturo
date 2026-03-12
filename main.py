@@ -42,6 +42,30 @@ async def startup_event():
     asyncio.create_task(cron_scanner.main())
     print("Background scanner task started")
     asyncio.create_task(auto_setup_telegram_webhook())
+    asyncio.create_task(keep_alive_ping())
+
+
+async def keep_alive_ping():
+    import httpx
+    await asyncio.sleep(30)
+    deployment_url = os.environ.get("REPLIT_DEPLOYMENT_URL", "")
+    if not deployment_url:
+        print("KEEP-ALIVE: No deployment URL, skipping (dev mode)")
+        return
+    domain = deployment_url if deployment_url.startswith("http") else f"https://{deployment_url}"
+    health_url = f"{domain}/health"
+    print(f"KEEP-ALIVE: Pinging {health_url} every 10 minutes to prevent shutdown")
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(health_url)
+                if r.status_code == 200:
+                    print(f"KEEP-ALIVE: ping OK")
+                else:
+                    print(f"KEEP-ALIVE: ping returned {r.status_code}")
+        except Exception as e:
+            print(f"KEEP-ALIVE: ping failed ({e})")
+        await asyncio.sleep(600)
 
 async def auto_setup_telegram_webhook():
     import httpx
