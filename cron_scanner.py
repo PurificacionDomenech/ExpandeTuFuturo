@@ -2,11 +2,15 @@ import asyncio
 import yfinance as yf
 import gc
 import os
+import sys
 import time
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from functools import partial
 from notifications import dispatch_notifications, get_db
+
+logger = logging.getLogger("etf.scanner")
 
 
 async def _run_blocking(func, *args, **kwargs):
@@ -96,7 +100,7 @@ async def scan_and_notify():
     import pandas as pd
 
     now_str = time.ctime()
-    print(f"[{now_str}] Iniciando escaneo automático de vigilancia...")
+    logger.info(f"Iniciando escaneo automático de vigilancia...")
     _clean_old_sent()
 
     try:
@@ -111,7 +115,7 @@ async def scan_and_notify():
 
         for user in users:
             uid, tg_en, tg_id, em_en, em_adr, wl_str = user
-            print(f"  Procesando {uid} (TG:{tg_en}, EM:{em_en}, WL:{wl_str})")
+            logger.info(f"Procesando {uid} (TG:{tg_en}, EM:{em_en}, WL:{wl_str})")
             if not wl_str:
                 continue
             if not tg_en and not em_en:
@@ -148,7 +152,7 @@ async def scan_and_notify():
 
                     # ── Solo enviar si el estado es Favorable, Interesante o Considerar ──
                     if estado == "No ahora":
-                        print(f"    [{t}] Estado '{estado}' (pts={pts}) — omitido")
+                        logger.info(f"[{t}] Estado '{estado}' (pts={pts}) — omitido")
                         continue
 
                     raw_alerts = detectar_alertas(df_full, ticker=t.upper())
@@ -165,7 +169,7 @@ async def scan_and_notify():
 
                         # Deduplicación: no reenviar si ya se mandó en las últimas 4h
                         if _already_sent(uid, original_msg):
-                            print(f"    [{t}] DUPLICADO omitido: {original_msg[:60]}")
+                            logger.info(f"[{t}] DUPLICADO omitido: {original_msg[:60]}")
                             continue
 
                         filtered_alerts.append({**alert, "msg": enriched_msg})
@@ -173,13 +177,13 @@ async def scan_and_notify():
 
                     del df_full
                 except Exception as e:
-                    print(f"    Error escaneando {t}: {e}")
+                    logger.error(f"Error escaneando {t}: {e}")
 
                 await asyncio.sleep(0.5)
 
             gc.collect()
 
-            print(f"  → {len(filtered_alerts)} alertas nuevas para {uid}")
+            logger.info(f"{len(filtered_alerts)} alertas nuevas para {uid}")
             if filtered_alerts:
                 prefs = {
                     "telegram_enabled": tg_en,
@@ -188,12 +192,12 @@ async def scan_and_notify():
                     "email_address": em_adr
                 }
                 await dispatch_notifications(prefs, filtered_alerts)
-                print(f"  ✓ Enviadas {len(filtered_alerts)} alertas a {uid}")
+                logger.info(f"✓ Enviadas {len(filtered_alerts)} alertas a {uid}")
             else:
-                print(f"  – Sin alertas nuevas para {uid} en este ciclo")
+                logger.info(f"Sin alertas nuevas para {uid} en este ciclo")
 
     except Exception as e:
-        print(f"Error en scan_and_notify: {e}")
+        logger.error(f"Error en scan_and_notify: {e}")
         import traceback
         traceback.print_exc()
 
@@ -312,7 +316,7 @@ async def _get_ticker_news(ticker: str) -> list:
 async def send_daily_radar():
     from notifications import send_telegram, send_email
     import re
-    print(f"[{time.ctime()}] Enviando resumen diario de Radar Financiero...")
+    logger.info(f"Enviando resumen diario de Radar Financiero...")
 
     # ── Credenciales ──────────────────────────────────────────────────────────
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -337,7 +341,7 @@ async def send_daily_radar():
                 users = cur.fetchall()
 
         if not users:
-            print("  Sin usuarios VIP con notificaciones activas")
+            logger.info("Sin usuarios VIP con notificaciones activas")
             return
 
         # ── Epicentro (una sola vez) ──────────────────────────────────────────
@@ -345,14 +349,14 @@ async def send_daily_radar():
         try:
             epi_data = await _get_epicentro_data()
         except Exception as e:
-            print(f"  Error obteniendo epicentro: {e}")
+            logger.error(f"Error obteniendo epicentro: {e}")
 
         # ── Caché de noticias por ticker ──────────────────────────────────────
         news_cache: dict = {}
 
         for uid, tg_on, chat_id, em_on, em_addr, wl_str in users:
             if _radar_already_sent_today(uid):
-                print(f"  – Radar ya enviado hoy a {uid}, omitiendo")
+                logger.info(f"Radar ya enviado hoy a {uid}, omitiendo")
                 continue
 
             tickers = [t.strip().upper() for t in wl_str.split(",") if t.strip()][:10]
@@ -375,7 +379,7 @@ async def send_daily_radar():
                         epi_msg = f"📡 <b>Radar Financiero Diario</b>\n\n{_format_epicentro_telegram(epi_data)}"
                         r_epi = await send_telegram(token, str(chat_id), epi_msg)
                         if not r_epi.get("ok"):
-                            print(f"    ✗ Epicentro TG rechazado para {uid}: {r_epi.get('description','?')}")
+                            logger.warning(f"Epicentro TG rechazado para {uid}: {r_epi.get('description','?')}")
                         await asyncio.sleep(0.5)
 
                     # 2) Un mensaje por ticker
@@ -396,13 +400,13 @@ async def send_daily_radar():
                         ticker_msg = "\n".join(lines)
                         r = await send_telegram(token, str(chat_id), ticker_msg)
                         if not r.get("ok"):
-                            print(f"    ✗ TG ticker {ticker} para {uid}: {r.get('description','?')}")
+                            logger.warning(f"TG ticker {ticker} para {uid}: {r.get('description','?')}")
                         await asyncio.sleep(0.5)
 
                     sent_ok = True
-                    print(f"  ✓ Radar Telegram enviado a {uid} ({len(tickers)} tickers)")
+                    logger.info(f"✓ Radar Telegram enviado a {uid} ({len(tickers)} tickers)")
                 except Exception as e:
-                    print(f"  ✗ Error Telegram radar para {uid}: {e}")
+                    logger.error(f"Error Telegram radar para {uid}: {e}")
 
             # ── EMAIL: un único correo HTML con todo ─────────────────────────
             if em_on and em_addr and smtp_user and smtp_pass:
@@ -461,36 +465,36 @@ async def send_daily_radar():
                                          full_html)
                     if r.get("ok"):
                         sent_ok = True
-                        print(f"  ✓ Radar Email enviado a {uid} ({em_addr})")
+                        logger.info(f"✓ Radar Email enviado a {uid} ({em_addr})")
                     else:
-                        print(f"  ✗ Error Email radar para {uid}: {r.get('error','?')}")
+                        logger.error(f"Error Email radar para {uid}: {r.get('error','?')}")
                 except Exception as e:
-                    print(f"  ✗ Error Email radar para {uid}: {e}")
+                    logger.error(f"Error Email radar para {uid}: {e}")
 
             if sent_ok:
                 _mark_radar_sent(uid)
 
     except Exception as e:
-        print(f"Error en send_daily_radar: {e}")
+        logger.error(f"Error en send_daily_radar: {e}")
         import traceback
         traceback.print_exc()
 
 
 async def main():
-    print("Scanner background loop active")
+    logger.info("Scanner background loop active")
     await asyncio.sleep(60)
     while True:
         try:
             await scan_and_notify()
         except Exception as e:
-            print(f"Loop error: {e}")
+            logger.error(f"Loop error: {e}")
 
         now = datetime.now()
         if now.hour >= 8:
             try:
                 await send_daily_radar()
             except Exception as e:
-                print(f"Radar daily error: {e}")
+                logger.error(f"Radar daily error: {e}")
 
         await asyncio.sleep(1800)
 

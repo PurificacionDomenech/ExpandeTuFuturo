@@ -3,13 +3,19 @@ import pandas as pd
 import numpy as np
 import asyncio
 import os
+import sys
 import traceback
+import logging
 from functools import partial
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from notifications import load_prefs, save_prefs, dispatch_notifications, format_alerts_text, get_db
+
+logging.basicConfig(stream=sys.stderr, level=logging.INFO,
+                    format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("etf")
 
 
 async def _run_blocking(func, *args, **kwargs):
@@ -36,11 +42,30 @@ class CatchAllMiddleware(BaseHTTPMiddleware):
 app.add_middleware(CatchAllMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+def _get_public_url():
+    for var in ("REPLIT_DEPLOYMENT_URL", "REPLIT_DOMAINS", "REPLIT_DEV_DOMAIN"):
+        val = os.environ.get(var, "")
+        if val:
+            return val if val.startswith("http") else f"https://{val}"
+    return ""
+
+
+def _is_production():
+    return bool(os.environ.get("REPLIT_DEPLOYMENT_URL")) or not bool(os.environ.get("REPLIT_DEV_DOMAIN"))
+
+
 @app.on_event("startup")
 async def startup_event():
+    public_url = _get_public_url()
+    is_prod = _is_production()
+    logger.info(f"=== ETF STARTUP === prod={is_prod} url={public_url}")
+    logger.info(f"  REPLIT_DEPLOYMENT_URL={os.environ.get('REPLIT_DEPLOYMENT_URL','')}")
+    logger.info(f"  REPLIT_DOMAINS={os.environ.get('REPLIT_DOMAINS','')}")
+    logger.info(f"  REPLIT_DEV_DOMAIN={os.environ.get('REPLIT_DEV_DOMAIN','')}")
+
     import cron_scanner
     asyncio.create_task(cron_scanner.main())
-    print("Background scanner task started")
+    logger.info("Background scanner task started")
     asyncio.create_task(auto_setup_telegram_webhook())
     asyncio.create_task(keep_alive_ping())
 
@@ -48,70 +73,63 @@ async def startup_event():
 async def keep_alive_ping():
     import httpx
     await asyncio.sleep(30)
-    deployment_url = os.environ.get("REPLIT_DEPLOYMENT_URL", "")
-    if not deployment_url:
-        print("KEEP-ALIVE: No deployment URL, skipping (dev mode)")
+    public_url = _get_public_url()
+    if not public_url:
+        logger.warning("KEEP-ALIVE: No public URL found, skipping")
         return
-    domain = deployment_url if deployment_url.startswith("http") else f"https://{deployment_url}"
-    health_url = f"{domain}/health"
-    print(f"KEEP-ALIVE: Pinging {health_url} every 10 minutes to prevent shutdown")
+    health_url = f"{public_url}/health"
+    logger.info(f"KEEP-ALIVE: Pinging {health_url} every 5 minutes")
     while True:
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=15, verify=False) as client:
                 r = await client.get(health_url)
-                if r.status_code == 200:
-                    print(f"KEEP-ALIVE: ping OK")
-                else:
-                    print(f"KEEP-ALIVE: ping returned {r.status_code}")
+                logger.info(f"KEEP-ALIVE: ping {r.status_code}")
         except Exception as e:
-            print(f"KEEP-ALIVE: ping failed ({e})")
-        await asyncio.sleep(600)
+            logger.warning(f"KEEP-ALIVE: ping failed ({e})")
+        await asyncio.sleep(300)
+
 
 async def auto_setup_telegram_webhook():
     import httpx
     await asyncio.sleep(5)
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
-        print("TELEGRAM: No bot token, skipping webhook setup")
+        logger.warning("TELEGRAM: No bot token, skipping webhook setup")
         return
 
-    deployment_url = os.environ.get("REPLIT_DEPLOYMENT_URL", "")
-    dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+    is_prod = _is_production()
+    public_url = _get_public_url()
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            # Si estamos en producción, siempre actualizamos el webhook
-            if deployment_url:
-                domain = deployment_url if deployment_url.startswith("http") else f"https://{deployment_url}"
-                webhook_url = f"{domain}/api/telegram/webhook"
+            if is_prod and public_url:
+                webhook_url = f"{public_url}/api/telegram/webhook"
                 r = await client.post(
                     f"https://api.telegram.org/bot{token}/setWebhook",
                     json={"url": webhook_url, "allowed_updates": ["message"]}
                 )
-                print(f"TELEGRAM: Webhook set to {webhook_url} -> {r.json()}")
+                logger.info(f"TELEGRAM: Webhook (PROD) set to {webhook_url} -> {r.json()}")
                 return
 
-            # En desarrollo: solo cambiamos el webhook si no hay ya uno de producción activo
-            if dev_domain:
+            if not is_prod and public_url:
                 info_r = await client.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
                 info = info_r.json().get("result", {})
                 current_url = info.get("url", "")
-                # Si el webhook actual apunta a una URL de producción, no lo sobreescribimos
-                if current_url and ".replit.app" in current_url:
-                    print(f"TELEGRAM: Webhook de producción activo ({current_url}), no se sobreescribe desde dev")
-                    return
-                domain = dev_domain if dev_domain.startswith("http") else f"https://{dev_domain}"
-                webhook_url = f"{domain}/api/telegram/webhook"
+                if current_url and (".replit.app" in current_url or current_url != f"{public_url}/api/telegram/webhook"):
+                    if ".replit.app" in current_url:
+                        logger.info(f"TELEGRAM: Webhook de producción activo ({current_url}), no se sobreescribe desde dev")
+                        return
+                webhook_url = f"{public_url}/api/telegram/webhook"
                 r = await client.post(
                     f"https://api.telegram.org/bot{token}/setWebhook",
                     json={"url": webhook_url, "allowed_updates": ["message"]}
                 )
-                print(f"TELEGRAM: Webhook (dev) set to {webhook_url} -> {r.json()}")
+                logger.info(f"TELEGRAM: Webhook (dev) set to {webhook_url} -> {r.json()}")
                 return
 
-        print("TELEGRAM: No domain detected, skipping webhook setup")
+        logger.warning("TELEGRAM: No domain detected, skipping webhook setup")
     except Exception as e:
-        print(f"TELEGRAM: Webhook setup error: {e}")
+        logger.error(f"TELEGRAM: Webhook setup error: {e}")
 
 INTERVAL_MAP = {
     "1d":  ("1d",  "max"),
@@ -763,10 +781,10 @@ async def telegram_webhook(request: Request):
                 json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"}
             )
             result = resp.json()
-            print(f"TELEGRAM BOT reply to {chat_id}: ok={result.get('ok')}, error={result.get('description','')}")
+            logger.info(f"TELEGRAM BOT reply to {chat_id}: ok={result.get('ok')}, error={result.get('description','')}")
         return {"ok": True}
     except Exception as e:
-        print(f"TELEGRAM BOT ERROR: {e}")
+        logger.error(f"TELEGRAM BOT ERROR: {e}")
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/telegram/setup-webhook")
