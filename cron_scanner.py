@@ -490,7 +490,7 @@ async def main():
             logger.error(f"Loop error: {e}")
 
         now = datetime.now()
-        if now.hour >= 8:
+        if now.hour >= 7:
             try:
                 await send_daily_radar()
             except Exception as e:
