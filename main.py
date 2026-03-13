@@ -51,7 +51,12 @@ def _get_public_url():
 
 
 def _is_production():
-    return bool(os.environ.get("REPLIT_DEPLOYMENT_URL")) or not bool(os.environ.get("REPLIT_DEV_DOMAIN"))
+    domains = os.environ.get("REPLIT_DOMAINS", "")
+    if ".replit.app" in domains:
+        return True
+    if os.environ.get("REPLIT_DEPLOYMENT_URL"):
+        return True
+    return False
 
 
 @app.on_event("startup")
