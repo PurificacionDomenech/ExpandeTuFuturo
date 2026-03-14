@@ -11,20 +11,28 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 - Alertas automáticas por cruces de SMAs y toques de precio
 - Panel de vigilancia (watchlist)
 - Radar Financiero: noticias de Yahoo Finance (traducidas al español) + enlaces a EarningsWhispers y DataRoma por ticker
-- Resumen diario por Telegram: noticias de los tickers favoritos enviadas una vez al día (8am+) a usuarios VIP con Telegram activado
+- Resumen diario por Telegram: noticias de los tickers favoritos enviadas una vez al día (8am+ hora Madrid) a usuarios VIP con Telegram activado
 - Página de inicio (splash) con autenticación vía Supabase
 - Sistema de notificaciones multicanal (Telegram, Email)
 - Sistema VIP/Free con códigos de acceso reutilizables
 
 ## Arquitectura
 
-- **Backend**: FastAPI (Python) servido con Uvicorn (dev) / Gunicorn (prod)
+- **Backend**: FastAPI (Python) servido con Uvicorn
 - **Frontend**: Plantillas HTML/CSS/JS vanilla (FileResponse)
 - **Datos**: yfinance para datos de mercado en tiempo real
 - **Auth**: Supabase (del lado del cliente, en splash.html)
-- **Base de datos**: PostgreSQL (notification_prefs, access_codes)
+- **Base de datos**: PostgreSQL (notification_prefs, access_codes, radar_daily_log)
 - **Puerto**: 5000
 - **Scanner**: cron_scanner.py ejecuta escaneos automáticos cada 30 min
+- **Deployment**: Autoscale con keep-alive ping cada 5 min
+
+## Detección de entorno
+
+- `_is_production()`: Detecta producción comprobando si `REPLIT_DOMAINS` contiene `.replit.app`
+- `_get_public_url()`: Busca URL pública en `REPLIT_DEPLOYMENT_URL` → `REPLIT_DOMAINS` → `REPLIT_DEV_DOMAIN` (toma primer valor si hay comas)
+- En producción el webhook de Telegram apunta a `expande-tu-futuro.replit.app`
+- En dev, no se sobreescribe el webhook de producción si ya está activo
 
 ## Archivos principales
 
@@ -70,11 +78,12 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 
 ## Despliegue
 
-Configurado para despliegue VM (always-on) con gunicorn:
-- `gunicorn --bind=0.0.0.0:5000 --timeout=120 -w 1 --worker-class=uvicorn.workers.UvicornWorker main:app`
+Configurado para despliegue Autoscale con uvicorn:
+- `uvicorn main:app --host 0.0.0.0 --port 5000`
 - Health check en `/health`
-- Todas las llamadas a yfinance y deep_translator se ejecutan en thread executor (`run_in_executor`) para no bloquear el event loop y evitar WORKER TIMEOUT
-- Keep-alive ping cada 10 min a la URL de producción para evitar que la VM se apague por inactividad
+- Todas las llamadas a yfinance y deep_translator se ejecutan en thread executor (`run_in_executor`) para no bloquear el event loop
+- Keep-alive ping cada 5 min a la URL de producción para evitar que la VM se apague por inactividad
+- Radar diario usa zona horaria Europe/Madrid (respeta DST)
 
 ## Secretos configurados
 

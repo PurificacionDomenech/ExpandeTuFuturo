@@ -44,7 +44,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def _get_public_url():
     for var in ("REPLIT_DEPLOYMENT_URL", "REPLIT_DOMAINS", "REPLIT_DEV_DOMAIN"):
-        val = os.environ.get(var, "")
+        val = os.environ.get(var, "").split(",")[0].strip()
         if val:
             return val if val.startswith("http") else f"https://{val}"
     return ""

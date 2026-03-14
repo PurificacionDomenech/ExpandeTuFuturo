@@ -6,7 +6,7 @@ import sys
 import time
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from notifications import dispatch_notifications, get_db
 
@@ -489,8 +489,13 @@ async def main():
         except Exception as e:
             logger.error(f"Loop error: {e}")
 
-        now = datetime.now()
-        if now.hour >= 7:
+        try:
+            from zoneinfo import ZoneInfo
+            madrid_tz = ZoneInfo("Europe/Madrid")
+        except ImportError:
+            madrid_tz = timezone(timedelta(hours=1))
+        now_madrid = datetime.now(madrid_tz)
+        if now_madrid.hour >= 8:
             try:
                 await send_daily_radar()
             except Exception as e:
