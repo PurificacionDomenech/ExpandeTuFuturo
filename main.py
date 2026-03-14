@@ -194,6 +194,15 @@ def detectar_alertas(df, ticker=""):
 
     precio_now  = float(df["Close"].iloc[n])
     precio_prev = float(df["Close"].iloc[n - 1])
+
+    event_dt = df.index[n]
+    try:
+        if event_dt.hour == 0 and event_dt.minute == 0:
+            event_str = event_dt.strftime("%d/%m/%Y")
+        else:
+            event_str = event_dt.strftime("%d/%m %H:%M")
+    except Exception:
+        event_str = str(event_dt)[:10]
     
     ticker_clean = str(ticker).upper().strip()
     prefix = f"[{ticker_clean}] " if ticker_clean else ""
@@ -210,29 +219,29 @@ def detectar_alertas(df, ticker=""):
             continue
         if precio_prev < sma_prev and precio_now >= sma_now:
             alertas.append({"nivel": "bullish",
-                "msg": prefix + "Precio cruza " + nombre + " al alza $" + str(round(precio_now, 2))})
+                "msg": prefix + "Precio cruza " + nombre + " al alza $" + str(round(precio_now, 2)) + f" ({event_str})"})
         elif precio_prev > sma_prev and precio_now <= sma_now:
             alertas.append({"nivel": "bearish",
-                "msg": prefix + "Precio cruza " + nombre + " a la baja $" + str(round(precio_now, 2))})
+                "msg": prefix + "Precio cruza " + nombre + " a la baja $" + str(round(precio_now, 2)) + f" ({event_str})"})
         elif sma_now > 0 and abs(precio_now - sma_now) / sma_now * 100 <= 0.4:
             alertas.append({"nivel": "info",
-                "msg": prefix + "Precio tocando " + nombre + " $" + str(round(precio_now, 2))})
+                "msg": prefix + "Precio tocando " + nombre + " $" + str(round(precio_now, 2)) + f" ({event_str})"})
 
     s100_n, s100_p = smas["SMA100"]
     s200_n, s200_p = smas["SMA200"]
     if pd.notna(s100_n) and pd.notna(s200_n) and pd.notna(s100_p) and pd.notna(s200_p):
         if s100_p < s200_p and s100_n >= s200_n:
-            alertas.append({"nivel": "bullish", "msg": prefix + "Golden Cross SMA100/200"})
+            alertas.append({"nivel": "bullish", "msg": prefix + f"Golden Cross SMA100/200 ({event_str})"})
         elif s100_p > s200_p and s100_n <= s200_n:
-            alertas.append({"nivel": "bearish", "msg": prefix + "Death Cross SMA100/200"})
+            alertas.append({"nivel": "bearish", "msg": prefix + f"Death Cross SMA100/200 ({event_str})"})
 
     s20_n, s20_p = smas["SMA20"]
     s50_n, s50_p = smas["SMA50"]
     if pd.notna(s20_n) and pd.notna(s50_n) and pd.notna(s20_p) and pd.notna(s50_p):
         if s20_p < s50_p and s20_n >= s50_n:
-            alertas.append({"nivel": "bullish", "msg": prefix + "SMA20 cruza sobre SMA50"})
+            alertas.append({"nivel": "bullish", "msg": prefix + f"SMA20 cruza sobre SMA50 ({event_str})"})
         elif s20_p > s50_p and s20_n <= s50_n:
-            alertas.append({"nivel": "bearish", "msg": prefix + "SMA20 cruza bajo SMA50"})
+            alertas.append({"nivel": "bearish", "msg": prefix + f"SMA20 cruza bajo SMA50 ({event_str})"})
 
     return alertas
 
