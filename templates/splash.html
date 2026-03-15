@@ -587,8 +587,17 @@ try {
 /* ─── CHECK SESSION ─── */
 async function checkSession() {
   if (!sb) return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('select_account') === 'true') {
+    try { await sb.auth.signOut(); } catch(e) {}
+    return;
+  }
   try {
-    await sb.auth.signOut();
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      window.location.href = '/app';
+      return;
+    }
   } catch(e) {}
 }
 checkSession();
