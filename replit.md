@@ -9,6 +9,7 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 - RSI (Índice de Fuerza Relativa) con señales de zonas extremas
 - Indicador SuperTrend
 - Alertas automáticas por cruces de SMAs y toques de precio
+- Sistema de confluencias técnicas (6 condiciones: RSI sobreventa, SuperTrend alcista, zona SMA200, zona SMA100, Cruce Dorado, zona de valor)
 - Panel de vigilancia (watchlist)
 - Radar Financiero: noticias de Yahoo Finance (traducidas al español) + enlaces a EarningsWhispers y DataRoma por ticker
 - Resumen diario por Telegram: noticias de los tickers favoritos enviadas una vez al día (8am+ hora Madrid) a usuarios VIP con Telegram activado
@@ -38,7 +39,7 @@ Esta app proporciona análisis técnico para acciones, ETFs y criptoactivos, inc
 
 - `main.py` — App FastAPI con rutas API, indicadores técnicos y lógica de gráficos
 - `cron_scanner.py` — Scanner automático de watchlists (cada 30 min para VIP)
-- `notifications.py` — Sistema de notificaciones (Telegram, Email) con branding "ETF · Expande Tu Futuro"
+- `notifications.py` — Sistema de notificaciones (Telegram, Email) con branding "ETF · Expande Tu Futuro", formateadores de confluencias (Telegram texto plano, Email HTML)
 - `templates/splash.html` — Página de inicio / login
 - `templates/index.html` — Dashboard principal con toda la UI
 - `static/` — Recursos estáticos (logo, etc.)

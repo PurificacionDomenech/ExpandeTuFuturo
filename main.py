@@ -245,6 +245,114 @@ def detectar_alertas(df, ticker=""):
 
     return alertas
 
+
+def evaluar_confluencias(df, ticker=""):
+    n = len(df) - 1
+    if n < 2:
+        return None
+
+    precio = float(df["Close"].iloc[n])
+    rsi_val = float(df["RSI"].iloc[n]) if "RSI" in df.columns and pd.notna(df["RSI"].iloc[n]) else None
+    st_dir = int(df["Dir"].iloc[n]) if "Dir" in df.columns and pd.notna(df["Dir"].iloc[n]) else 0
+
+    sma100 = float(df["SMA100"].iloc[n]) if pd.notna(df["SMA100"].iloc[n]) else None
+    sma200 = float(df["SMA200"].iloc[n]) if pd.notna(df["SMA200"].iloc[n]) else None
+
+    event_dt = df.index[n]
+    try:
+        if event_dt.hour == 0 and event_dt.minute == 0:
+            event_str = event_dt.strftime("%d/%m/%Y")
+        else:
+            event_str = event_dt.strftime("%d/%m %H:%M")
+    except Exception:
+        event_str = str(event_dt)[:10]
+
+    confluencias = []
+    puntos = 0
+
+    rsi_ok = rsi_val is not None and rsi_val < 30
+    confluencias.append({
+        "id": "rsi_sobreventa",
+        "ok": rsi_ok,
+        "texto": f"RSI sobrevendido ({rsi_val:.1f}) — señal de rebote" if rsi_ok and rsi_val else "RSI no en sobreventa",
+        "tipo": "momentum"
+    })
+    if rsi_ok:
+        puntos += 1
+
+    st_ok = st_dir == 1
+    confluencias.append({
+        "id": "supertrend",
+        "ok": st_ok,
+        "texto": "SuperTrend alcista — tendencia confirmada" if st_ok else "SuperTrend bajista",
+        "tipo": "tendencia"
+    })
+    if st_ok:
+        puntos += 1
+
+    cerca_sma200 = sma200 is not None and sma200 != 0 and abs(precio - sma200) / sma200 * 100 <= 0.8
+    confluencias.append({
+        "id": "zona_sma200",
+        "ok": cerca_sma200,
+        "texto": f"Precio en zona SMA200 (${sma200:.2f}) — soporte clave" if cerca_sma200 and sma200 else "Lejos de SMA200",
+        "tipo": "soporte"
+    })
+    if cerca_sma200:
+        puntos += 1
+
+    cerca_sma100 = not cerca_sma200 and sma100 is not None and sma100 != 0 and abs(precio - sma100) / sma100 * 100 <= 0.8
+    confluencias.append({
+        "id": "zona_sma100",
+        "ok": cerca_sma100,
+        "texto": f"Precio en zona SMA100 (${sma100:.2f}) — soporte medio" if cerca_sma100 and sma100 else "Lejos de SMA100",
+        "tipo": "soporte"
+    })
+    if cerca_sma100:
+        puntos += 1
+
+    cruce_dorado = sma100 is not None and sma200 is not None and sma100 > sma200
+    confluencias.append({
+        "id": "golden_cross",
+        "ok": cruce_dorado,
+        "texto": "SMA100 > SMA200 — Cruce Dorado activo" if cruce_dorado else "Sin Cruce Dorado",
+        "tipo": "estructura"
+    })
+    if cruce_dorado:
+        puntos += 1
+
+    bajo_sma200 = sma200 is not None and precio < sma200
+    confluencias.append({
+        "id": "zona_valor",
+        "ok": bajo_sma200,
+        "texto": "Precio por debajo de SMA200 — zona de valor" if bajo_sma200 else "Precio sobre SMA200",
+        "tipo": "valor"
+    })
+    if bajo_sma200:
+        puntos += 1
+
+    if puntos < 3:
+        return None
+
+    if puntos >= 5:
+        estado = "FAVORABLE"
+    elif puntos >= 3:
+        estado = "INTERESANTE"
+    else:
+        estado = "CONSIDERAR"
+
+    return {
+        "ticker": str(ticker).upper().strip(),
+        "precio": precio,
+        "rsi": rsi_val,
+        "st_dir": st_dir,
+        "puntos": puntos,
+        "estado": estado,
+        "nivel": "bullish" if puntos >= 5 else "info",
+        "confluencias": confluencias,
+        "event_str": event_str,
+    }
+
+
 def safe(v):
     return float(v) if pd.notna(v) else None
 
@@ -655,6 +763,7 @@ async def set_notification_prefs(request: Request, user_id: str = "default"):
 
 @app.post("/api/notifications/test")
 async def test_notification(request: Request, user_id: str = "default"):
+    from notifications import dispatch_confluencias
     try:
         body = await request.json()
     except Exception:
@@ -662,11 +771,24 @@ async def test_notification(request: Request, user_id: str = "default"):
     channel = body.get("channel", "all")
     prefs = load_prefs(user_id)
 
-    test_alertas = [
-        {"nivel": "bullish", "msg": "[AAPL] Precio cruza SMA50 al alza $215.40 [🟢 Favorable]"},
-        {"nivel": "info",    "msg": "[ETH-USD] Precio tocando SMA200 $2150.80 [🟡 Interesante]"},
-        {"nivel": "info",    "msg": "[BTC-USD] Precio tocando SMA100 $84200.50 [🟠 Considerar]"},
-    ]
+    test_resultado = {
+        "ticker": "AAPL",
+        "precio": 215.40,
+        "rsi": 28.5,
+        "st_dir": 1,
+        "puntos": 5,
+        "estado": "FAVORABLE",
+        "nivel": "bullish",
+        "event_str": "20/03/2026",
+        "confluencias": [
+            {"id": "rsi_sobreventa", "ok": True, "texto": "RSI sobrevendido (28.5) — señal de rebote", "tipo": "momentum"},
+            {"id": "supertrend", "ok": True, "texto": "SuperTrend alcista — tendencia confirmada", "tipo": "tendencia"},
+            {"id": "zona_sma200", "ok": True, "texto": "Precio en zona SMA200 ($214.80) — soporte clave", "tipo": "soporte"},
+            {"id": "zona_sma100", "ok": False, "texto": "Lejos de SMA100", "tipo": "soporte"},
+            {"id": "golden_cross", "ok": True, "texto": "SMA100 > SMA200 — Cruce Dorado activo", "tipo": "estructura"},
+            {"id": "zona_valor", "ok": True, "texto": "Precio por debajo de SMA200 — zona de valor", "tipo": "valor"},
+        ],
+    }
 
     test_prefs = dict(prefs)
     if channel != "all":
@@ -674,11 +796,12 @@ async def test_notification(request: Request, user_id: str = "default"):
             if ch != channel:
                 test_prefs[f"{ch}_enabled"] = False
 
-    results = await dispatch_notifications(test_prefs, test_alertas)
+    results = await dispatch_confluencias(test_prefs, test_resultado)
     return {"ok": True, "results": results}
 
 @app.post("/api/notifications/send")
 async def send_alerts_now(request: Request, user_id: str = "default"):
+    from notifications import dispatch_confluencias
     try:
         body = await request.json()
     except Exception:
@@ -687,7 +810,10 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
     prefs = load_prefs(user_id)
 
     import cron_scanner
-    filtered_alertas = []
+    sent_count = 0
+    all_results = {}
+    legacy_alertas = []
+
     for t in tickers_str.split(","):
         t = t.strip()
         if not t:
@@ -698,42 +824,54 @@ async def send_alerts_now(request: Request, user_id: str = "default"):
                 continue
             df = clean_df(df)
             df = calcular_indicadores(df)
-            n = len(df) - 1
-            if n < 2:
-                continue
 
-            price  = cron_scanner.safe_float(df["Close"].iloc[n])
-            sma20  = cron_scanner.safe_float(df["SMA20"].iloc[n])
-            sma50  = cron_scanner.safe_float(df["SMA50"].iloc[n])
-            sma100 = cron_scanner.safe_float(df["SMA100"].iloc[n])
-            sma200 = cron_scanner.safe_float(df["SMA200"].iloc[n])
-            rsi_s  = df["RSI"].dropna() if "RSI" in df.columns else None
-            rsi    = cron_scanner.safe_float(rsi_s.iloc[-1]) if rsi_s is not None and not rsi_s.empty else None
-
-            if price is None:
-                continue
-
-            pts = cron_scanner.calcular_estado_pts(price, sma20, sma50, sma100, sma200, rsi)
-            estado = cron_scanner.get_estado_label(pts)
-
-            if estado == "No ahora":
-                continue
-
-            estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
-            for alert in detectar_alertas(df, ticker=t.upper()):
-                if alert.get("nivel") == "bearish":
+            resultado = evaluar_confluencias(df, ticker=t.upper())
+            if resultado:
+                dedup_key = f"{t.upper()}_{resultado['estado']}_{round(resultado['precio'], -1)}"
+                if cron_scanner._already_sent(user_id, dedup_key):
                     continue
-                original_msg = alert["msg"]
-                if cron_scanner._already_sent(user_id, original_msg):
+                r = await dispatch_confluencias(prefs, resultado)
+                any_ok = any(v.get("ok") for v in r.values()) if r else False
+                if any_ok:
+                    cron_scanner._mark_sent(user_id, dedup_key)
+                all_results[t.upper()] = r
+                sent_count += 1
+            else:
+                n = len(df) - 1
+                if n < 2:
                     continue
-                filtered_alertas.append({**alert, "msg": f"{original_msg} [{estado_icon} {estado}]"})
-                cron_scanner._mark_sent(user_id, original_msg)
+                price  = cron_scanner.safe_float(df["Close"].iloc[n])
+                sma20  = cron_scanner.safe_float(df["SMA20"].iloc[n])
+                sma50  = cron_scanner.safe_float(df["SMA50"].iloc[n])
+                sma100 = cron_scanner.safe_float(df["SMA100"].iloc[n])
+                sma200 = cron_scanner.safe_float(df["SMA200"].iloc[n])
+                rsi_s  = df["RSI"].dropna() if "RSI" in df.columns else None
+                rsi    = cron_scanner.safe_float(rsi_s.iloc[-1]) if rsi_s is not None and not rsi_s.empty else None
+                if price is None:
+                    continue
+                pts = cron_scanner.calcular_estado_pts(price, sma20, sma50, sma100, sma200, rsi)
+                estado = cron_scanner.get_estado_label(pts)
+                if estado == "No ahora":
+                    continue
+                estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
+                for alert in detectar_alertas(df, ticker=t.upper()):
+                    if alert.get("nivel") == "bearish":
+                        continue
+                    original_msg = alert["msg"]
+                    if cron_scanner._already_sent(user_id, original_msg):
+                        continue
+                    legacy_alertas.append({**alert, "msg": f"{original_msg} [{estado_icon} {estado}]"})
+                    cron_scanner._mark_sent(user_id, original_msg)
         except Exception:
             pass
 
-    if filtered_alertas:
-        results = await dispatch_notifications(prefs, filtered_alertas)
-        return {"ok": True, "alertas_count": len(filtered_alertas), "results": results}
+    if legacy_alertas:
+        r = await dispatch_notifications(prefs, legacy_alertas)
+        all_results["_legacy"] = r
+        sent_count += len(legacy_alertas)
+
+    if sent_count > 0:
+        return {"ok": True, "alertas_count": sent_count, "results": all_results}
     return {"ok": True, "alertas_count": 0, "msg": "Sin alertas nuevas para enviar"}
 
 @app.get("/api/notifications/status")

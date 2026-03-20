@@ -1,0 +1,52 @@
+Tengo una app FastAPI (main.py) con un sistema de notificaciones (notifications.py) que envía alertas a Telegram, pero los mensajes son muy simples. Quiero rediseñar el sistema para que los mensajes sean ricos y estructurados como los de una app de referencia.
+Contexto de la app actual:
+
+Indicadores: SMA20, SMA50, SMA100, SMA200, RSI 14, SuperTrend
+El estado se calcula en calcularEstadoPts() en el frontend con puntuación 0–10+
+Los estados son: Favorable, Interesante, Considerar, No ahora
+Las alertas se generan en detectar_alertas() en main.py
+El envío se hace via dispatch_notifications() en notifications.py
+
+Cambios que necesito:
+1. En main.py, crear nueva función evaluar_confluencias(df, ticker) que devuelva un dict estructurado con:
+
+ticker, precio, rsi, st_dir (SuperTrend direction: 1=alcista, -1=bajista)
+puntos (0–6), estado ("FAVORABLE"/"INTERESANTE"/"CONSIDERAR"/"NO AHORA")
+nivel ("bullish"/"info")
+confluencias: lista de dicts con {id, ok, texto, tipo} evaluando estas 6 condiciones:
+
+RSI sobrevendido (<30) o sobrecomprado (>70)
+SuperTrend alcista (st_dir == 1)
+Precio cerca de SMA200 (±0.8%)
+Precio cerca de SMA100 (±0.8%) — solo si no cumple SMA200
+SMA100 > SMA200 (Cruce Dorado activo)
+Precio por debajo de SMA200 (zona de valor)
+
+
+Solo retorna resultado si puntos >= 3, sino retorna None
+Umbrales de estado: puntos >= 5 → FAVORABLE, >= 3 → INTERESANTE, >= 2 → CONSIDERAR
+
+2. En notifications.py, añadir función format_confluencias_telegram(resultado, now_str) que construya este formato exacto:
+🔱 ETF · Expande Tu Futuro · 10:00
+
+📊 QQQ · Nasdaq ETF  |  $487.32
+🟢 FAVORABLE  ·  RSI 27.4  ·  ST ▲  ·  4/6 confluencias
+
+Confluencias activas:
+✅ RSI sobrevendido (27.4) — señal de rebote
+✅ SuperTrend alcista — tendencia confirmada
+✅ Precio en zona SMA200 ($481.20) — soporte clave
+✅ SMA100 > SMA200 — Cruce Dorado activo
+◻️ Lejos de SMA100
+◻️ Precio sobre SMA200
+
+Análisis técnico automatizado · No es asesoría financiera
+3. En notifications.py, añadir format_confluencias_html(resultado, now_str) con el mismo estilo visual oscuro que ya tiene format_alerts_html() pero añadiendo:
+
+Header con ticker, precio y estado coloreado
+Sección "Confluencias activas" con ✅/◻️ por cada condición
+Footer con puntuación X/6
+
+4. En main.py, modificar el endpoint POST /api/notifications/send para que, además del sistema actual de detectar_alertas(), llame a evaluar_confluencias() para cada ticker y si devuelve resultado, construya el mensaje usando format_confluencias_telegram() en lugar del formato simple actual. El mensaje rico reemplaza al simple cuando hay confluencias disponibles.
+5. En cron_scanner.py (si existe), aplicar el mismo cambio: cuando se detecte un estado FAVORABLE o INTERESANTE, usar format_confluencias_telegram() para el mensaje Telegram en lugar del formato [TICKER] mensaje simple [🟢 Favorable].
+Anti-duplicados: La clave de deduplicación debe ser f"{ticker}_{estado}_{round(precio, -1)}" en lugar del mensaje completo, para evitar spam si el precio oscila levemente.

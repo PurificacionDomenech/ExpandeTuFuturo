@@ -96,7 +96,7 @@ def safe_float(val):
 
 
 async def scan_and_notify():
-    from main import calcular_indicadores, detectar_alertas, clean_df
+    from main import calcular_indicadores, detectar_alertas, clean_df, evaluar_confluencias
     import pandas as pd
 
     now_str = time.ctime()
@@ -122,7 +122,7 @@ async def scan_and_notify():
                 continue
 
             tickers = [t.strip() for t in wl_str.split(",") if t.strip()]
-            filtered_alerts = []
+            sent_count = 0
 
             for t in tickers:
                 try:
@@ -133,47 +133,39 @@ async def scan_and_notify():
                     df_full = clean_df(df_full)
                     df_full = calcular_indicadores(df_full)
 
-                    n = len(df_full) - 1
-                    if n < 2:
+                    resultado = evaluar_confluencias(df_full, ticker=t.upper())
+                    if resultado is None:
+                        n = len(df_full) - 1
+                        if n >= 2:
+                            price = safe_float(df_full["Close"].iloc[n])
+                            sma20 = safe_float(df_full["SMA20"].iloc[n])
+                            sma50 = safe_float(df_full["SMA50"].iloc[n])
+                            sma100 = safe_float(df_full["SMA100"].iloc[n])
+                            sma200 = safe_float(df_full["SMA200"].iloc[n])
+                            rsi_val = safe_float(df_full["RSI"].iloc[n]) if "RSI" in df_full.columns else None
+                            pts = calcular_estado_pts(price, sma20, sma50, sma100, sma200, rsi_val)
+                            estado = get_estado_label(pts)
+                            logger.info(f"[{t}] Estado '{estado}' (pts={pts}) — sin confluencias suficientes")
                         continue
 
-                    price   = safe_float(df_full["Close"].iloc[n])
-                    sma20   = safe_float(df_full["SMA20"].iloc[n])
-                    sma50   = safe_float(df_full["SMA50"].iloc[n])
-                    sma100  = safe_float(df_full["SMA100"].iloc[n])
-                    sma200  = safe_float(df_full["SMA200"].iloc[n])
-                    rsi_val = safe_float(df_full["RSI"].iloc[n]) if "RSI" in df_full.columns else None
-
-                    if price is None:
+                    dedup_key = f"{t.upper()}_{resultado['estado']}_{round(resultado['precio'], -1)}"
+                    if _already_sent(uid, dedup_key):
+                        logger.info(f"[{t}] DUPLICADO confluencias omitido: {resultado['estado']}")
                         continue
 
-                    pts = calcular_estado_pts(price, sma20, sma50, sma100, sma200, rsi_val)
-                    estado = get_estado_label(pts)
-
-                    # ── Solo enviar si el estado es Favorable, Interesante o Considerar ──
-                    if estado == "No ahora":
-                        logger.info(f"[{t}] Estado '{estado}' (pts={pts}) — omitido")
-                        continue
-
-                    raw_alerts = detectar_alertas(df_full, ticker=t.upper())
-
-                    estado_icon = {"Favorable": "🟢", "Interesante": "🟡", "Considerar": "🟠"}.get(estado, "")
-
-                    for alert in raw_alerts:
-                        # Solo señales alcistas e informativas — NO señales de caída
-                        if alert.get("nivel") == "bearish":
-                            continue
-
-                        original_msg = alert["msg"]
-                        enriched_msg = f"{original_msg} [{estado_icon} {estado}]"
-
-                        # Deduplicación: no reenviar si ya se mandó en las últimas 4h
-                        if _already_sent(uid, original_msg):
-                            logger.info(f"[{t}] DUPLICADO omitido: {original_msg[:60]}")
-                            continue
-
-                        filtered_alerts.append({**alert, "msg": enriched_msg})
-                        _mark_sent(uid, original_msg)
+                    prefs = {
+                        "telegram_enabled": tg_en,
+                        "telegram_chat_id": tg_id,
+                        "email_enabled": em_en,
+                        "email_address": em_adr
+                    }
+                    from notifications import dispatch_confluencias
+                    r = await dispatch_confluencias(prefs, resultado)
+                    any_ok = any(v.get("ok") for v in r.values()) if r else False
+                    if any_ok:
+                        _mark_sent(uid, dedup_key)
+                    sent_count += 1
+                    logger.info(f"[{t}] ✓ Confluencias {resultado['estado']} ({resultado['puntos']}/6) enviadas a {uid}")
 
                     del df_full
                 except Exception as e:
@@ -183,16 +175,8 @@ async def scan_and_notify():
 
             gc.collect()
 
-            logger.info(f"{len(filtered_alerts)} alertas nuevas para {uid}")
-            if filtered_alerts:
-                prefs = {
-                    "telegram_enabled": tg_en,
-                    "telegram_chat_id": tg_id,
-                    "email_enabled": em_en,
-                    "email_address": em_adr
-                }
-                await dispatch_notifications(prefs, filtered_alerts)
-                logger.info(f"✓ Enviadas {len(filtered_alerts)} alertas a {uid}")
+            if sent_count > 0:
+                logger.info(f"✓ Enviadas {sent_count} confluencias a {uid}")
             else:
                 logger.info(f"Sin alertas nuevas para {uid} en este ciclo")
 

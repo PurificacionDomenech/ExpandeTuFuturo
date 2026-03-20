@@ -222,6 +222,150 @@ def format_alerts_html(alertas: list) -> str:
     return "\n".join(parts)
 
 
+def format_confluencias_telegram(resultado, now_str=None):
+    if now_str is None:
+        from datetime import datetime
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo("Europe/Madrid"))
+        except ImportError:
+            now = datetime.now()
+        now_str = now.strftime("%H:%M")
+
+    ticker = resultado["ticker"]
+    precio = resultado["precio"]
+    estado = resultado["estado"]
+    rsi = resultado.get("rsi")
+    st_dir = resultado.get("st_dir", 0)
+    puntos = resultado["puntos"]
+    confluencias = resultado["confluencias"]
+    event_str = resultado.get("event_str", "")
+
+    estado_icons = {"FAVORABLE": "🟢", "INTERESANTE": "🟡", "CONSIDERAR": "🟠"}
+    estado_icon = estado_icons.get(estado, "⚪")
+    st_arrow = "▲" if st_dir == 1 else "▼"
+    rsi_str = f"RSI {rsi:.1f}" if rsi is not None else "RSI —"
+    activas = sum(1 for c in confluencias if c["ok"])
+
+    lines = [
+        f"🔱 ETF · Expande Tu Futuro · {now_str}",
+        "",
+        f"📊 {ticker}  |  ${precio:,.2f}  ({event_str})",
+        f"{estado_icon} {estado}  ·  {rsi_str}  ·  ST {st_arrow}  ·  {activas}/6 confluencias",
+        "",
+        "Confluencias activas:",
+    ]
+
+    for c in confluencias:
+        icon = "✅" if c["ok"] else "◻️"
+        lines.append(f"{icon} {c['texto']}")
+
+    lines.append("")
+    lines.append("Análisis técnico automatizado · No es asesoría financiera")
+
+    return "\n".join(lines)
+
+
+def format_confluencias_html(resultado, now_str=None):
+    if now_str is None:
+        from datetime import datetime
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo("Europe/Madrid"))
+        except ImportError:
+            now = datetime.now()
+        now_str = now.strftime("%H:%M")
+
+    ticker = resultado["ticker"]
+    precio = resultado["precio"]
+    estado = resultado["estado"]
+    rsi = resultado.get("rsi")
+    st_dir = resultado.get("st_dir", 0)
+    puntos = resultado["puntos"]
+    confluencias = resultado["confluencias"]
+    event_str = resultado.get("event_str", "")
+
+    estado_colors = {"FAVORABLE": "#2dd47e", "INTERESANTE": "#e8c96d", "CONSIDERAR": "#f0a848"}
+    estado_color = estado_colors.get(estado, "#888")
+    st_arrow = "▲" if st_dir == 1 else "▼"
+    st_color = "#2dd47e" if st_dir == 1 else "#f05858"
+    rsi_str = f"{rsi:.1f}" if rsi is not None else "—"
+    activas = sum(1 for c in confluencias if c["ok"])
+
+    conf_rows = ""
+    for c in confluencias:
+        icon = "✅" if c["ok"] else "◻️"
+        opacity = "1" if c["ok"] else "0.4"
+        conf_rows += f'<div style="padding:6px 0;opacity:{opacity};font-size:13px">{icon} {c["texto"]}</div>'
+
+    return f"""
+    <div style="font-family:'DM Sans',Arial,sans-serif;background:#060810;
+                color:#e8e4d9;padding:30px;border-radius:12px;max-width:600px">
+      <div style="border-bottom:1px solid rgba(201,168,76,.3);padding-bottom:15px;margin-bottom:20px">
+        <h2 style="color:#e8c96d;margin:0;font-size:18px">🔱 ETF · Expande Tu Futuro</h2>
+        <p style="color:rgba(232,228,217,.5);font-size:12px;margin:4px 0 0">
+          Análisis de confluencias · {now_str}</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:18px;margin-bottom:18px">
+        <div style="font-size:20px;font-weight:700;margin-bottom:4px">
+          📊 {ticker}  <span style="color:rgba(232,228,217,.5);font-size:14px">({event_str})</span>
+        </div>
+        <div style="font-size:28px;font-weight:700;color:#fff;margin:8px 0">${precio:,.2f}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+          <span style="background:{estado_color}22;color:{estado_color};padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600">{estado}</span>
+          <span style="color:rgba(232,228,217,.6);font-size:13px">RSI {rsi_str}</span>
+          <span style="color:{st_color};font-size:13px">ST {st_arrow}</span>
+          <span style="color:rgba(232,228,217,.6);font-size:13px">{activas}/6 confluencias</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <h3 style="color:#e8c96d;font-size:14px;margin:0 0 10px;font-weight:600">Confluencias activas</h3>
+        {conf_rows}
+      </div>
+
+      <div style="margin-top:25px;padding-top:15px;border-top:1px solid rgba(201,168,76,.15);
+                  font-size:10px;color:rgba(232,228,217,.3)">
+        Puntuación: {puntos}/6 · Análisis técnico automatizado · No es asesoría financiera
+      </div>
+    </div>"""
+
+
+async def dispatch_confluencias(prefs: dict, resultado: dict) -> dict:
+    results = {}
+    tg_text = format_confluencias_telegram(resultado)
+    html = format_confluencias_html(resultado)
+
+    if prefs.get("telegram_enabled") and prefs.get("telegram_chat_id"):
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if token:
+            try:
+                r = await send_telegram(token, str(prefs["telegram_chat_id"]), tg_text)
+                results["telegram"] = {"ok": r.get("ok", False), "error": r.get("description")}
+            except Exception as e:
+                results["telegram"] = {"ok": False, "error": str(e)}
+
+    if prefs.get("email_enabled") and prefs.get("email_address"):
+        smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+        smtp_user = os.environ.get("SMTP_USER", "")
+        smtp_pass = os.environ.get("SMTP_PASS", "")
+        smtp_from = os.environ.get("SMTP_FROM", smtp_user)
+        if smtp_user and smtp_pass:
+            try:
+                ticker = resultado["ticker"]
+                estado = resultado["estado"]
+                subject = f"📊 {ticker} — {estado} · ETF Confluencias"
+                r = await send_email(smtp_host, smtp_port, smtp_user, smtp_pass,
+                                     smtp_from, prefs["email_address"], subject, html)
+                results["email"] = r
+            except Exception as e:
+                results["email"] = {"ok": False, "error": str(e)}
+
+    return results
+
+
 async def dispatch_notifications(prefs: dict, alertas: list) -> dict:
     results = {}
     text = format_alerts_text(alertas)
