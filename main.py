@@ -370,6 +370,13 @@ async def splash():
         content = f.read()
     return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
 
+@app.get("/welcome")
+async def welcome():
+    from starlette.responses import HTMLResponse
+    with open("templates/welcome.html", "r") as f:
+        content = f.read()
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
+
 @app.get("/app")
 async def index():
     from starlette.responses import HTMLResponse

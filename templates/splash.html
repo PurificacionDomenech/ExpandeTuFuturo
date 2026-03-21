@@ -624,7 +624,7 @@ async function doRegister() {
   try {
     const { data, error } = await sb.auth.signUp({
       email, password: pass,
-      options: { data: { full_name: name } }
+      options: { data: { full_name: name }, emailRedirectTo: window.location.origin + '/welcome' }
     });
     if (error) throw error;
     showMsg(msg,'ok','✓ Cuenta creada. Revisa tu email para confirmar.');
