@@ -588,13 +588,22 @@ try {
 async function checkSession() {
   if (!sb) return;
   const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash || '';
+  const fullUrl = window.location.href;
+
   if (params.get('select_account') === 'true') {
     try { await sb.auth.signOut(); } catch(e) {}
     return;
   }
 
-  const hash = window.location.hash || '';
-  const isConfirmation = hash.includes('type=signup') || hash.includes('type=email');
+  if (params.get('from') === 'welcome') {
+    return;
+  }
+
+  const isConfirmation = hash.includes('type=signup') || hash.includes('type=email')
+    || hash.includes('type=magiclink') || hash.includes('type=recovery')
+    || fullUrl.includes('type=signup') || fullUrl.includes('type=email')
+    || fullUrl.includes('confirmation_url');
 
   if (isConfirmation) {
     try {
