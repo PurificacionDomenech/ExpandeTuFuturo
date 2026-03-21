@@ -592,6 +592,21 @@ async function checkSession() {
     try { await sb.auth.signOut(); } catch(e) {}
     return;
   }
+
+  const hash = window.location.hash || '';
+  const isConfirmation = hash.includes('type=signup') || hash.includes('type=email');
+
+  if (isConfirmation) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        await sb.auth.signOut();
+      }
+    } catch(e) {}
+    window.location.href = '/welcome';
+    return;
+  }
+
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (session && session.user) {
