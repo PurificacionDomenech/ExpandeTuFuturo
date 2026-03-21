@@ -946,6 +946,50 @@ async def telegram_webhook(request: Request):
         logger.error(f"TELEGRAM BOT ERROR: {e}")
         return {"ok": False, "error": str(e)}
 
+@app.delete("/api/admin/user/{user_id}")
+async def admin_delete_user_data(user_id: str, key: str = ""):
+    admin_key = os.environ.get("ADMIN_KEY", "")
+    if not admin_key or key != admin_key:
+        return {"ok": False, "error": "No autorizado"}
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT user_id, is_vip, vip_code, watchlist FROM notification_prefs WHERE user_id = %s", (user_id,))
+                row = cur.fetchone()
+                if not row:
+                    return {"ok": False, "error": "Usuario no encontrado en notification_prefs"}
+                cur.execute("DELETE FROM notification_prefs WHERE user_id = %s", (user_id,))
+                cur.execute("DELETE FROM radar_daily_log WHERE user_id = %s", (user_id,))
+            conn.commit()
+        return {"ok": True, "msg": f"Datos eliminados para {user_id}", "was_vip": row[1], "vip_code": row[2]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/api/admin/vip-users")
+async def admin_list_vip(key: str = ""):
+    admin_key = os.environ.get("ADMIN_KEY", "")
+    if not admin_key or key != admin_key:
+        return {"ok": False, "error": "No autorizado"}
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT user_id, vip_code, vip_expires_at, telegram_enabled, email_enabled, watchlist "
+                    "FROM notification_prefs WHERE is_vip = TRUE ORDER BY updated_at DESC"
+                )
+                rows = cur.fetchall()
+        users = []
+        for r in rows:
+            users.append({
+                "user_id": r[0], "vip_code": r[1],
+                "expires": str(r[2]) if r[2] else "permanente",
+                "telegram": r[3], "email": r[4],
+                "watchlist": r[5]
+            })
+        return {"ok": True, "count": len(users), "users": users}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 @app.get("/api/telegram/setup-webhook")
 async def setup_telegram_webhook(request: Request):
     import httpx
